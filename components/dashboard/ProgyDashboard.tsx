@@ -35,18 +35,9 @@ const nav: Array<{ id: SectionId; icon: string; label: string }> = [
 ];
 
 const headers: Record<SectionId, string> = {
-  inicio: "Inicio",
-  negocio: "Mi negocio",
-  asistente: "Configurar Progy",
-  catalogo: "Catálogo",
-  conocimiento: "Conocimiento",
-  voz: "Voz e idioma",
-  whatsapp: "WhatsApp",
-  pruebas: "Pruebas",
-  conversaciones: "Conversaciones",
-  pedidos: "Pedidos y reservas",
-  consumo: "Consumo y plan",
-  ajustes: "Configuración",
+  inicio: "Inicio", negocio: "Mi negocio", asistente: "Configurar Progy", catalogo: "Catálogo",
+  conocimiento: "Conocimiento", voz: "Voz e idioma", whatsapp: "WhatsApp", pruebas: "Pruebas",
+  conversaciones: "Conversaciones", pedidos: "Pedidos y reservas", consumo: "Consumo y plan", ajustes: "Configuración",
 };
 
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
@@ -117,7 +108,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
         {section === "conocimiento" && <KnowledgeSection key={`knowledge-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "voz" && <VoiceSection key={`voice-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "whatsapp" && <WhatsAppSection key={`whatsapp-${workspaceKey}`} workspace={workspace} />}
-        {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Esta prueba utiliza el conocimiento de tu negocio y responde con la voz que seleccionaste. Está limitada para mantener controlado el consumo." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}</>}
+        {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Esta prueba utiliza el conocimiento de tu negocio y responde con la voz que seleccionaste. Está limitada para mantener controlado el consumo." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} onRefresh={() => load(workspace.business.id)} />}</>}
         {section === "conversaciones" && <ConversationsSection workspace={workspace} onGo={go} />}
         {section === "pedidos" && <OrdersSection workspace={workspace} />}
         {section === "consumo" && <UsageSection workspace={workspace} />}
