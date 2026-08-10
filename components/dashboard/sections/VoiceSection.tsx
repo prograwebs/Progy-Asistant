@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { SelectedWorkspace, VoiceOption, WorkspaceAction } from "../types";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import styles from "../ProgyDashboard.module.css";
@@ -15,7 +15,7 @@ export default function VoiceSection({ workspace, action }: { workspace: Selecte
   const [error, setError] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  async function loadVoices(refresh = false) {
+  const loadVoices = useCallback(async (refresh = false) => {
     setLoading(true);
     setError("");
     try {
@@ -28,9 +28,15 @@ export default function VoiceSection({ workspace, action }: { workspace: Selecte
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void loadVoices(); return () => audioRef.current?.pause(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => void loadVoices(), 0);
+    return () => {
+      window.clearTimeout(timer);
+      audioRef.current?.pause();
+    };
+  }, [loadVoices]);
 
   async function preview(voice: VoiceOption) {
     setBusy(`play:${voice.id}`);
