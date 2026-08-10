@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { IntegrationStatus, PanelUser } from "./types";
+import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
 import BusinessOnboarding from "./BusinessOnboarding";
 import OverviewSection from "./sections/OverviewSection";
@@ -72,6 +72,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const workspace = snapshot.selected;
   const category = snapshot.categories.find((item) => item.code === workspace.business.category_code);
   const ready = Boolean(workspace.agent?.voice_id && workspace.catalogItems.length && workspace.hours.length);
+  const workspaceKey = workspace.business.id;
 
   return <main className={styles.app}>
     {mobileOpen && <button aria-label="Cerrar menú" className={styles.mobileOverlay} onClick={() => setMobileOpen(false)} />}
@@ -110,13 +111,13 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
         {notice && <div className={styles.notice}>{notice}</div>}
         {error && <div className={styles.errorBanner}>{error}</div>}
         {section === "inicio" && <OverviewSection workspace={workspace} onGo={go} />}
-        {section === "negocio" && <BusinessSection workspace={workspace} action={action} />}
-        {section === "asistente" && <AgentSection workspace={workspace} action={action} />}
-        {section === "catalogo" && <CatalogSection workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}
-        {section === "conocimiento" && <KnowledgeSection workspace={workspace} action={action} />}
-        {section === "voz" && <VoiceSection workspace={workspace} action={action} />}
-        {section === "whatsapp" && <WhatsAppSection workspace={workspace} />}
-        {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Esta prueba utiliza el conocimiento de tu negocio y responde con la voz que seleccionaste. Está limitada para mantener controlado el consumo." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}</>}
+        {section === "negocio" && <BusinessSection key={`business-${workspaceKey}`} workspace={workspace} action={action} />}
+        {section === "asistente" && <AgentSection key={`agent-${workspaceKey}`} workspace={workspace} action={action} />}
+        {section === "catalogo" && <CatalogSection key={`catalog-${workspaceKey}`} workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}
+        {section === "conocimiento" && <KnowledgeSection key={`knowledge-${workspaceKey}`} workspace={workspace} action={action} />}
+        {section === "voz" && <VoiceSection key={`voice-${workspaceKey}`} workspace={workspace} action={action} />}
+        {section === "whatsapp" && <WhatsAppSection key={`whatsapp-${workspaceKey}`} workspace={workspace} />}
+        {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Esta prueba utiliza el conocimiento de tu negocio y responde con la voz que seleccionaste. Está limitada para mantener controlado el consumo." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}</>}
         {section === "conversaciones" && <ConversationsSection workspace={workspace} onGo={go} />}
         {section === "pedidos" && <OrdersSection workspace={workspace} />}
         {section === "consumo" && <UsageSection workspace={workspace} />}
@@ -126,7 +127,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   </main>;
 }
 
-function SettingsSection({ user, workspace, integrations }: { user: PanelUser; workspace: NonNullable<ReturnType<typeof useWorkspace>["snapshot"]>["selected"] extends infer T ? NonNullable<T> : never; integrations: IntegrationStatus }) {
+function SettingsSection({ user, workspace, integrations }: { user: PanelUser; workspace: SelectedWorkspace; integrations: IntegrationStatus }) {
   const serviceReady = integrations.supabase && integrations.openai && integrations.elevenlabs;
   return <>
     <SectionHeader eyebrow="TU CUENTA" title="Configuración" description="Información general del espacio de trabajo. Los detalles internos de proveedores y credenciales no se muestran en el panel de clientes." />
