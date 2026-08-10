@@ -1,1 +1,0 @@
-The implementation is on agent/progy-platform-v1. Review CI before merge.
