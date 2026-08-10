@@ -1,129 +1,139 @@
 # Progy
 
-Progy es la plataforma de asistentes de voz de PrograWebs. Incluye landing pública, autenticación con Supabase, panel multiempresa, configuración por industria, catálogo o servicios, horarios, conocimiento, selección de voz, pruebas con OpenAI Realtime y preparación de WhatsApp mediante ElevenLabs Agents y Meta.
+Progy es la plataforma de PrograWebs para configurar asistentes de atención con IA para negocios. El objetivo del producto es que una persona no técnica pueda cargar la información de su negocio, elegir una voz, probar al asistente, revisar conversaciones y recibir pedidos o reservas desde un solo panel.
 
-## Tecnologías
+> Rama de evolución actual: `agent/progy-platform-v1`. `main` conserva la versión aprobada anterior hasta que la nueva rama pase validación y revisión.
 
-- React 19 y Next.js 16 sobre Vinext/Vite
-- Cloudflare Workers mediante ChatGPT Sites
-- Supabase Auth y PostgREST
-- OpenAI Realtime por WebRTC
-- ElevenLabs para voces y canal de WhatsApp
+## Qué incluye la plataforma
 
-## Variables necesarias
+- registro e inicio de sesión con Supabase;
+- varios tipos de negocio y configuración multiempresa;
+- datos del negocio y horario;
+- configuración de comportamiento del asistente;
+- catálogo manual de productos/servicios;
+- importación asistida desde PDF, DOCX, TXT o CSV con revisión antes de guardar;
+- conocimiento, políticas y preguntas frecuentes;
+- listado, muestra y selección de voces;
+- prueba hablada controlada desde el navegador;
+- razonamiento con información relevante del negocio;
+- registro automático de pedidos y reservas validados en servidor;
+- conversaciones e historial;
+- medición de consumo por negocio;
+- límites por plan y prueba gratuita;
+- WhatsApp Embedded Signup preparado mientras Meta habilita el onboarding de clientes externos.
 
-Copia `.env.example` a `.env.local` y completa:
+## Desarrollo local en Windows
 
-```env
-SUPABASE_URL=
-SUPABASE_PUBLISHABLE_KEY=
-OPENAI_API_KEY=
-ELEVENLABS_API_KEY=
-```
+Requisitos:
 
-Las claves de OpenAI y ElevenLabs son privadas. Nunca las coloques en componentes del navegador ni las publiques en GitHub.
+- Node.js 22.13 o superior;
+- npm;
+- las variables necesarias en `.env.local`.
 
-Variables opcionales:
-
-```env
-SUPABASE_ANON_KEY=
-OPENAI_REALTIME_MODEL=gpt-realtime-2.1
-OPENAI_REALTIME_VOICE=marin
-ELEVENLABS_MODEL_ID=eleven_flash_v2_5
-ELEVENLABS_VOICE_ID=
-PROGY_APP_URL=http://localhost:4173
-```
-
-## Ejecutar localmente en Windows
-
-Necesitas:
-
-- Windows 10 u 11.
-- Node.js 22 o superior. Node.js 24 también funciona.
-- Una carpeta extraída del proyecto; no ejecutes Progy dentro del archivo ZIP.
-- Las mismas cuatro variables que configuraste en Sites.
-
-### Primera ejecución
-
-1. Extrae el ZIP y abre la carpeta `Progy-codigo-fuente` en VS Code.
-2. Abre **Terminal → New Terminal** y confirma que sea PowerShell.
-3. Ejecuta:
+Desde la raíz del proyecto:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-windows.ps1
 ```
 
-La primera vez se creará `.env.local`. Ábrelo y completa:
-
-```env
-SUPABASE_URL=
-SUPABASE_PUBLISHABLE_KEY=
-OPENAI_API_KEY=
-ELEVENLABS_API_KEY=
-PROGY_APP_URL=http://localhost:4173
-```
-
-No incluyas comillas alrededor de los valores y no compartas ese archivo. Vuelve a ejecutar el mismo comando. El asistente instalará las dependencias y abrirá Progy en `http://localhost:4173`.
-
-Para que Google regrese a la versión local, agrega una vez en **Supabase → Authentication → URL Configuration → Redirect URLs**:
+Progy queda disponible por defecto en:
 
 ```text
-http://localhost:4173/auth/callback
+http://localhost:4173
 ```
 
-No reemplaces la URL de Progy publicada; agrega esta como una dirección adicional.
+El script también permite iniciar el túnel de desarrollo cuando se necesita probar callbacks externos.
 
-### Ejecución manual
+## Variables de entorno
 
-Requiere Node.js 22 o superior.
+Copia `.env.example` a `.env.local` y completa únicamente en tu equipo/hosting los secretos reales. `.env.local` está ignorado por Git y no debe subirse al repositorio.
 
-En Linux:
+Grupos principales:
+
+```text
+Supabase
+  SUPABASE_URL
+  SUPABASE_PUBLISHABLE_KEY
+
+Inteligencia
+  OPENAI_API_KEY
+  OPENAI_ASSISTANT_MODEL
+  OPENAI_CATALOG_MODEL
+  OPENAI_TRANSCRIBE_MODEL
+
+Voz
+  ELEVENLABS_API_KEY
+  ELEVENLABS_MODEL_ID
+
+WhatsApp / Meta
+  NEXT_PUBLIC_META_APP_ID
+  NEXT_PUBLIC_META_CONFIG_ID
+  META_APP_ID
+  META_APP_SECRET
+  META_GRAPH_VERSION
+
+Aplicación
+  PROGY_APP_URL
+```
+
+Nunca conviertas una clave privada en una variable `NEXT_PUBLIC_*`.
+
+## Validación
+
+La rama incluye GitHub Actions y scripts para comprobar el proyecto:
 
 ```bash
 npm ci
-npm run dev -- --host 0.0.0.0 --port 4173
+npm run lint
+npm run typecheck
+npm test
 ```
 
-En Windows PowerShell, los scripts de validación del despliegue usan Bash. Para trabajar en la interfaz localmente puedes ejecutar:
+`npm test` realiza el build verificado y las pruebas sobre el HTML generado.
 
-```powershell
-npm ci
-npx vite --host 0.0.0.0 --port 4173
+## Cómo está organizado
+
+```text
+app/api/                  endpoints del servidor
+components/dashboard/     interfaz modular del panel
+lib/ai/                   inteligencia/transcripción/documentos
+lib/assistant/            contexto y acciones del asistente
+lib/billing/              límites y capacidades de planes
+lib/usage/                medición de consumo
+lib/voice/                síntesis y voces
+lib/supabase-data.ts      acceso PostgREST con sesión
 ```
 
-Abre `http://localhost:4173`.
+Para entender dónde modificar cada función, consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 
-Para detener Progy, vuelve a la terminal y presiona `Ctrl + C`.
+## Prueba de voz y control de costes
 
-## Estructura principal
+La prueba hablada ya no depende de la voz nativa del modelo. El flujo es:
 
-- `app/page.tsx`: landing pública.
-- `app/acceso`: registro e inicio de sesión.
-- `app/panel`: panel y módulos de configuración.
-- `app/api/workspace`: datos multiempresa en Supabase.
-- `app/api/openai/realtime`: sesión de prueba con OpenAI.
-- `app/api/elevenlabs`: voces y saludo real.
-- `app/api/whatsapp`: estado, sincronización y asignación del agente.
-- `lib/integrations.ts`: autenticación y conexiones del servidor.
-- `lib/supabase-data.ts`: acceso a datos y contexto del negocio.
+1. el navegador graba un turno corto;
+2. el servidor transcribe;
+3. Progy recupera solo la información relevante del negocio;
+4. la IA prepara una respuesta estructurada;
+5. cualquier pedido/reserva se valida contra datos reales antes de guardarse;
+6. la respuesta se sintetiza con la voz seleccionada para ese negocio;
+7. el uso queda asociado al negocio.
 
-## Flujo de WhatsApp
+La prueba gratuita se limita en servidor. Reiniciar la página no crea pruebas gratuitas ilimitadas.
 
-1. El usuario guarda el número en formato internacional.
-2. Autoriza la cuenta empresarial mediante el flujo seguro de Meta abierto desde ElevenLabs.
-3. Progy crea o actualiza un agente con el negocio, horarios, catálogo, conocimiento y voz.
-4. Progy asigna ese agente al número autorizado.
-5. El usuario prueba mensajes y llamadas dentro de WhatsApp.
+## Importación de catálogo
 
-La autorización de Meta requiere intervención del administrador y no debe automatizarse con contraseñas o códigos dentro de Progy.
+El usuario puede subir un documento existente. Progy devuelve una vista previa editable y no crea productos automáticamente hasta recibir confirmación. Los precios ambiguos quedan marcados para revisión en lugar de ser inventados.
 
-## Base de datos
+## WhatsApp
 
-Este código espera el esquema de Progy/Kely ya instalado en Supabase, incluyendo `businesses`, `agent_configs`, `business_hours`, `catalog_items`, `knowledge_items`, `business_features`, `conversations`, `orders`, `bookings`, `business_plans`, `usage_ledger` y sus políticas RLS.
+El panel conserva una experiencia simple de “Conectar WhatsApp”. La conexión técnica con Meta permanece en el servidor y el cliente no ve tokens, WABA IDs, Phone Number IDs ni proveedores internos.
 
-## Seguridad
+La incorporación de cuentas externas depende además de la habilitación/revisión correspondiente de Meta. El resto de Progy puede desarrollarse y utilizarse sin bloquearse por ese proceso.
 
-- Las claves privadas se leen únicamente en rutas del servidor.
-- Cada consulta de negocio utiliza la sesión de Supabase y sus políticas RLS.
-- El archivo comprimido del código no incluye `.env`, `node_modules`, compilaciones ni credenciales del despliegue.
-"# Progy-Asistant" 
+## Política de cambios
+
+- `main`: versión estable/aprobada.
+- `agent/progy-platform-v1`: desarrollo de la plataforma modular.
+- nuevas funcionalidades deben evitar volver a concentrar toda la interfaz o integraciones en un solo archivo;
+- secretos privados solo en entorno del servidor;
+- una acción propuesta por la IA siempre debe volver a validarse con datos del sistema antes de escribir en la base de datos.
