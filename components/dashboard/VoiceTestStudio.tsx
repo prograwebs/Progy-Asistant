@@ -11,22 +11,9 @@ type AssistantTurnResponse = {
   error?: string;
   code?: string;
   upgradeRequired?: boolean;
-  action?: {
-    type?: "none" | "order" | "booking";
-    executed?: boolean;
-    id?: string;
-    total?: number;
-    message?: string;
-  };
-  audio?: {
-    base64?: string;
-    contentType?: string;
-    voiceId?: string;
-  } | null;
-  limits?: {
-    maxSessionSeconds?: number;
-    sessionsRemaining?: number;
-  };
+  action?: { type?: "none" | "order" | "booking"; executed?: boolean; id?: string; total?: number; message?: string };
+  audio?: { base64?: string; contentType?: string; voiceId?: string } | null;
+  limits?: { maxSessionSeconds?: number; sessionsRemaining?: number };
 };
 
 type SessionResponse = {
@@ -46,13 +33,16 @@ function base64AudioUrl(base64: string, contentType = "audio/mpeg") {
   return `data:${contentType};base64,${base64}`;
 }
 
-export default function VoiceTestStudio({
-  workspace,
-  onRefresh,
-}: {
-  workspace: SelectedWorkspace;
-  onRefresh: () => Promise<void> | void;
-}) {
+function appendTranscript(current: Turn[], userText: string, reply: string): Turn[] {
+  const next: Turn[] = [
+    ...current,
+    { role: "user", text: userText },
+    { role: "assistant", text: reply },
+  ];
+  return next.slice(-20);
+}
+
+export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: SelectedWorkspace; onRefresh: () => Promise<void> | void }) {
   const [status, setStatus] = useState<"idle" | "recording" | "thinking" | "speaking">("idle");
   const [sessionActive, setSessionActive] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -171,13 +161,7 @@ export default function VoiceTestStudio({
 
     try {
       await ensureSession();
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       streamRef.current = stream;
       const mimeType = preferredMimeType();
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
@@ -245,11 +229,7 @@ export default function VoiceTestStudio({
 
       const userText = result.userText?.trim() || "Audio recibido";
       const reply = result.reply?.trim() || "No pude preparar una respuesta.";
-      setTurns((current): Turn[] => [
-        ...current,
-        { role: "user", text: userText },
-        { role: "assistant", text: reply },
-      ].slice(-20));
+      setTurns((current) => appendTranscript(current, userText, reply));
       setLastAction(result.action || null);
       if (result.limits?.maxSessionSeconds) setMaxSeconds(result.limits.maxSessionSeconds);
 
@@ -280,75 +260,28 @@ export default function VoiceTestStudio({
 
   const ready = Boolean(workspace.agent?.voice_id) && workspace.catalogItems.length > 0 && workspace.hours.length > 0;
   const secondsLeft = Math.max(0, maxSeconds - elapsed);
-  const title = status === "recording"
-    ? "Te escucho"
-    : status === "thinking"
-      ? "Preparando la respuesta"
-      : status === "speaking"
-        ? "Progy está respondiendo"
-        : sessionActive
-          ? "Continúa la conversación"
-          : `Prueba a Progy para ${workspace.business.name}`;
+  const title = status === "recording" ? "Te escucho" : status === "thinking" ? "Preparando la respuesta" : status === "speaking" ? "Progy está respondiendo" : sessionActive ? "Continúa la conversación" : `Prueba a Progy para ${workspace.business.name}`;
 
-  return (
-    <div className={styles.studio}>
-      <section className={styles.callCard}>
-        <div className={styles.badge}><i /> Prueba privada desde tu navegador</div>
-        <div className={styles.avatar}><span /></div>
-        <h2 className={styles.title}>{title}</h2>
-        <p className={styles.description}>
-          {ready
-            ? "Habla en turnos cortos. Progy responderá con la voz que elegiste y con la información real de tu negocio."
-            : "Antes de comenzar, elige una voz y agrega al menos un producto o servicio con su precio."}
-        </p>
-        <div className={styles.wave} aria-hidden="true">
-          {[20, 46, 30, 68, 38, 78, 44, 28, 62, 35, 72, 27, 52, 34, 60, 24, 45].map((height, index) => (
-            <i key={index} style={{ height: `${status === "idle" ? 8 : height}%` }} />
-          ))}
-        </div>
+  return <div className={styles.studio}>
+    <section className={styles.callCard}>
+      <div className={styles.badge}><i /> Prueba privada desde tu navegador</div>
+      <div className={styles.avatar}><span /></div>
+      <h2 className={styles.title}>{title}</h2>
+      <p className={styles.description}>{ready ? "Habla en turnos cortos. Progy responderá con la voz que elegiste y con la información real de tu negocio." : "Antes de comenzar, elige una voz y agrega al menos un producto o servicio con su precio."}</p>
+      <div className={styles.wave} aria-hidden="true">{[20,46,30,68,38,78,44,28,62,35,72,27,52,34,60,24,45].map((height, index) => <i key={index} style={{ height: `${status === "idle" ? 8 : height}%` }} />)}</div>
+      <div className={styles.controls}>
+        {status === "recording" ? <button className={styles.primary} onClick={() => void stopAndSend()}>Detener y enviar</button> : status === "thinking" ? <button className={styles.primary} disabled>Progy está pensando…</button> : status === "speaking" ? <button className={styles.primary} disabled>Escucha la respuesta…</button> : <button className={styles.primary} onClick={() => void beginRecording()} disabled={!ready || secondsLeft <= 0}>{sessionActive ? "Hablar de nuevo" : "Iniciar prueba por voz"}</button>}
+        {sessionActive && status !== "recording" && status !== "thinking" && <button className={styles.secondary} onClick={() => void finishSession("completed")}>Finalizar prueba</button>}
+      </div>
+      <div className={styles.timer}>{sessionActive ? `${secondsLeft}s disponibles en esta prueba` : workspace.plan?.plan_code === "trial" ? "Tu plan incluye una prueba de voz" : "Prueba controlada para evitar consumo innecesario"}</div>
+      {error && <div className={styles.error}>{error}</div>}
+      {info && <div className={styles.info}>{info}</div>}
+    </section>
 
-        <div className={styles.controls}>
-          {status === "recording" ? (
-            <button className={styles.primary} onClick={() => void stopAndSend()}>Detener y enviar</button>
-          ) : status === "thinking" ? (
-            <button className={styles.primary} disabled>Progy está pensando…</button>
-          ) : status === "speaking" ? (
-            <button className={styles.primary} disabled>Escucha la respuesta…</button>
-          ) : (
-            <button className={styles.primary} onClick={() => void beginRecording()} disabled={!ready || secondsLeft <= 0}>
-              {sessionActive ? "Hablar de nuevo" : "Iniciar prueba por voz"}
-            </button>
-          )}
-          {sessionActive && status !== "recording" && status !== "thinking" && (
-            <button className={styles.secondary} onClick={() => void finishSession("completed")}>Finalizar prueba</button>
-          )}
-        </div>
-
-        <div className={styles.timer}>
-          {sessionActive ? `${secondsLeft}s disponibles en esta prueba` : workspace.plan?.plan_code === "trial" ? "Tu plan incluye una prueba de voz" : "Prueba controlada para evitar consumo innecesario"}
-        </div>
-        {error && <div className={styles.error}>{error}</div>}
-        {info && <div className={styles.info}>{info}</div>}
-      </section>
-
-      <aside className={styles.sideCard}>
-        <h3>Conversación</h3>
-        <p>El historial corto ayuda a Progy a mantener el contexto sin enviar conversaciones completas en cada turno.</p>
-        <div className={styles.transcript}>
-          {turns.length ? turns.map((turn, index) => (
-            <div className={`${styles.turn} ${turn.role === "user" ? styles.user : styles.assistant}`} key={`${turn.role}-${index}`}>
-              <small>{turn.role === "user" ? "Tú" : "Progy"}</small>
-              {turn.text}
-            </div>
-          )) : <div className={styles.empty}>La transcripción de esta prueba aparecerá aquí.</div>}
-        </div>
-        {lastAction?.executed && (
-          <div className={styles.action}>
-            {lastAction.type === "order" ? "✓ Pedido registrado" : "✓ Reserva registrada"}
-            {lastAction.total !== undefined ? ` · $${Number(lastAction.total).toFixed(2)}` : ""}
-          </div>
-        )}
-      </aside>
-    </div>
-  );
+    <aside className={styles.sideCard}>
+      <h3>Conversación</h3><p>El historial corto ayuda a Progy a mantener el contexto sin enviar conversaciones completas en cada turno.</p>
+      <div className={styles.transcript}>{turns.length ? turns.map((turn, index) => <div className={`${styles.turn} ${turn.role === "user" ? styles.user : styles.assistant}`} key={`${turn.role}-${index}`}><small>{turn.role === "user" ? "Tú" : "Progy"}</small>{turn.text}</div>) : <div className={styles.empty}>La transcripción de esta prueba aparecerá aquí.</div>}</div>
+      {lastAction?.executed && <div className={styles.action}>{lastAction.type === "order" ? "✓ Pedido registrado" : "✓ Reserva registrada"}{lastAction.total !== undefined ? ` · $${Number(lastAction.total).toFixed(2)}` : ""}</div>}
+    </aside>
+  </div>;
 }
