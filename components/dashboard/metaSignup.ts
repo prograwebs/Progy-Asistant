@@ -71,7 +71,8 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
   if (!configId) throw new Error("La conexión de WhatsApp todavía no está disponible.");
   await loadSdk(appId);
   const metaWindow = window as MetaWindow;
-  if (!metaWindow.FB) throw new Error("No pudimos iniciar la conexión con WhatsApp.");
+  const facebook = metaWindow.FB;
+  if (!facebook) throw new Error("No pudimos iniciar la conexión con WhatsApp.");
 
   return new Promise((resolve, reject) => {
     let code = "";
@@ -122,7 +123,7 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
     }
 
     window.addEventListener("message", onMessage);
-    metaWindow.FB.login((response) => {
+    facebook.login((response) => {
       code = response.authResponse?.code?.trim() || "";
       if (!code) return fail("La autorización no se completó.");
       complete();
