@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import type { Hour, SelectedWorkspace, WorkspaceAction } from "../types";
 import { Card, SectionHeader } from "../ui";
 import styles from "../ProgyDashboard.module.css";
@@ -11,8 +11,6 @@ export default function BusinessSection({ workspace, action }: { workspace: Sele
   const [hours, setHours] = useState<Hour[]>(workspace.hours);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
-
-  useEffect(() => setHours(workspace.hours), [workspace.hours]);
 
   async function saveBusiness(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
