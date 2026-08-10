@@ -4,7 +4,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 if [[ "${SITES_ENV_READY:-}" != "1" ]]; then
-  exec "${script_dir}/sites-env.sh" -- "$0" "$@"
+  exec bash "${script_dir}/sites-env.sh" -- "$0" "$@"
 fi
 
 command -v flock || {
@@ -49,8 +49,6 @@ if ! flock -n 9; then
   exit 75
 fi
 
-# Catch an installer started outside this helper. Linux exposes both its command
-# line and working directory through /proc, so avoid broad process-name matches.
 for process in /proc/[0-9]*; do
   pid="${process##*/}"
   [[ "${pid}" != "$$" && "${pid}" != "${PPID}" ]] || continue
