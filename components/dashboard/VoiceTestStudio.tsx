@@ -231,7 +231,11 @@ export default function VoiceTestStudio({
 
       const userText = result.userText?.trim() || "Audio recibido";
       const reply = result.reply?.trim() || "No pude preparar una respuesta.";
-      setTurns((current) => [...current, { role: "user", text: userText }, { role: "assistant", text: reply }].slice(-20));
+      setTurns((current): Turn[] => [
+        ...current,
+        { role: "user", text: userText },
+        { role: "assistant", text: reply },
+      ].slice(-20));
       setLastAction(result.action || null);
       if (result.limits?.maxSessionSeconds) setMaxSeconds(result.limits.maxSessionSeconds);
 
