@@ -23,6 +23,10 @@ function normalized(value: unknown) {
     .trim();
 }
 
+function featureEnabled(context: AgentContext, code: string) {
+  return context.features.some((item) => item.feature_code === code && item.enabled !== false);
+}
+
 function matchCatalogItem(context: AgentContext, requestedName: string) {
   const needle = normalized(requestedName);
   if (!needle) return null;
@@ -45,10 +49,12 @@ function numberValue(value: unknown) {
 }
 
 async function createOrder(context: AgentContext, order: AssistantOrderDraft): Promise<AssistantActionResult> {
+  if (!featureEnabled(context, "take_orders")) {
+    return { type: "order", executed: false, message: "Puedo ayudarte con la información del negocio, pero los pedidos no están habilitados en este momento." };
+  }
   if (!order.items.length) {
     return { type: "order", executed: false, message: "Necesito confirmar qué productos deseas antes de registrar el pedido." };
   }
-
   if (order.fulfillment === "delivery" && !order.address?.trim()) {
     return { type: "order", executed: false, message: "Para el envío necesito confirmar la dirección de entrega." };
   }
@@ -57,20 +63,12 @@ async function createOrder(context: AgentContext, order: AssistantOrderDraft): P
   for (const requested of order.items) {
     const item = matchCatalogItem(context, requested.name);
     if (!item) {
-      return {
-        type: "order",
-        executed: false,
-        message: `Necesito confirmar cuál producto corresponde a “${requested.name}” antes de registrar el pedido.`,
-      };
+      return { type: "order", executed: false, message: `Necesito confirmar cuál producto corresponde a “${requested.name}” antes de registrar el pedido.` };
     }
 
     const price = numberValue(item.sale_price ?? item.price);
     if (price === null) {
-      return {
-        type: "order",
-        executed: false,
-        message: `El precio de ${String(item.name || requested.name)} todavía no está confirmado.`,
-      };
+      return { type: "order", executed: false, message: `El precio de ${String(item.name || requested.name)} todavía no está confirmado.` };
     }
 
     const quantity = Math.max(1, Math.min(50, Math.round(Number(requested.quantity || 1))));
@@ -95,25 +93,24 @@ async function createOrder(context: AgentContext, order: AssistantOrderDraft): P
     prefer: "return=representation",
   });
 
-  if (!rows[0]?.id) {
-    return { type: "order", executed: false, message: "No pude guardar el pedido en este momento." };
-  }
+  if (!rows[0]?.id) return { type: "order", executed: false, message: "No pude guardar el pedido en este momento." };
 
   return {
     type: "order",
     executed: true,
     id: String(rows[0].id),
     total: Number(total.toFixed(2)),
-    details: {
-      items: resolved,
-      fulfillment: order.fulfillment,
-      address: order.address,
-      notes: order.notes,
-    },
+    details: { items: resolved, fulfillment: order.fulfillment, address: order.address, notes: order.notes },
   };
 }
 
 async function createBooking(context: AgentContext, booking: AssistantBookingDraft): Promise<AssistantActionResult> {
+  const category = String(context.business.category_code || "");
+  const appointment = category === "clinic" || category === "beauty_salon";
+  const requiredFeature = appointment ? "schedule_appointments" : "create_reservations";
+  if (!featureEnabled(context, requiredFeature)) {
+    return { type: "booking", executed: false, message: appointment ? "Las citas no están habilitadas en este momento." : "Las reservas no están habilitadas en este momento." };
+  }
   if (!booking.startsAt) {
     return { type: "booking", executed: false, message: "Necesito confirmar la fecha y la hora antes de registrar la reserva." };
   }
@@ -122,9 +119,11 @@ async function createBooking(context: AgentContext, booking: AssistantBookingDra
   if (Number.isNaN(startsAt.getTime())) {
     return { type: "booking", executed: false, message: "No pude interpretar la fecha y la hora. ¿Puedes confirmarlas nuevamente?" };
   }
+  if (startsAt.getTime() < Date.now() - 5 * 60 * 1000) {
+    return { type: "booking", executed: false, message: "Esa fecha ya pasó. ¿Qué fecha y hora futuras prefieres?" };
+  }
 
-  const category = String(context.business.category_code || "");
-  const type = category === "clinic" || category === "beauty_salon" ? "appointment" : "reservation";
+  const type = appointment ? "appointment" : "reservation";
   const rows = await supabaseDataRequest<UnknownRow[]>("bookings", {
     method: "POST",
     body: JSON.stringify({
@@ -139,21 +138,13 @@ async function createBooking(context: AgentContext, booking: AssistantBookingDra
     prefer: "return=representation",
   });
 
-  if (!rows[0]?.id) {
-    return { type: "booking", executed: false, message: "No pude guardar la reserva en este momento." };
-  }
+  if (!rows[0]?.id) return { type: "booking", executed: false, message: "No pude guardar la reserva en este momento." };
 
   return {
     type: "booking",
     executed: true,
     id: String(rows[0].id),
-    details: {
-      type,
-      startsAt: startsAt.toISOString(),
-      partySize: booking.partySize,
-      resourceName: booking.resourceName,
-      notes: booking.notes,
-    },
+    details: { type, startsAt: startsAt.toISOString(), partySize: booking.partySize, resourceName: booking.resourceName, notes: booking.notes },
   };
 }
 
