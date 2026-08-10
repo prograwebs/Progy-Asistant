@@ -49,4 +49,12 @@ if [[ "$#" -eq 0 ]]; then
 fi
 
 cd "${project_root}"
+
+# GitHub's Contents API does not preserve executable mode changes. When a
+# project helper is a shell script, execute it explicitly through bash so the
+# same source works on Windows checkouts and Linux CI runners.
+if [[ "${1:-}" == *.sh ]]; then
+  exec bash "$@"
+fi
+
 exec "$@"
