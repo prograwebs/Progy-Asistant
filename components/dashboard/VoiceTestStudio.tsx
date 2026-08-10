@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SelectedWorkspace, WorkspaceAction } from "./types";
+import type { SelectedWorkspace } from "./types";
 import styles from "./VoiceTestStudio.module.css";
 
 type Turn = { role: "user" | "assistant"; text: string };
@@ -29,6 +29,13 @@ type AssistantTurnResponse = {
   };
 };
 
+type SessionResponse = {
+  conversation?: { id?: string };
+  error?: string;
+  code?: string;
+  limits?: { maxSessionSeconds?: number; sessionsRemaining?: number };
+};
+
 function preferredMimeType() {
   if (typeof MediaRecorder === "undefined") return "";
   const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
@@ -41,11 +48,9 @@ function base64AudioUrl(base64: string, contentType = "audio/mpeg") {
 
 export default function VoiceTestStudio({
   workspace,
-  action,
   onRefresh,
 }: {
   workspace: SelectedWorkspace;
-  action: WorkspaceAction;
   onRefresh: () => Promise<void> | void;
 }) {
   const [status, setStatus] = useState<"idle" | "recording" | "thinking" | "speaking">("idle");
@@ -90,20 +95,23 @@ export default function VoiceTestStudio({
 
     if (current) {
       try {
-        await action({
-          action: "endConversation",
-          businessId: workspace.business.id,
-          conversationId: current.id,
-          durationSeconds: Math.max(1, Math.round((Date.now() - current.startedAt) / 1000)),
-          scenario: "Prueba guiada de voz",
-          status: resultStatus,
-        }, resultStatus === "completed" ? "Prueba guardada en Conversaciones." : undefined, false);
+        await fetch("/api/assistant/session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "end",
+            businessId: workspace.business.id,
+            conversationId: current.id,
+            durationSeconds: Math.max(1, Math.round((Date.now() - current.startedAt) / 1000)),
+            status: resultStatus,
+          }),
+        });
         await onRefresh();
       } catch (cause) {
         console.error("Progy voice session close failed", cause);
       }
     }
-  }, [action, onRefresh, releaseMicrophone, stopTimer, workspace.business.id]);
+  }, [onRefresh, releaseMicrophone, stopTimer, workspace.business.id]);
 
   useEffect(() => () => {
     stopTimer();
@@ -132,13 +140,19 @@ export default function VoiceTestStudio({
 
   async function ensureSession() {
     if (conversationRef.current) return conversationRef.current;
-    const started = await action({
-      action: "startConversation",
-      businessId: workspace.business.id,
-      scenario: "Prueba guiada de voz",
-    }, undefined, false) as { conversation?: { id?: string } };
-    if (!started.conversation?.id) throw new Error("No pudimos preparar la prueba.");
-    const session = { id: started.conversation.id, startedAt: Date.now() };
+    const response = await fetch("/api/assistant/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "start", businessId: workspace.business.id, scenario: "Prueba guiada de voz" }),
+    });
+    const result = await response.json().catch(() => ({})) as SessionResponse;
+    if (!response.ok) {
+      if (result.code === "voice_trial_limit_reached") setInfo(result.error || "La prueba incluida ya fue utilizada.");
+      throw new Error(result.error || "No pudimos preparar la prueba.");
+    }
+    if (!result.conversation?.id) throw new Error("No pudimos preparar la prueba.");
+    if (result.limits?.maxSessionSeconds) setMaxSeconds(result.limits.maxSessionSeconds);
+    const session = { id: result.conversation.id, startedAt: Date.now() };
     conversationRef.current = session;
     setSessionActive(true);
     setElapsed(0);
