@@ -49,6 +49,7 @@ export default function VoiceTestStudio({
   onRefresh: () => Promise<void> | void;
 }) {
   const [status, setStatus] = useState<"idle" | "recording" | "thinking" | "speaking">("idle");
+  const [sessionActive, setSessionActive] = useState(false);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -84,6 +85,7 @@ export default function VoiceTestStudio({
 
     const current = conversationRef.current;
     conversationRef.current = null;
+    setSessionActive(false);
     setStatus("idle");
 
     if (current) {
@@ -110,7 +112,7 @@ export default function VoiceTestStudio({
   }, [releaseMicrophone, stopTimer]);
 
   useEffect(() => {
-    if (!conversationRef.current || status === "idle") {
+    if (!sessionActive || status === "idle") {
       stopTimer();
       return;
     }
@@ -126,7 +128,7 @@ export default function VoiceTestStudio({
       }
     }, 1000);
     return stopTimer;
-  }, [finishSession, maxSeconds, status, stopTimer]);
+  }, [finishSession, maxSeconds, sessionActive, status, stopTimer]);
 
   async function ensureSession() {
     if (conversationRef.current) return conversationRef.current;
@@ -138,6 +140,7 @@ export default function VoiceTestStudio({
     if (!started.conversation?.id) throw new Error("No pudimos preparar la prueba.");
     const session = { id: started.conversation.id, startedAt: Date.now() };
     conversationRef.current = session;
+    setSessionActive(true);
     setElapsed(0);
     return session;
   }
@@ -265,7 +268,7 @@ export default function VoiceTestStudio({
       ? "Preparando la respuesta"
       : status === "speaking"
         ? "Progy está respondiendo"
-        : conversationRef.current
+        : sessionActive
           ? "Continúa la conversación"
           : `Prueba a Progy para ${workspace.business.name}`;
 
@@ -295,16 +298,16 @@ export default function VoiceTestStudio({
             <button className={styles.primary} disabled>Escucha la respuesta…</button>
           ) : (
             <button className={styles.primary} onClick={() => void beginRecording()} disabled={!ready || secondsLeft <= 0}>
-              {conversationRef.current ? "Hablar de nuevo" : "Iniciar prueba por voz"}
+              {sessionActive ? "Hablar de nuevo" : "Iniciar prueba por voz"}
             </button>
           )}
-          {conversationRef.current && status !== "recording" && status !== "thinking" && (
+          {sessionActive && status !== "recording" && status !== "thinking" && (
             <button className={styles.secondary} onClick={() => void finishSession("completed")}>Finalizar prueba</button>
           )}
         </div>
 
         <div className={styles.timer}>
-          {conversationRef.current ? `${secondsLeft}s disponibles en esta prueba` : workspace.plan?.plan_code === "trial" ? "Tu plan incluye una prueba de voz" : "Prueba controlada para evitar consumo innecesario"}
+          {sessionActive ? `${secondsLeft}s disponibles en esta prueba` : workspace.plan?.plan_code === "trial" ? "Tu plan incluye una prueba de voz" : "Prueba controlada para evitar consumo innecesario"}
         </div>
         {error && <div className={styles.error}>{error}</div>}
         {info && <div className={styles.info}>{info}</div>}
