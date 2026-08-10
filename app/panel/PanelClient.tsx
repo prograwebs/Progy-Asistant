@@ -385,276 +385,557 @@ function VoiceModule({ workspace, integrations, action, onGo }: { workspace: Sel
   </div>;
 }
 
+type MetaLoginResponse = {
+  authResponse?: {
+    code?: string;
+  };
+  status?: string;
+};
+
+type MetaLoginOptions = {
+  config_id: string;
+  auth_type?: string;
+  response_type: "code";
+  override_default_response_type: true;
+  extras: {
+    setup: Record<string, unknown>;
+    featureType: string;
+    sessionInfoVersion: string;
+  };
+};
+
+type MetaFacebookSdk = {
+  init: (options: {
+    appId: string;
+    cookie?: boolean;
+    xfbml?: boolean;
+    version: string;
+  }) => void;
+
+  login: (
+    callback: (
+      response: MetaLoginResponse
+    ) => void,
+    options: MetaLoginOptions,
+  ) => void;
+};
+
+type MetaSdkWindow = Window & {
+  FB?: MetaFacebookSdk;
+  fbAsyncInit?: () => void;
+};
+
+type EmbeddedSignupAssets = {
+  wabaId: string;
+  phoneNumberId?: string;
+  businessId?: string;
+  flow:
+    | "standard"
+    | "business_app";
+};
+
+type MetaConnectResponse = {
+  ok?: boolean;
+  connected?: boolean;
+  error?: string;
+
+  meta?: {
+    businessId?: string | null;
+    wabaId?: string | null;
+    wabaName?: string | null;
+    phoneNumberId?: string | null;
+    phoneNumber?: string | null;
+    verifiedName?: string | null;
+    isOnBizApp?: boolean;
+    platformType?: string | null;
+  };
+};
+
+function loadMetaSdk(
+  appId: string,
+): Promise<void> {
+  return new Promise(
+    (resolve, reject) => {
+      if (!appId) {
+        reject(
+          new Error(
+            "Falta configurar el App ID de Meta.",
+          ),
+        );
+
+        return;
+      }
+
+      const metaWindow =
+        window as MetaSdkWindow;
+
+      function initialize() {
+        if (!metaWindow.FB) {
+          return false;
+        }
+
+        metaWindow.FB.init({
+          appId,
+          cookie: true,
+          xfbml: false,
+          version: "v25.0",
+        });
+
+        resolve();
+
+        return true;
+      }
+
+      if (initialize()) {
+        return;
+      }
+
+      metaWindow.fbAsyncInit = () => {
+        if (!initialize()) {
+          reject(
+            new Error(
+              "Meta no pudo iniciar su SDK.",
+            ),
+          );
+        }
+      };
+
+      const existing =
+        document.getElementById(
+          "facebook-jssdk",
+        ) as HTMLScriptElement | null;
+
+      if (existing) {
+        existing.addEventListener(
+          "load",
+          () => {
+            initialize();
+          },
+          {
+            once: true,
+          },
+        );
+
+        return;
+      }
+
+      const script =
+        document.createElement("script");
+
+      script.id = "facebook-jssdk";
+      script.async = true;
+      script.defer = true;
+      script.crossOrigin = "anonymous";
+
+      script.src =
+        "https://connect.facebook.net/es_LA/sdk.js";
+
+      script.onerror = () => {
+        reject(
+          new Error(
+            "No pudimos cargar la conexión segura de Meta.",
+          ),
+        );
+      };
+
+      document.body.appendChild(script);
+    },
+  );
+}
+
+async function launchMetaEmbeddedSignup(
+  appId: string,
+  configId: string,
+) {
+  await loadMetaSdk(appId);
+
+  const metaWindow =
+    window as MetaSdkWindow;
+
+  if (!metaWindow.FB) {
+    throw new Error(
+      "El SDK de Meta no está disponible.",
+    );
+  }
+
+  if (!configId) {
+    throw new Error(
+      "Falta configurar el Configuration ID de Meta.",
+    );
+  }
+
+  return new Promise<
+    EmbeddedSignupAssets & {
+      code: string;
+    }
+  >((resolve, reject) => {
+    let authorizationCode = "";
+
+    let assets:
+      | EmbeddedSignupAssets
+      | null = null;
+
+    let finished = false;
+
+    const timeoutId =
+      window.setTimeout(
+        () => {
+          finishWithError(
+            "La autorización tardó demasiado. Inténtalo nuevamente.",
+          );
+        },
+        5 * 60 * 1000,
+      );
+
+    function cleanup() {
+      window.clearTimeout(timeoutId);
+
+      window.removeEventListener(
+        "message",
+        handleMessage,
+      );
+    }
+
+    function finishWithError(
+      message: string,
+    ) {
+      if (finished) return;
+
+      finished = true;
+      cleanup();
+
+      reject(new Error(message));
+    }
+
+    function finishIfReady() {
+      if (
+        finished ||
+        !authorizationCode ||
+        !assets?.wabaId
+      ) {
+        return;
+      }
+
+      finished = true;
+      cleanup();
+
+      resolve({
+        ...assets,
+        code: authorizationCode,
+      });
+    }
+
+    function handleMessage(
+      event: MessageEvent,
+    ) {
+      if (
+        event.origin !==
+          "https://www.facebook.com" &&
+        event.origin !==
+          "https://web.facebook.com"
+      ) {
+        return;
+      }
+
+      let payload:
+        | {
+            type?: string;
+            event?: string;
+            data?: {
+              waba_id?: string;
+              phone_number_id?: string;
+              business_id?: string;
+              error_message?: string;
+            };
+          }
+        | undefined;
+
+      try {
+        payload =
+          typeof event.data === "string"
+            ? JSON.parse(event.data)
+            : event.data;
+      } catch {
+        return;
+      }
+
+      if (
+        payload?.type !==
+        "WA_EMBEDDED_SIGNUP"
+      ) {
+        return;
+      }
+
+      if (
+        payload.event === "CANCEL"
+      ) {
+        finishWithError(
+          "La conexión con WhatsApp fue cancelada.",
+        );
+
+        return;
+      }
+
+      if (
+        payload.event === "ERROR"
+      ) {
+        finishWithError(
+          payload.data?.error_message ||
+            "Meta no pudo completar la conexión.",
+        );
+
+        return;
+      }
+
+      if (
+        payload.event === "FINISH"
+      ) {
+        const wabaId =
+          payload.data?.waba_id || "";
+
+        if (!wabaId) {
+          finishWithError(
+            "Meta terminó el proceso pero no devolvió la cuenta de WhatsApp.",
+          );
+
+          return;
+        }
+
+        assets = {
+          wabaId,
+
+          phoneNumberId:
+            payload.data
+              ?.phone_number_id,
+
+          businessId:
+            payload.data
+              ?.business_id,
+
+          flow: "standard",
+        };
+
+        finishIfReady();
+
+        return;
+      }
+
+      if (
+        payload.event ===
+        "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+      ) {
+        const wabaId =
+          payload.data?.waba_id || "";
+
+        if (!wabaId) {
+          finishWithError(
+            "Meta terminó la conexión de WhatsApp Business pero no devolvió la cuenta.",
+          );
+
+          return;
+        }
+
+        assets = {
+          wabaId,
+
+          phoneNumberId:
+            payload.data
+              ?.phone_number_id,
+
+          businessId:
+            payload.data
+              ?.business_id,
+
+          flow: "business_app",
+        };
+
+        finishIfReady();
+      }
+    }
+
+    window.addEventListener(
+      "message",
+      handleMessage,
+    );
+
+    metaWindow.FB!.login(
+      (response) => {
+        const code =
+          response.authResponse?.code
+            ?.trim() || "";
+
+        if (!code) {
+          finishWithError(
+            "No se completó la autorización de Meta.",
+          );
+
+          return;
+        }
+
+        authorizationCode = code;
+
+        finishIfReady();
+      },
+      {
+        config_id: configId,
+
+        auth_type: "rerequest",
+
+        response_type: "code",
+
+        override_default_response_type:
+          true,
+
+        extras: {
+          setup: {},
+
+          /*
+           * Permite que un negocio que ya
+           * usa WhatsApp Business App
+           * conecte ese mismo número.
+           */
+          featureType:
+            "whatsapp_business_app_onboarding",
+
+          sessionInfoVersion: "4",
+        },
+      },
+    );
+  });
+}
+
 function WhatsAppModule({
   workspace,
-  action,
 }: {
   workspace: SelectedWorkspace;
   action: (
     payload: Record<string, unknown>,
-    message?: string
+    message?: string,
+    reload?: boolean,
   ) => Promise<unknown>;
 }) {
-  const [number, setNumber] = useState(
-    workspace.business.whatsapp_phone || ""
-  );
+  const [connecting, setConnecting] =
+    useState(false);
 
-  const [status, setStatus] =
-    useState<WhatsAppStatus | null>(null);
+  const [error, setError] =
+    useState("");
 
-  const [busy, setBusy] = useState(false);
-  const [checking, setChecking] = useState(false);
-  const [activating, setActivating] = useState(false);
+  const [feedback, setFeedback] =
+    useState("");
 
-  const [error, setError] = useState("");
-  const [feedback, setFeedback] = useState("");
+  const [connection, setConnection] =
+    useState<
+      MetaConnectResponse["meta"] | null
+    >(null);
 
-  const formatted = number.replace(/[\s()-]/g, "");
+  const appId =
+    process.env
+      .NEXT_PUBLIC_META_APP_ID || "";
 
-  const validNumber =
-    /^\+[1-9]\d{7,14}$/.test(formatted);
-
-  const check = useCallback(
-    async (showMessage = true) => {
-      setChecking(true);
-      setError("");
-
-      try {
-        const response = await fetch(
-          `/api/whatsapp/status?businessId=${encodeURIComponent(
-            workspace.business.id
-          )}`,
-          {
-            cache: "no-store",
-          }
-        );
-
-        const data =
-          (await response.json()) as WhatsAppStatus & {
-            error?: string;
-          };
-
-        if (!response.ok) {
-          throw new Error(
-            data.error ||
-              "No pudimos comprobar WhatsApp."
-          );
-        }
-
-        setStatus(data);
-
-        if (showMessage) {
-          if (data.connected && data.agentReady) {
-            setFeedback(
-              "WhatsApp está conectado a Progy."
-            );
-          } else if (data.connected) {
-            setFeedback(
-              "WhatsApp fue autorizado. Estamos terminando la conexión con Progy."
-            );
-          } else if (data.tokenExpired) {
-            setFeedback(
-              "La autorización de WhatsApp venció. Vuelve a conectarlo."
-            );
-          }
-        }
-
-        return data;
-      } catch (cause) {
-        setError(
-          cause instanceof Error
-            ? cause.message
-            : "No pudimos comprobar WhatsApp."
-        );
-
-        return null;
-      } finally {
-        setChecking(false);
-      }
-    },
-    [workspace.business.id]
-  );
-
-  const assignProgy = useCallback(async () => {
-    if (!workspace.agent?.voice_id) {
-      setFeedback(
-        "WhatsApp ya está autorizado. Antes de finalizar, confirma una voz para Progy."
-      );
-
-      return false;
-    }
-
-    setActivating(true);
-    setError("");
-
-    try {
-      const response = await fetch(
-        "/api/whatsapp/activate",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            businessId: workspace.business.id,
-          }),
-        }
-      );
-
-      const data = (await response.json()) as {
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(
-          data.error ||
-            "No pudimos conectar Progy con WhatsApp."
-        );
-      }
-
-      setFeedback(
-        "WhatsApp quedó conectado correctamente con Progy."
-      );
-
-      return true;
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "No pudimos conectar Progy con WhatsApp."
-      );
-
-      return false;
-    } finally {
-      setActivating(false);
-    }
-  }, [
-    workspace.business.id,
-    workspace.agent?.voice_id,
-  ]);
-
-  const finishConnection = useCallback(
-    async () => {
-      const current = await check(false);
-
-      if (!current) return;
-
-      if (
-        current.connected &&
-        !current.agentReady
-      ) {
-        const assigned = await assignProgy();
-
-        if (assigned) {
-          await check(false);
-        }
-      }
-    },
-    [check, assignProgy]
-  );
-
-  // Si vuelve de la ventana de autorización,
-  // Progy comprueba automáticamente el resultado.
-  useEffect(() => {
-    function handleFocus() {
-      void finishConnection();
-    }
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.removeEventListener(
-        "focus",
-        handleFocus
-      );
-    };
-  }, [finishConnection]);
-
-  // Si ya existe un número guardado,
-  // comprobar estado al abrir la sección.
-  useEffect(() => {
-    if (workspace.business.whatsapp_phone) {
-      queueMicrotask(() =>
-        void finishConnection()
-      );
-    }
-  }, [
-    finishConnection,
-    workspace.business.whatsapp_phone,
-  ]);
+  const configId =
+    process.env
+      .NEXT_PUBLIC_META_CONFIG_ID || "";
 
   async function connectWhatsApp() {
-    if (!validNumber) {
-      setError(
-        "Escribe el número con código de país. Ejemplo: +593 99 000 0000."
-      );
-
-      return;
-    }
-
-    setBusy(true);
+    setConnecting(true);
     setError("");
     setFeedback("");
+    setConnection(null);
 
     try {
-      await action(
-        {
-          action: "updateBusiness",
-          businessId: workspace.business.id,
-          whatsapp_phone: formatted,
-        },
-        "Número de WhatsApp guardado."
+      /*
+       * 1. Abrimos directamente Meta.
+       *
+       * El cliente NO entra en ElevenLabs.
+       */
+      const signup =
+        await launchMetaEmbeddedSignup(
+          appId,
+          configId,
+        );
+
+      setFeedback(
+        "Meta autorizó WhatsApp. Progy está comprobando el número…",
       );
 
       /*
-       * ElevenLabs actualmente inicia su
-       * autorización de WhatsApp desde esta página.
+       * 2. Enviamos el código temporal
+       * y los IDs al servidor.
        */
-      const authWindow = window.open(
-        "https://elevenlabs.io/app/agents/whatsapp",
-        "_blank"
+      const response = await fetch(
+        "/api/whatsapp/connect",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            code: signup.code,
+
+            wabaId:
+              signup.wabaId,
+
+            phoneNumberId:
+              signup.phoneNumberId,
+
+            businessId:
+              signup.businessId,
+          }),
+        },
       );
 
-      if (!authWindow) {
+      const result =
+        (await response
+          .json()
+          .catch(() => ({}))) as MetaConnectResponse;
+
+      if (!response.ok) {
         throw new Error(
-          "El navegador bloqueó la ventana de conexión. Permite ventanas emergentes e inténtalo nuevamente."
+          result.error ||
+            "No pudimos terminar la conexión de WhatsApp.",
         );
       }
 
+      if (!result.meta?.wabaId) {
+        throw new Error(
+          "Meta autorizó WhatsApp pero Progy no recibió los datos necesarios.",
+        );
+      }
+
+      setConnection(result.meta);
+
       setFeedback(
-        "Completa la autorización segura y vuelve a Progy. Detectaremos la conexión automáticamente."
+        result.meta.isOnBizApp
+          ? "WhatsApp Business quedó autorizado y puede continuar funcionando en el teléfono mientras preparamos Progy."
+          : "WhatsApp quedó autorizado correctamente con Progy.",
       );
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "No pudimos iniciar la conexión."
+          : "No pudimos conectar WhatsApp.",
       );
     } finally {
-      setBusy(false);
+      setConnecting(false);
     }
   }
 
-  const connected = Boolean(status?.connected);
-  const agentReady = Boolean(status?.agentReady);
-
-  /*
-   * No usamos callingReady para declarar
-   * que una llamada real funciona.
-   * Eso se verifica haciendo una prueba.
-   */
-  const messagingReady = Boolean(
-    status?.messagingReady && agentReady
-  );
+  const connected =
+    Boolean(connection?.wabaId);
 
   return (
     <div className="whatsapp-setup">
       <section className="whatsapp-hero">
-        <div className="whatsapp-orb">◉</div>
+        <div className="whatsapp-orb">
+          ◉
+        </div>
 
         <div>
           <span className="panel-kicker">
-            WHATSAPP
+            WHATSAPP BUSINESS
           </span>
 
           <h2>
@@ -662,61 +943,47 @@ function WhatsAppModule({
           </h2>
 
           <p>
-            Progy podrá responder mensajes,
-            consultas y llamadas de tus clientes
-            utilizando la información de{" "}
-            {workspace.business.name}.
+            Conecta el WhatsApp de{" "}
+            {workspace.business.name} para
+            que Progy pueda atender a tus
+            clientes desde el mismo canal.
           </p>
         </div>
 
         <span
           className={`channel-state ${
-            messagingReady
+            connected
               ? "ready"
-              : connected
-                ? "progress"
-                : "pending"
+              : "pending"
           }`}
         >
-          {messagingReady
-            ? "✓ WhatsApp conectado"
-            : connected
-              ? "Terminando configuración"
-              : "Pendiente"}
+          {connected
+            ? "✓ Autorizado"
+            : "Pendiente"}
         </span>
       </section>
 
       <div className="whatsapp-grid">
         <Block
-          title={
-            connected
-              ? "WhatsApp conectado"
-              : "Conecta el número del negocio"
-          }
           step="01"
-          note="Configuración segura"
+          title="Conecta tu WhatsApp"
+          note="Configuración segura mediante Meta"
         >
-          <label className="connection-number">
-            Número con código de país
-
-            <input
-              value={number}
-              disabled={connected}
-              onChange={(event) => {
-                setNumber(event.target.value);
-                setStatus(null);
-                setFeedback("");
-              }}
-              placeholder="+593 99 000 0000"
-            />
-          </label>
-
           {!connected ? (
             <>
-              <p className="field-help">
-                Usa el número que atenderá a tus
-                clientes por WhatsApp.
-              </p>
+              <div className="privacy-note">
+                <b>
+                  Una sola conexión.
+                </b>
+
+                <p>
+                  No necesitas copiar claves,
+                  identificadores ni configurar
+                  herramientas técnicas. Meta te
+                  mostrará los WhatsApp que puedes
+                  autorizar.
+                </p>
+              </div>
 
               <button
                 className="button module-save"
@@ -724,44 +991,51 @@ function WhatsAppModule({
                   void connectWhatsApp()
                 }
                 disabled={
-                  !validNumber || busy
+                  connecting ||
+                  !appId ||
+                  !configId
                 }
               >
-                {busy
-                  ? "Preparando conexión…"
+                {connecting
+                  ? "Conectando con Meta…"
                   : "Conectar WhatsApp"}
               </button>
 
               <small className="guide-security">
-                Nunca pediremos tu contraseña ni
-                códigos de verificación dentro de
-                Progy.
+                La contraseña y los códigos de
+                verificación se introducen
+                únicamente en las pantallas
+                oficiales de Meta.
               </small>
+
+              {(!appId ||
+                !configId) && (
+                <div className="form-message error">
+                  Falta configurar el App ID o
+                  Configuration ID de Meta en
+                  Progy.
+                </div>
+              )}
             </>
           ) : (
             <div className="sync-summary">
               <span>
-                ✓ Número autorizado
+                ✓ Cuenta de WhatsApp autorizada
               </span>
 
               <span>
-                {agentReady
-                  ? "✓ Progy conectado"
-                  : activating
-                    ? "◷ Conectando Progy…"
-                    : "◷ Preparando Progy"}
+                ✓ Número encontrado
               </span>
 
               <span>
-                {messagingReady
-                  ? "✓ Mensajes preparados"
-                  : "◷ Preparando mensajes"}
+                {connection?.isOnBizApp
+                  ? "✓ WhatsApp Business App conservado"
+                  : "✓ WhatsApp Cloud API preparado"}
               </span>
 
               <span>
-                {agentReady
-                  ? "✓ Llamadas listas para probar"
-                  : "◷ Llamadas pendientes"}
+                ◷ Falta guardar la conexión
+                definitiva
               </span>
             </div>
           )}
@@ -780,123 +1054,113 @@ function WhatsAppModule({
         </Block>
 
         <Block
-          title="Estado de la conexión"
           step="02"
-          note="Progy lo comprueba automáticamente"
+          title="Estado"
+          note="Progy verifica los datos automáticamente"
         >
-          <div className="activation-list interactive">
-            <div
-              className={
-                status?.numberSaved ? "done" : ""
-              }
-            >
+          {!connected ? (
+            <div className="activation-list interactive">
+              <div>
+                <span>1</span>
+
+                <p>
+                  <b>Autorizar con Meta</b>
+
+                  <small>
+                    Selecciona tu negocio y
+                    WhatsApp.
+                  </small>
+                </p>
+              </div>
+
+              <div>
+                <span>2</span>
+
+                <p>
+                  <b>
+                    Comprobar el número
+                  </b>
+
+                  <small>
+                    Progy lo detectará
+                    automáticamente.
+                  </small>
+                </p>
+              </div>
+
+              <div>
+                <span>3</span>
+
+                <p>
+                  <b>Preparar a Progy</b>
+
+                  <small>
+                    Mensajes, conocimiento y
+                    voz.
+                  </small>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="settings-summary">
               <span>
-                {status?.numberSaved
-                  ? "✓"
-                  : "1"}
+                {initials(
+                  connection?.verifiedName ||
+                    workspace.business.name,
+                )}
               </span>
 
-              <p>
-                <b>Número</b>
+              <div>
                 <small>
-                  {status?.numberSaved
-                    ? "Guardado"
-                    : "Pendiente"}
+                  WHATSAPP CONECTADO
                 </small>
-              </p>
-            </div>
 
-            <div
-              className={
-                connected ? "done" : ""
+                <h2>
+                  {connection?.verifiedName ||
+                    connection?.wabaName ||
+                    workspace.business.name}
+                </h2>
+
+                <p>
+                  {connection?.phoneNumber ||
+                    "Número conectado"}
+                </p>
+
+                {connection?.isOnBizApp && (
+                  <p>
+                    WhatsApp Business App +
+                    Cloud API
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {connected && (
+            <button
+              className="secondary-check"
+              onClick={() =>
+                void connectWhatsApp()
               }
+              disabled={connecting}
             >
-              <span>
-                {connected ? "✓" : "2"}
-              </span>
-
-              <p>
-                <b>WhatsApp</b>
-                <small>
-                  {connected
-                    ? status?.phoneNumberName ||
-                      "Autorizado"
-                    : "Pendiente de conectar"}
-                </small>
-              </p>
-            </div>
-
-            <div
-              className={
-                agentReady ? "done" : ""
-              }
-            >
-              <span>
-                {agentReady ? "✓" : "3"}
-              </span>
-
-              <p>
-                <b>Progy</b>
-                <small>
-                  {agentReady
-                    ? "Asignado al número"
-                    : "Pendiente"}
-                </small>
-              </p>
-            </div>
-          </div>
-
-          <button
-            className="secondary-check"
-            onClick={() =>
-              void finishConnection()
-            }
-            disabled={
-              checking || activating
-            }
-          >
-            {checking || activating
-              ? "Comprobando…"
-              : "Comprobar conexión"}
-          </button>
+              Volver a autorizar
+            </button>
+          )}
         </Block>
       </div>
-
-      {messagingReady && (
-        <section className="setup-guide">
-          <div className="setup-guide-head">
-            <div>
-              <small>
-                WHATSAPP CONECTADO
-              </small>
-
-              <h3>
-                Progy está listo para la primera
-                prueba
-              </h3>
-
-              <p>
-                Desde otro teléfono, envía un
-                mensaje al {number}. Después
-                realiza una llamada desde
-                WhatsApp para comprobar la
-                atención por voz.
-              </p>
-            </div>
-          </div>
-        </section>
-      )}
 
       <section className="channel-explainer">
         <article>
           <span>✦</span>
 
           <div>
-            <b>Mensajes</b>
+            <b>Sin configuración técnica</b>
+
             <p>
-              Progy podrá responder consultas,
-              productos, servicios, precios y
-              formas de pago.
+              El negocio no necesita conocer
+              tokens, WABA ID, Phone Number ID
+              ni APIs.
             </p>
           </div>
         </article>
@@ -905,11 +1169,15 @@ function WhatsAppModule({
           <span>◖</span>
 
           <div>
-            <b>Llamadas</b>
+            <b>
+              Conserva WhatsApp Business
+            </b>
+
             <p>
-              Cuando el canal permita llamadas,
-              Progy utilizará el mismo
-              conocimiento y la voz configurada.
+              Cuando Meta permita
+              coexistencia para el número,
+              podrá seguir utilizándose desde
+              la aplicación del teléfono.
             </p>
           </div>
         </article>
@@ -918,11 +1186,15 @@ function WhatsAppModule({
           <span>↗</span>
 
           <div>
-            <b>Atención automática</b>
+            <b>
+              Progy se configura después
+            </b>
+
             <p>
-              El negocio no necesita configurar
-              identificadores, APIs ni datos
-              técnicos.
+              En el siguiente paso
+              conectaremos mensajes,
+              conocimiento, pedidos y
+              automatizaciones.
             </p>
           </div>
         </article>
