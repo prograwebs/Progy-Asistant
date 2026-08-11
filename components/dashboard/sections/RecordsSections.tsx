@@ -6,12 +6,29 @@ import { dateTime, money } from "../utils";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import styles from "../ProgyDashboard.module.css";
 
+function statusLabel(status?: string | null) {
+  const normalized = String(status || "").toLowerCase();
+  const labels: Record<string, string> = {
+    active: "En curso",
+    completed: "Completada",
+    failed: "Fallida",
+    pending: "Pendiente",
+    confirmed: "Confirmado",
+    cancelled: "Cancelado",
+    canceled: "Cancelado",
+    processing: "En proceso",
+    ready: "Listo",
+    delivered: "Entregado",
+  };
+  return labels[normalized] || status || "Sin estado";
+}
+
 export function ConversationsSection({ workspace, onGo }: { workspace: SelectedWorkspace; onGo: (section: string) => void }) {
   return <>
     <SectionHeader eyebrow="HISTORIAL DEL NEGOCIO" title="Conversaciones" description="Cada prueba o conversación registrada queda asociada únicamente al negocio activo, con un resumen útil para revisar qué ocurrió." />
     <div className={styles.grid}>
       <Card title="Conversaciones recientes" description={`${workspace.conversations.length} registros cargados`}>
-        {workspace.conversations.length ? <div className={styles.records}>{workspace.conversations.map((row) => <article className={styles.record} key={row.id}><b>{row.channel === "web_voice" ? "VOZ WEB" : row.channel.replaceAll("_", " ").toUpperCase()}</b><div><strong>{row.customer_name || row.customer_phone || "Cliente sin identificar"}</strong><small>{row.summary || row.outcome || "Sin resumen registrado"}</small></div><span>{dateTime(row.started_at)}</span><em>{row.status}</em></article>)}</div> : <EmptyState title="Aún no hay conversaciones" text="Realiza una prueba con Progy para crear el primer registro." />}
+        {workspace.conversations.length ? <div className={styles.records}>{workspace.conversations.map((row) => <article className={styles.record} key={row.id}><b>{row.channel === "web_voice" ? "VOZ WEB" : row.channel.replaceAll("_", " ").toUpperCase()}</b><div><strong>{row.customer_name || row.customer_phone || "Cliente sin identificar"}</strong><small>{row.summary || row.outcome || "Sin resumen registrado"}</small></div><span>{dateTime(row.started_at)}</span><em>{statusLabel(row.status)}</em></article>)}</div> : <EmptyState title="Aún no hay conversaciones" text="Realiza una prueba con Progy para crear el primer registro." />}
         {!workspace.conversations.length && <div className={styles.actions}><button className={styles.primary} onClick={() => onGo("pruebas")}>Realizar una prueba</button></div>}
       </Card>
     </div>
@@ -34,7 +51,7 @@ export function OrdersSection({ workspace }: { workspace: SelectedWorkspace }) {
     <div className={styles.grid}>
       <Card>
         <div className={styles.tabs}><button className={tab === "orders" ? styles.active : ""} onClick={() => setTab("orders")}>Pedidos ({workspace.orders.length})</button><button className={tab === "bookings" ? styles.active : ""} onClick={() => setTab("bookings")}>Reservas y citas ({workspace.bookings.length})</button></div>
-        {tab === "orders" ? (workspace.orders.length ? <div className={styles.records}>{workspace.orders.map((row) => <article className={styles.record} key={row.id}><b>#{row.order_number || "—"}</b><div><strong>{row.customer_name || "Cliente"}</strong><small>{row.fulfillment === "delivery" ? "Entrega" : row.fulfillment === "pickup" ? "Retiro" : row.fulfillment}</small></div><span>{money(row.total)}</span><em>{row.status}</em></article>)}</div> : <EmptyState title="Aún no hay pedidos" text="Los pedidos confirmados durante una conversación aparecerán aquí automáticamente." />) : (workspace.bookings.length ? <div className={styles.records}>{workspace.bookings.map((row) => <article className={styles.record} key={row.id}><b>{row.type === "appointment" ? "CITA" : "RESERVA"}</b><div><strong>{row.customer_name || "Cliente"}</strong><small>{row.resource_name || (row.party_size ? `${row.party_size} personas` : "Solicitud registrada")}</small></div><span>{dateTime(row.starts_at)}</span><em>{row.status}</em></article>)}</div> : <EmptyState title="Aún no hay reservas o citas" text="Cuando Progy confirme una reserva o cita, quedará registrada aquí." />)}
+        {tab === "orders" ? (workspace.orders.length ? <div className={styles.records}>{workspace.orders.map((row) => <article className={styles.record} key={row.id}><b>#{row.order_number || "—"}</b><div><strong>{row.customer_name || "Cliente"}</strong><small>{row.fulfillment === "delivery" ? "Entrega" : row.fulfillment === "pickup" ? "Retiro" : row.fulfillment}</small></div><span>{money(row.total)}</span><em>{statusLabel(row.status)}</em></article>)}</div> : <EmptyState title="Aún no hay pedidos" text="Los pedidos confirmados durante una conversación aparecerán aquí automáticamente." />) : (workspace.bookings.length ? <div className={styles.records}>{workspace.bookings.map((row) => <article className={styles.record} key={row.id}><b>{row.type === "appointment" ? "CITA" : "RESERVA"}</b><div><strong>{row.customer_name || "Cliente"}</strong><small>{row.resource_name || (row.party_size ? `${row.party_size} personas` : "Solicitud registrada")}</small></div><span>{dateTime(row.starts_at)}</span><em>{statusLabel(row.status)}</em></article>)}</div> : <EmptyState title="Aún no hay reservas o citas" text="Cuando Progy confirme una reserva o cita, quedará registrada aquí." />)}
       </Card>
     </div>
   </>;
