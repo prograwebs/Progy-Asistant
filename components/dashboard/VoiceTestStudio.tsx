@@ -13,14 +13,14 @@ type AssistantTurnResponse = {
   upgradeRequired?: boolean;
   action?: { type?: "none" | "order" | "booking"; executed?: boolean; id?: string; total?: number; message?: string };
   audio?: { base64?: string; contentType?: string; voiceId?: string } | null;
-  limits?: { maxSessionSeconds?: number; sessionsRemaining?: number };
+  limits?: { maxSessionSeconds?: number; sessionsRemaining?: number; testingMode?: boolean };
 };
 
 type SessionResponse = {
   conversation?: { id?: string };
   error?: string;
   code?: string;
-  limits?: { maxSessionSeconds?: number; sessionsRemaining?: number };
+  limits?: { maxSessionSeconds?: number; sessionsRemaining?: number; testingMode?: boolean };
 };
 
 function preferredMimeType() {
@@ -45,6 +45,7 @@ function appendTranscript(current: Turn[], userText: string, reply: string): Tur
 export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: SelectedWorkspace; onRefresh: () => Promise<void> | void }) {
   const [status, setStatus] = useState<"idle" | "recording" | "thinking" | "speaking">("idle");
   const [sessionActive, setSessionActive] = useState(false);
+  const [testingMode, setTestingMode] = useState(process.env.NODE_ENV !== "production");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -121,7 +122,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
       const next = Math.max(0, Math.round((Date.now() - current.startedAt) / 1000));
       setElapsed(next);
       if (next >= maxSeconds) {
-        setInfo("La prueba llegó a su límite. Guardamos la conversación para que puedas revisarla.");
+        setInfo("La prueba llegó a su límite de duración. Guardamos la conversación para que puedas revisar el consumo.");
         void finishSession("completed");
       }
     }, 1000);
@@ -142,6 +143,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
     }
     if (!result.conversation?.id) throw new Error("No pudimos preparar la prueba.");
     if (result.limits?.maxSessionSeconds) setMaxSeconds(result.limits.maxSessionSeconds);
+    if (typeof result.limits?.testingMode === "boolean") setTestingMode(result.limits.testingMode);
     const session = { id: result.conversation.id, startedAt: Date.now() };
     conversationRef.current = session;
     setSessionActive(true);
@@ -232,6 +234,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
       setTurns((current) => appendTranscript(current, userText, reply));
       setLastAction(result.action || null);
       if (result.limits?.maxSessionSeconds) setMaxSeconds(result.limits.maxSessionSeconds);
+      if (typeof result.limits?.testingMode === "boolean") setTestingMode(result.limits.testingMode);
 
       if (result.action?.executed) await onRefresh();
 
@@ -264,7 +267,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
 
   return <div className={styles.studio}>
     <section className={styles.callCard}>
-      <div className={styles.badge}><i /> Prueba privada desde tu navegador</div>
+      <div className={styles.badge}><i /> {testingMode ? "Modo de pruebas habilitado" : "Prueba privada desde tu navegador"}</div>
       <div className={styles.avatar}><span /></div>
       <h2 className={styles.title}>{title}</h2>
       <p className={styles.description}>{ready ? "Habla en turnos cortos. Progy responderá con la voz que elegiste y con la información real de tu negocio." : "Antes de comenzar, elige una voz y agrega al menos un producto o servicio con su precio."}</p>
@@ -273,7 +276,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
         {status === "recording" ? <button className={styles.primary} onClick={() => void stopAndSend()}>Detener y enviar</button> : status === "thinking" ? <button className={styles.primary} disabled>Progy está pensando…</button> : status === "speaking" ? <button className={styles.primary} disabled>Escucha la respuesta…</button> : <button className={styles.primary} onClick={() => void beginRecording()} disabled={!ready || secondsLeft <= 0}>{sessionActive ? "Hablar de nuevo" : "Iniciar prueba por voz"}</button>}
         {sessionActive && status !== "recording" && status !== "thinking" && <button className={styles.secondary} onClick={() => void finishSession("completed")}>Finalizar prueba</button>}
       </div>
-      <div className={styles.timer}>{sessionActive ? `${secondsLeft}s disponibles en esta prueba` : workspace.plan?.plan_code === "trial" ? "Tu plan incluye una prueba de voz" : "Prueba controlada para evitar consumo innecesario"}</div>
+      <div className={styles.timer}>{sessionActive ? `${secondsLeft}s disponibles en esta conversación` : testingMode ? "Puedes iniciar varias conversaciones mientras validamos consumo y comportamiento." : workspace.plan?.plan_code === "trial" ? "Tu plan incluye una prueba de voz" : "Prueba controlada para evitar consumo innecesario"}</div>
       {error && <div className={styles.error}>{error}</div>}
       {info && <div className={styles.info}>{info}</div>}
     </section>
