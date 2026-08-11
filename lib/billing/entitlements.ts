@@ -50,8 +50,23 @@ const planEntitlements: Record<string, ProgyEntitlements> = {
   },
 };
 
+export function normalizePlanCode(planCode?: string | null) {
+  const normalized = String(planCode || "trial").trim().toLowerCase().replaceAll("-", "_");
+  if (["trial", "free_trial", "free", "prueba"].includes(normalized)) return "trial";
+  if (["business", "negocio"].includes(normalized)) return "business";
+  if (["pro", "professional"].includes(normalized)) return "pro";
+  return normalized;
+}
+
+export function developmentTestingMode() {
+  const explicit = String(process.env.PROGY_UNLIMITED_VOICE_TESTS || "").trim();
+  if (explicit === "1" || explicit.toLowerCase() === "true") return true;
+  if (explicit === "0" || explicit.toLowerCase() === "false") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 export function entitlementsFor(planCode?: string | null) {
-  const normalized = String(planCode || "trial").trim().toLowerCase();
+  const normalized = normalizePlanCode(planCode);
   return planEntitlements[normalized] || planEntitlements.trial;
 }
 
