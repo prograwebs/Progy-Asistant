@@ -40,6 +40,14 @@ const headers: Record<SectionId, string> = {
   conversaciones: "Conversaciones", pedidos: "Pedidos y reservas", consumo: "Consumo y plan", ajustes: "Configuración",
 };
 
+function planLabel(code?: string | null) {
+  const normalized = String(code || "trial").toLowerCase().replaceAll("-", "_");
+  if (["trial", "free_trial", "free"].includes(normalized)) return "Prueba";
+  if (normalized === "business") return "Negocio";
+  if (normalized === "pro") return "Pro";
+  return code || "Prueba";
+}
+
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
   const [section, setSection] = useState<SectionId>("inicio");
@@ -64,6 +72,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const category = snapshot.categories.find((item) => item.code === workspace.business.category_code);
   const ready = Boolean(workspace.agent?.voice_id && workspace.catalogItems.length && workspace.hours.length);
   const workspaceKey = workspace.business.id;
+  const currentPlan = planLabel(workspace.plan?.plan_code || workspace.business.status);
 
   return <main className={styles.app}>
     {mobileOpen && <button aria-label="Cerrar menú" className={styles.mobileOverlay} onClick={() => setMobileOpen(false)} />}
@@ -71,7 +80,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
       <div className={styles.brand}><span className={styles.brandMark}><i /><i /><i /></span>Progy</div>
       <div className={styles.businessSwitch}>
         <span className={styles.businessAvatar}>{initials(workspace.business.name)}</span>
-        <div><b>{workspace.business.name}</b><small>{category?.name || "Negocio"} · {workspace.plan?.plan_code || workspace.business.status || "trial"}</small></div>
+        <div><b>{workspace.business.name}</b><small>{category?.name || "Negocio"} · {currentPlan}</small></div>
       </div>
       {snapshot.businesses.length > 1 && <select className={styles.businessSelect} value={workspace.business.id} onChange={(event) => void load(event.target.value)}>{snapshot.businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select>}
 
@@ -108,7 +117,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
         {section === "conocimiento" && <KnowledgeSection key={`knowledge-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "voz" && <VoiceSection key={`voice-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "whatsapp" && <WhatsAppSection key={`whatsapp-${workspaceKey}`} workspace={workspace} />}
-        {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Esta prueba utiliza el conocimiento de tu negocio y responde con la voz que seleccionaste. Está limitada para mantener controlado el consumo." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} onRefresh={() => load(workspace.business.id)} />}</>}
+        {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Prueba el conocimiento y la voz del negocio. Cada turno registra su consumo para que podamos medir el costo real durante esta etapa de validación." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} onRefresh={() => load(workspace.business.id)} />}</>}
         {section === "conversaciones" && <ConversationsSection workspace={workspace} onGo={go} />}
         {section === "pedidos" && <OrdersSection workspace={workspace} />}
         {section === "consumo" && <UsageSection workspace={workspace} />}
@@ -126,7 +135,7 @@ function SettingsSection({ user, workspace, integrations }: { user: PanelUser; w
       <Card className={styles.cardHalf} title="Cuenta" description="Sesión y negocio activo.">
         <div className={styles.list}>
           <div className={styles.listRow}><div><b>{user.name}</b><small>{user.email}</small></div></div>
-          <div className={styles.listRow}><div><b>{workspace.business.name}</b><small>Negocio activo</small></div><strong>{workspace.plan?.plan_code || "trial"}</strong></div>
+          <div className={styles.listRow}><div><b>{workspace.business.name}</b><small>Negocio activo</small></div><strong>{planLabel(workspace.plan?.plan_code || workspace.business.status)}</strong></div>
         </div>
       </Card>
       <Card className={styles.cardHalf} title="Estado del servicio" description="Progy comprueba internamente que todo lo necesario esté disponible.">
