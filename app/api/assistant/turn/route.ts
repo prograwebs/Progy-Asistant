@@ -2,7 +2,7 @@ import { requireApiUser } from "../../../../lib/integrations";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "../../../../lib/ai/openai";
 import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
-import { entitlementsFor, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
+import { developmentTestingMode, entitlementsFor, normalizePlanCode, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
 import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
 import { recordElevenLabsUsage, recordOpenAIUsage } from "../../../../lib/usage/ledger";
 import { synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
@@ -46,7 +46,12 @@ async function trialAllowance(businessId: string, conversationId?: string | null
     supabaseDataRequest<UnknownRow[]>(`conversations?business_id=eq.${id}&channel=eq.web_voice&is_trial=eq.true&select=id,status,duration_seconds&limit=100`),
   ]);
 
-  const planCode = String(plans[0]?.plan_code || "trial");
+  const planCode = normalizePlanCode(String(plans[0]?.plan_code || "trial"));
+  if (developmentTestingMode()) {
+    const allowance = voiceTrialAllowance({ planCode, usedSessions: 0, usedSeconds: 0 });
+    return { ...allowance, allowed: true, sessionsRemaining: 9999, secondsRemaining: Math.max(300, allowance.secondsRemaining) };
+  }
+
   if (planCode !== "trial") {
     return voiceTrialAllowance({ planCode, usedSessions: 0, usedSeconds: 0 });
   }
@@ -196,6 +201,7 @@ export async function POST(request: Request) {
     await recordOpenAIUsage(businessId, generated.usage);
     await persistConversationTurn({ businessId, conversationId, userText, reply, action });
 
+    const testingMode = developmentTestingMode();
     return Response.json({
       userText,
       reply,
@@ -204,8 +210,9 @@ export async function POST(request: Request) {
       action,
       audio,
       limits: {
-        maxSessionSeconds: entitlementsFor(allowance.entitlements.code).maxVoiceTestSeconds,
-        sessionsRemaining: allowance.sessionsRemaining,
+        maxSessionSeconds: testingMode ? Math.max(300, entitlementsFor(allowance.entitlements.code).maxVoiceTestSeconds) : entitlementsFor(allowance.entitlements.code).maxVoiceTestSeconds,
+        sessionsRemaining: testingMode ? 9999 : allowance.sessionsRemaining,
+        testingMode,
       },
     }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
