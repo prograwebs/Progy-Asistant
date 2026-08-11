@@ -1,5 +1,5 @@
 import { requireApiUser } from "../../../../lib/integrations";
-import { entitlementsFor } from "../../../../lib/billing/entitlements";
+import { developmentTestingMode, entitlementsFor, normalizePlanCode } from "../../../../lib/billing/entitlements";
 import { SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
 
 export const dynamic = "force-dynamic";
@@ -40,16 +40,17 @@ async function assertBusinessAccess(businessId: string, userId: string) {
 async function startSession(businessId: string, user: { id: string; name: string }, scenario: string) {
   await assertBusinessAccess(businessId, user.id);
   const plan = await planFor(businessId);
-  const planCode = String(plan.plan_code || "trial").toLowerCase();
+  const planCode = normalizePlanCode(String(plan.plan_code || "trial"));
   const entitlements = entitlementsFor(planCode);
+  const testingMode = developmentTestingMode();
   const id = enc(businessId);
 
   const usagePath = planCode === "trial"
-    ? `conversations?business_id=eq.${id}&channel=eq.web_voice&is_trial=eq.true&select=id,status,started_at&limit=20`
+    ? `conversations?business_id=eq.${id}&channel=eq.web_voice&is_trial=eq.true&select=id,status,started_at&limit=100`
     : `conversations?business_id=eq.${id}&channel=eq.web_voice&started_at=gte.${enc(monthStartIso())}&select=id,status,started_at&limit=500`;
   const previous = await supabaseDataRequest<UnknownRow[]>(usagePath);
 
-  if (previous.length >= entitlements.maxVoiceTestSessions) {
+  if (!testingMode && previous.length >= entitlements.maxVoiceTestSessions) {
     return Response.json({
       error: planCode === "trial"
         ? "Ya utilizaste la prueba de voz incluida. Puedes seguir configurando Progy y activar un plan cuando quieras continuar probando."
@@ -75,6 +76,7 @@ async function startSession(businessId: string, user: { id: string; name: string
         source: "progy_voice_test",
         scenario,
         plan_code: planCode,
+        development_testing: testingMode,
       },
     }),
     prefer: "return=representation",
@@ -84,8 +86,9 @@ async function startSession(businessId: string, user: { id: string; name: string
   return Response.json({
     conversation: rows[0],
     limits: {
-      maxSessionSeconds: entitlements.maxVoiceTestSeconds,
-      sessionsRemaining: Math.max(0, entitlements.maxVoiceTestSessions - previous.length - 1),
+      maxSessionSeconds: testingMode ? Math.max(300, entitlements.maxVoiceTestSeconds) : entitlements.maxVoiceTestSeconds,
+      sessionsRemaining: testingMode ? 9999 : Math.max(0, entitlements.maxVoiceTestSessions - previous.length - 1),
+      testingMode,
     },
   }, { status: 201, headers: { "Cache-Control": "no-store" } });
 }
