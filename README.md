@@ -26,7 +26,7 @@ La plataforma incluye:
 
 ## Stack
 
-Progy se ejecuta como una aplicación estándar de **Next.js 16 + React 19** sobre Node.js 22. La exportación antigua de OpenAI Sites/Vinext/Cloudflare fue retirada; el repositorio ya no depende de ese runtime.
+Progy se ejecuta oficialmente como una aplicación estándar de **Next.js 16 + React 19** sobre Node.js 22. La configuración OpenNext/Wrangler permite un despliegue provisional en Cloudflare Workers sin reemplazar la salida Node.
 
 Servicios principales:
 

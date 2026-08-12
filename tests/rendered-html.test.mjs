@@ -15,17 +15,47 @@ async function importTypeScript(file) {
   return import(`data:text/javascript;base64,${Buffer.from(output).toString("base64")}`);
 }
 
-test("uses the standard Next.js runtime", () => {
+test("keeps Node as the standard runtime and adds provisional Cloudflare support", () => {
   const pkg = JSON.parse(read("package.json"));
   assert.equal(pkg.scripts.dev, "next dev -p 4173");
   assert.equal(pkg.scripts.build, "next build");
   assert.equal(pkg.scripts.start, "next start -p 4173");
-  for (const dependency of ["vinext", "vite", "wrangler", "@cloudflare/vite-plugin", "drizzle-orm", "drizzle-kit"]) {
+  assert.equal(pkg.scripts["build:worker"], "opennextjs-cloudflare build");
+  assert.match(pkg.scripts["test:worker"], /wrangler deploy --dry-run/);
+  assert.match(pkg.scripts.deploy, /opennextjs-cloudflare deploy -- --keep-vars/);
+  assert.match(pkg.scripts.upload, /opennextjs-cloudflare upload -- --keep-vars/);
+  assert.equal(pkg.dependencies["@opennextjs/cloudflare"], "1.20.2");
+  assert.equal(pkg.devDependencies.wrangler, "4.121.0");
+  for (const dependency of ["vinext", "vite", "@cloudflare/vite-plugin", "drizzle-orm", "drizzle-kit"]) {
     assert.equal(pkg.dependencies?.[dependency] ?? pkg.devDependencies?.[dependency], undefined, `${dependency} must not ship in Progy`);
   }
 });
 
-test("does not ship legacy Sites or Cloudflare scaffolding", () => {
+test("keeps the required OpenNext configuration and excludes legacy Sites scaffolding", () => {
+  const wrangler = read("wrangler.jsonc");
+  const openNext = read("open-next.config.ts");
+  const nextConfig = read("next.config.ts");
+  const workspace = read("pnpm-workspace.yaml");
+  const gitignore = read(".gitignore");
+
+  assert.match(wrangler, /"main": "\.open-next\/worker\.js"/);
+  assert.match(wrangler, /"name": "progy-negocios"/);
+  assert.match(wrangler, /"compatibility_date": "2026-08-11"/);
+  assert.match(wrangler, /"nodejs_compat"/);
+  assert.match(wrangler, /"global_fetch_strictly_public"/);
+  assert.match(wrangler, /"binding": "NEXT_INC_CACHE_R2_BUCKET"/);
+  assert.match(wrangler, /"bucket_name": "progy-negocios-opennext-cache"/);
+  assert.doesNotMatch(wrangler, /"images"|"binding": "IMAGES"/);
+  assert.match(openNext, /incrementalCache: r2IncrementalCache/);
+  assert.match(nextConfig, /initOpenNextCloudflareForDev\(\)/);
+  assert.match(nextConfig, /output:\s*["']standalone["']/);
+  for (const dependency of ["esbuild", "sharp", "unrs-resolver", "workerd"]) {
+    assert.match(workspace, new RegExp(`^  ${dependency}: true$`, "m"));
+  }
+  assert.match(gitignore, /^\.open-next$/m);
+  assert.match(gitignore, /^\.wrangler$/m);
+  assert.match(gitignore, /^\.dev\.vars\*$/m);
+
   for (const file of [
     ".openai/hosting.json",
     "vite.config.ts",
@@ -74,6 +104,7 @@ test("pins the patched Next.js stack and uses pnpm exclusively", () => {
   assert.equal(existsSync(path.join(root, "package-lock.json")), false);
   assert.match(ci, /pnpm install --frozen-lockfile/);
   assert.doesNotMatch(ci, /(^|\s)npm (ci|run)/m);
+  assert.match(eslint, /"\.open-next\/\*\*"/);
   assert.match(eslint, /"dist\/\*\*"/);
 });
 

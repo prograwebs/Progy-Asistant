@@ -7,16 +7,23 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "next dev -p 4173",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "dev": "next dev -p 4173",
     "start": "next start -p 4173",
     "lint": "eslint . --ignore-pattern .next",
     "typecheck": "tsc --noEmit",
     "test:unit": "node --test tests/*.test.mjs",
+    "test:worker": "pnpm run build:worker && wrangler deploy --dry-run",
     "test": "pnpm run test:unit && pnpm run build",
-    "check": "pnpm run lint && pnpm run typecheck && pnpm run test"
+    "check": "pnpm run lint && pnpm run typecheck && pnpm run test",
+    "preview": "pnpm run build:worker && opennextjs-cloudflare preview",
+    "deploy": "pnpm run build:worker && opennextjs-cloudflare deploy -- --keep-vars",
+    "upload": "pnpm run build:worker && opennextjs-cloudflare upload -- --keep-vars",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },
   "dependencies": {
+    "@opennextjs/cloudflare": "1.20.2",
     "next": "16.3.0",
     "react": "19.2.6",
     "react-dom": "19.2.6"
@@ -29,7 +36,8 @@
     "eslint": "9.39.4",
     "eslint-config-next": "16.3.0",
     "tailwindcss": "4.2.1",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "wrangler": "4.121.0"
   },
   "type": "module",
   "displayName": "Progy"

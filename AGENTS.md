@@ -13,7 +13,7 @@ El agente debe preservar el aislamiento entre negocios, validar en servidor toda
 - OpenAI para transcripción, razonamiento y extracción estructurada.
 - ElevenLabs para catálogo de voces, muestras y síntesis de audio.
 - Meta/WhatsApp es una integración opcional detrás de feature flag.
-- El runtime de producción es Node.js con `next build`; no usar OpenAI Sites, Vinext, Vite, Wrangler, Cloudflare Workers, D1 ni Drizzle.
+- El runtime oficial de producción es Node.js con `next build`. La configuración OpenNext/Wrangler solo mantiene un despliegue provisional en Cloudflare Workers y no debe reemplazar la salida Node; no usar OpenAI Sites, Vinext, Vite, `@cloudflare/next-on-pages`, D1 ni Drizzle.
 
 Estructura principal:
 
