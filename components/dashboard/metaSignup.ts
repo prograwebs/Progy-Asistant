@@ -135,7 +135,10 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
       extras: {
         setup: {},
         featureType: "whatsapp_business_app_onboarding",
-        sessionInfoVersion: "4",
+        // Coexistence / WhatsApp Business App onboarding currently expects
+        // session info v3. Using v4 can break the embedded flow before Meta
+        // returns the selected WABA/phone assets.
+        sessionInfoVersion: "3",
       },
     });
   });
