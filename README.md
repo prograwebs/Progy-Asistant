@@ -1,52 +1,71 @@
 # Progy
 
-Progy es la plataforma de PrograWebs para configurar asistentes de atención con IA para negocios. El objetivo del producto es que una persona no técnica pueda cargar la información de su negocio, elegir una voz, probar al asistente, revisar conversaciones y recibir pedidos o reservas desde un solo panel.
+Progy es la plataforma SaaS de PrograWebs para configurar y operar asistentes de atención con IA para negocios. Está diseñada para que una persona no técnica pueda cargar la información de su empresa, elegir una voz, validar al asistente, revisar conversaciones y recibir pedidos o reservas desde un solo panel.
 
-> Rama de evolución actual: `agent/progy-platform-v1`. `main` conserva la versión aprobada anterior hasta que la nueva rama pase validación y revisión.
+> Desarrollo actual: `agent/progy-platform-v1`. `main` conserva la versión estable anterior hasta completar la validación final y aprobar el Pull Request.
 
-## Qué incluye la plataforma
+## Producto
 
-- registro e inicio de sesión con Supabase;
-- varios tipos de negocio y configuración multiempresa;
-- datos del negocio y horario;
-- configuración de comportamiento del asistente;
-- catálogo manual de productos/servicios;
-- importación asistida desde PDF, DOCX, TXT o CSV con revisión antes de guardar;
+La plataforma incluye:
+
+- autenticación y sesión con Supabase;
+- arquitectura multiempresa por `businessId`;
+- perfil, horarios y configuración del negocio;
+- comportamiento, saludo, tono y capacidades del asistente;
+- catálogo manual de productos y servicios;
+- importación asistida desde PDF, DOCX, TXT y CSV con revisión antes de guardar;
 - conocimiento, políticas y preguntas frecuentes;
-- listado, muestra y selección de voces;
-- prueba hablada controlada desde el navegador;
-- razonamiento con información relevante del negocio;
-- registro automático de pedidos y reservas validados en servidor;
-- conversaciones e historial;
-- medición de consumo por negocio;
-- límites por plan y prueba gratuita;
-- WhatsApp Embedded Signup preparado mientras Meta habilita el onboarding de clientes externos.
+- selección y muestra de voces ElevenLabs;
+- pruebas de voz controladas desde el navegador;
+- razonamiento con OpenAI usando contexto del negocio;
+- validación server-side de pedidos y reservas antes de persistirlos;
+- historial de conversaciones;
+- medición de tokens, voz y coste estimado por negocio;
+- límites y capacidades por plan;
+- WhatsApp preparado detrás de una bandera de lanzamiento mientras termina la revisión externa de Meta.
 
-## Desarrollo local en Windows
+## Stack
+
+Progy se ejecuta como una aplicación estándar de **Next.js 16 + React 19** sobre Node.js 22. La exportación antigua de OpenAI Sites/Vinext/Cloudflare fue retirada; el repositorio ya no depende de ese runtime.
+
+Servicios principales:
+
+```text
+Next.js             aplicación web y API del servidor
+Supabase            autenticación y datos multiempresa
+OpenAI              transcripción, razonamiento y extracción estructurada
+ElevenLabs          voces y síntesis de audio
+Meta                canal WhatsApp opcional cuando sea habilitado
+```
+
+Los proveedores son detalles internos. La interfaz de cliente habla de asistente, voz, conocimiento, consumo y canales.
+
+## Desarrollo local
 
 Requisitos:
 
 - Node.js 22.13 o superior;
 - npm;
-- las variables necesarias en `.env.local`.
+- `.env.local` con las credenciales del entorno.
 
-Desde la raíz del proyecto:
+Desde la raíz:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-windows.ps1
 ```
 
-Progy queda disponible por defecto en:
+También puede iniciarse directamente:
 
-```text
-http://localhost:4173
+```bash
+npm ci
+npm run dev
 ```
 
-El script también permite iniciar el túnel de desarrollo cuando se necesita probar callbacks externos.
+La aplicación queda en `http://localhost:4173`.
 
 ## Variables de entorno
 
-Copia `.env.example` a `.env.local` y completa únicamente en tu equipo/hosting los secretos reales. `.env.local` está ignorado por Git y no debe subirse al repositorio.
+Copia `.env.example` a `.env.local`. Los secretos reales viven únicamente en el equipo o proveedor de hosting y nunca deben subirse a Git.
 
 Grupos principales:
 
@@ -55,7 +74,7 @@ Supabase
   SUPABASE_URL
   SUPABASE_PUBLISHABLE_KEY
 
-Inteligencia
+IA
   OPENAI_API_KEY
   OPENAI_ASSISTANT_MODEL
   OPENAI_CATALOG_MODEL
@@ -65,7 +84,8 @@ Voz
   ELEVENLABS_API_KEY
   ELEVENLABS_MODEL_ID
 
-WhatsApp / Meta
+WhatsApp (opcional)
+  NEXT_PUBLIC_WHATSAPP_ENABLED
   NEXT_PUBLIC_META_APP_ID
   NEXT_PUBLIC_META_CONFIG_ID
   META_APP_ID
@@ -76,64 +96,64 @@ Aplicación
   PROGY_APP_URL
 ```
 
-Nunca conviertas una clave privada en una variable `NEXT_PUBLIC_*`.
+`META_APP_SECRET`, `OPENAI_API_KEY` y `ELEVENLABS_API_KEY` nunca deben utilizar el prefijo `NEXT_PUBLIC_`.
 
-## Validación
-
-La rama incluye GitHub Actions y scripts para comprobar el proyecto:
+## Calidad y validación
 
 ```bash
-npm ci
 npm run lint
 npm run typecheck
 npm test
 ```
 
-`npm test` realiza el build verificado y las pruebas sobre el HTML generado.
+`npm test` ejecuta las pruebas de configuración/release y un build de producción con Next.js. GitHub Actions ejecuta la misma validación en cada cambio de la rama y en el Pull Request.
 
-## Cómo está organizado
+Para un despliegue real, valida además el flujo funcional con credenciales reales siguiendo [`docs/TESTING.md`](docs/TESTING.md).
+
+## Arquitectura
 
 ```text
-app/api/                  endpoints del servidor
-components/dashboard/     interfaz modular del panel
-lib/ai/                   inteligencia/transcripción/documentos
-lib/assistant/            contexto y acciones del asistente
-lib/billing/              límites y capacidades de planes
-lib/usage/                medición de consumo
-lib/voice/                síntesis y voces
-lib/supabase-data.ts      acceso PostgREST con sesión
+app/
+  api/                     rutas server-side
+  acceso/                  autenticación
+  panel/                   panel privado
+
+components/dashboard/      módulos de interfaz del panel
+
+lib/
+  ai/                      OpenAI: transcripción y decisiones
+  assistant/               contexto, validación y acciones
+  auth/                    sesión Supabase
+  billing/                 capacidades y límites por plan
+  config/                  configuración del servidor
+  http/                    errores seguros
+  usage/                   medición de consumo
+  voice/                   catálogo y síntesis de voz
+  supabase-data.ts         acceso PostgREST con sesión del usuario
 ```
 
-Para entender dónde modificar cada función, consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+Consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para el mapa completo.
 
-## Prueba de voz y control de costes
+## Principios de seguridad
 
-La prueba hablada ya no depende de la voz nativa del modelo. El flujo es:
+- una acción sugerida por la IA vuelve a validarse en servidor antes de escribir datos;
+- precios, disponibilidad y pertenencia del negocio no se aceptan desde el navegador como fuente de verdad;
+- las consultas a Supabase usan la sesión del usuario, por lo que RLS debe ser la barrera final de aislamiento;
+- nunca se expone una service-role key ni secretos de proveedores al navegador;
+- los canales que dependen de aprobaciones externas se mantienen desactivados mediante feature flags hasta estar listos.
 
-1. el navegador graba un turno corto;
-2. el servidor transcribe;
-3. Progy recupera solo la información relevante del negocio;
-4. la IA prepara una respuesta estructurada;
-5. cualquier pedido/reserva se valida contra datos reales antes de guardarse;
-6. la respuesta se sintetiza con la voz seleccionada para ese negocio;
-7. el uso queda asociado al negocio.
+Antes de incorporar clientes reales, completa [`docs/SUPABASE_SECURITY_CHECKLIST.md`](docs/SUPABASE_SECURITY_CHECKLIST.md).
 
-La prueba gratuita se limita en servidor. Reiniciar la página no crea pruebas gratuitas ilimitadas.
+## Despliegue
 
-## Importación de catálogo
+El destino de producción es `https://progy.prograwebs.com`.
 
-El usuario puede subir un documento existente. Progy devuelve una vista previa editable y no crea productos automáticamente hasta recibir confirmación. Los precios ambiguos quedan marcados para revisión en lugar de ser inventados.
-
-## WhatsApp
-
-El panel conserva una experiencia simple de “Conectar WhatsApp”. La conexión técnica con Meta permanece en el servidor y el cliente no ve tokens, WABA IDs, Phone Number IDs ni proveedores internos.
-
-La incorporación de cuentas externas depende además de la habilitación/revisión correspondiente de Meta. El resto de Progy puede desarrollarse y utilizarse sin bloquearse por ese proceso.
+Consulta [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) para variables, comandos, health check y checklist de publicación.
 
 ## Política de cambios
 
-- `main`: versión estable/aprobada.
-- `agent/progy-platform-v1`: desarrollo de la plataforma modular.
-- nuevas funcionalidades deben evitar volver a concentrar toda la interfaz o integraciones en un solo archivo;
-- secretos privados solo en entorno del servidor;
-- una acción propuesta por la IA siempre debe volver a validarse con datos del sistema antes de escribir en la base de datos.
+- `main`: versión aprobada y desplegable;
+- `agent/progy-platform-v1`: evolución actual hasta completar validación;
+- nuevas integraciones deben vivir detrás de servicios server-side en `lib/`;
+- no volver a concentrar lógica de negocio, proveedores e interfaz en un componente monolítico;
+- cualquier cambio de comportamiento del asistente debe volver a pasar la prueba de publicación del panel antes de salir a clientes.
