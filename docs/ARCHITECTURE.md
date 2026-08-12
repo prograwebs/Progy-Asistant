@@ -1,14 +1,33 @@
 # Arquitectura de Progy
 
-Este documento describe dónde vive cada responsabilidad de la plataforma y sirve como mapa para futuras modificaciones.
+Progy es una aplicación SaaS multiempresa construida sobre Next.js App Router. Este documento define las responsabilidades del código y las reglas que deben mantenerse al ampliar el producto.
 
 ## Principios
 
-1. **La interfaz no conoce proveedores.** El cliente ve "voz", "asistente", "WhatsApp", "consumo" o "catálogo"; OpenAI, ElevenLabs, Meta y Supabase son detalles internos.
-2. **Toda acción sensible se valida en servidor.** Los totales de pedidos, límites de prueba, pertenencia del negocio y credenciales nunca dependen del navegador.
-3. **Multiempresa desde el inicio.** Todas las operaciones funcionales reciben `businessId` y las consultas se ejecutan con la sesión Supabase del usuario para que las políticas RLS sigan siendo la última barrera de acceso.
-4. **La IA propone; el servidor valida.** El modelo puede clasificar intención y estructurar una propuesta de pedido/reserva, pero los precios y elementos se vuelven a comprobar contra el catálogo antes de guardar.
-5. **Coste controlado.** El prompt incluye solo conocimiento y catálogo relevantes, conserva un historial corto y registra uso por negocio.
+1. **La interfaz no conoce proveedores.** El cliente ve asistente, voz, conocimiento, consumo o canales. OpenAI, ElevenLabs, Meta y Supabase son detalles internos.
+2. **Toda acción sensible se valida en servidor.** Totales, límites, pertenencia del negocio y credenciales nunca dependen del navegador como fuente de verdad.
+3. **Multiempresa desde el inicio.** Las operaciones reciben `businessId`, las consultas usan la sesión Supabase del usuario y RLS debe ser la última barrera de acceso.
+4. **La IA propone; el sistema valida.** El modelo puede interpretar intención y proponer un pedido/reserva, pero productos, precios y permisos vuelven a comprobarse antes de persistir.
+5. **Contexto mínimo necesario.** Se recupera información relevante del negocio y un historial corto para mantener calidad sin inflar tokens.
+6. **Integraciones detrás de servicios.** Ningún componente React accede directamente a una credencial privada.
+7. **Lanzamientos seguros.** Funciones externas no aprobadas se mantienen detrás de feature flags; nunca se simulan como disponibles.
+8. **Regresión visible.** Cada cambio debe pasar lint, tipos, pruebas, build y una prueba funcional antes de publicarse.
+
+## Runtime
+
+```text
+Browser
+  ↓
+Next.js 16 / React 19
+  ├─ Server Components / páginas
+  └─ Route Handlers / API
+       ├─ Supabase
+       ├─ OpenAI
+       ├─ ElevenLabs
+       └─ Meta (opcional)
+```
+
+El proyecto no depende de OpenAI Sites, Vinext, Vite, Wrangler, Cloudflare Workers, D1 ni Drizzle. El build de producción es `next build` y el runtime de producción es Node.js.
 
 ## Estructura principal
 
@@ -16,15 +35,19 @@ Este documento describe dónde vive cada responsabilidad de la plataforma y sirv
 app/
   api/
     assistant/
-      session/       # abre/cierra pruebas y aplica límites del plan
-      turn/          # audio/texto -> razonamiento -> acción -> voz
+      session/          abre/cierra pruebas y aplica límites
+      turn/             audio/texto -> IA -> acción -> voz
     catalog/
-      import/        # documento -> vista previa -> importación confirmada
-    elevenlabs/      # listado y muestras de voces
-    whatsapp/        # Embedded Signup y conexión Meta
-    workspace/       # CRUD general del negocio y snapshot del panel
-  panel/
-    page.tsx          # puerta de entrada al panel autenticado
+      import/           documento -> vista previa -> confirmación
+    elevenlabs/         voces y muestras
+    health/             comprobación segura del entorno
+    whatsapp/           Embedded Signup, detrás de feature flag
+    workspace/          CRUD del negocio y snapshot del panel
+  acceso/               autenticación
+  panel/                panel privado
+  privacidad/           información legal pública
+  terminos/
+  eliminar-datos/
 
 components/
   dashboard/
@@ -32,33 +55,42 @@ components/
     BusinessOnboarding.tsx
     VoiceTestStudio.tsx
     CatalogImport.tsx
-    sections/         # módulos independientes del panel
+    sections/
     types.ts
     utils.ts
     useWorkspace.ts
 
 lib/
   ai/
-    openai.ts         # transcripción, decisión estructurada, lectura de catálogos
+    openai.ts            transcripción y decisiones estructuradas
   assistant/
-    context.ts        # contexto compacto/relevante del negocio
-    actions.ts        # validación y ejecución de pedidos/reservas
+    context.ts           recuperación/contexto compacto
+    actions.ts           validación y ejecución transaccional
+  auth/
+    supabase.ts          sesión y usuario
   billing/
-    entitlements.ts   # límites por plan
+    entitlements.ts      capacidades y límites por plan
+  config/
+    env.ts               variables y readiness del servidor
+  http/
+    errors.ts            errores seguros para cliente
   usage/
-    ledger.ts         # medición interna por negocio
+    ledger.ts            consumo y coste por negocio
   voice/
-    elevenlabs.ts     # síntesis con la voz elegida
-  integrations.ts     # configuración/autenticación heredada (a seguir separando)
-  supabase-data.ts    # cliente PostgREST con la sesión del usuario
+    catalog.ts           catálogo de voces ElevenLabs
+    elevenlabs.ts        síntesis
+  integrations.ts        fachada temporal de compatibilidad
+  supabase-data.ts       PostgREST con sesión del usuario
 ```
+
+`lib/integrations.ts` ya no contiene implementaciones; reexporta servicios separados para evitar una migración masiva de imports. Código nuevo debe importar desde el módulo específico.
 
 ## Flujo de prueba por voz
 
 ```text
 Navegador
   -> POST /api/assistant/session (start)
-  -> grabación corta con MediaRecorder
+  -> MediaRecorder: turno corto
   -> POST /api/assistant/turn
        -> transcribeAudio()
        -> loadAgentContext()
@@ -67,61 +99,104 @@ Navegador
        -> executeAssistantDecision()
        -> synthesizeSpeech() con agent.voice_id
        -> usage_ledger
-  <- texto + audio
+  <- texto + audio + acción
   -> POST /api/assistant/session (end)
 ```
 
-La prueba gratuita se controla en servidor. No depende de ocultar un botón en el navegador.
+Las pruebas están limitadas en servidor. Durante desarrollo puede habilitarse un modo de validación controlado mediante variable de entorno; producción no depende de ocultar botones para aplicar límites.
 
-## Flujo de catálogo desde documento
+## Contexto y conocimiento
+
+El asistente separa:
+
+- **instrucciones**: saludo, tono, reglas y capacidades;
+- **datos del negocio**: horario, catálogo, políticas y FAQs;
+- **historial corto**: últimos turnos relevantes.
+
+No se debe volver a enviar el catálogo completo o conversaciones completas si puede recuperarse únicamente lo pertinente. Esta regla protege coste y calidad.
+
+## Importación de documentos
 
 ```text
 PDF/DOCX/TXT/CSV
-  -> POST /api/catalog/import (multipart)
+  -> /api/catalog/import
   -> extracción estructurada
+  -> elementos con precio incierto quedan pendientes
   -> vista previa editable
-  -> usuario selecciona/corrige
-  -> POST /api/catalog/import (JSON)
+  -> confirmación del usuario
   -> catalog_items
 ```
 
-Si un precio no es claro, se devuelve `null` y el elemento requiere revisión. Nunca se publica un precio inferido silenciosamente.
+Nunca publicar precios inferidos silenciosamente.
 
 ## Pedidos y reservas
 
-El modelo devuelve una intención estructurada, pero `lib/assistant/actions.ts` vuelve a buscar cada producto en el catálogo y calcula el total en servidor. Si el elemento o precio no se puede identificar con seguridad, no se crea el pedido.
+`lib/assistant/actions.ts` vuelve a consultar los datos del sistema antes de escribir una acción propuesta por la IA. Un pedido solo puede usar productos y precios confirmados. Una reserva/cita requiere fecha válida y capacidad habilitada en `business_features`.
 
-Las reservas y citas también se validan en servidor y requieren una fecha futura. Además, la acción debe estar habilitada en `business_features`.
+## Consumo
 
-## Datos que debe aislar RLS
+`usage_ledger` registra consumo medible por negocio. La UI puede mostrar:
 
-Como mínimo, las políticas de Supabase deben aislar por propietario/membresía:
+- tokens de entrada/salida;
+- audio procesado cuando el proveedor lo reporta;
+- caracteres sintetizados;
+- coste estimado si las tarifas internas están configuradas.
 
-- `businesses`
-- `agent_configs`
-- `business_hours`
-- `business_features`
-- `catalog_items`
-- `knowledge_items`
-- `conversations`
-- `orders`
-- `bookings`
-- `business_plans`
-- `usage_ledger`
-- futuras `whatsapp_connections`
+No se inventan consumos históricos que nunca fueron medidos.
 
-La aplicación no debe usar una service-role key en el navegador.
+## WhatsApp
 
-## Qué modificar para cada función
+Mientras Meta termina su revisión externa:
 
-- Cambiar cómo responde Progy: `lib/assistant/context.ts` y `lib/ai/openai.ts`.
-- Agregar una nueva acción: tipo estructurado en `lib/ai/openai.ts`, validación en `lib/assistant/actions.ts`, visualización en su sección del dashboard.
-- Cambiar voz: `lib/voice/elevenlabs.ts` y `components/dashboard/sections/VoiceSection.tsx`.
-- Cambiar límites: `lib/billing/entitlements.ts`.
-- Cambiar importación: `app/api/catalog/import/route.ts` y `components/dashboard/CatalogImport.tsx`.
-- Cambiar la navegación/panel: `components/dashboard/ProgyDashboard.tsx` y `components/dashboard/sections/`.
-- Cambiar WhatsApp: `components/dashboard/metaSignup.ts` y `app/api/whatsapp/`.
+```text
+NEXT_PUBLIC_WHATSAPP_ENABLED=false
+```
 
-## Regla para nuevas integraciones
+La UI muestra el canal como `En revisión` y no permite iniciar una incorporación que sabemos que no puede completarse. El código de Embedded Signup se conserva para activarse posteriormente, pero WhatsApp no es requisito para desplegar el núcleo de Progy.
 
-Una integración nueva debe vivir detrás de un servicio en `lib/`. No debe llamarse directamente desde un componente React si necesita un secreto. El componente llama a una ruta de servidor; la ruta llama al servicio; el servicio usa la credencial privada.
+No se debe volver a acoplar WhatsApp a ElevenLabs. Meta es el proveedor del canal; ElevenLabs es el proveedor de voz.
+
+## Seguridad multiempresa
+
+Como mínimo RLS debe aislar:
+
+```text
+businesses
+agent_configs
+business_hours
+business_features
+catalog_categories
+catalog_items
+knowledge_items
+business_plans
+conversations
+orders
+bookings
+usage_ledger
+```
+
+La aplicación no usa una service-role key en el navegador. Consulta `SUPABASE_SECURITY_CHECKLIST.md` antes de clientes reales.
+
+## Release
+
+`/api/health` ofrece un health check que no expone secretos. El núcleo se considera listo cuando Supabase/OpenAI/ElevenLabs están configurados; WhatsApp puede permanecer deshabilitado.
+
+El dashboard incluye un checklist de preparación que exige configuración completa y al menos una prueba de voz terminada antes de mostrar el negocio como listo para publicar.
+
+## Dónde modificar cada función
+
+- comportamiento de IA: `lib/assistant/context.ts` y `lib/ai/openai.ts`;
+- acciones: `lib/assistant/actions.ts`;
+- autenticación: `lib/auth/supabase.ts`;
+- configuración/env: `lib/config/env.ts`;
+- voces: `lib/voice/`;
+- límites: `lib/billing/entitlements.ts`;
+- importación: `app/api/catalog/import/` y `components/dashboard/CatalogImport.tsx`;
+- panel: `components/dashboard/sections/`;
+- WhatsApp: `components/dashboard/metaSignup.ts` y `app/api/whatsapp/`.
+
+## Regla para futuras integraciones
+
+Componente React → Route Handler → servicio `lib/` → proveedor externo.
+
+Si una integración necesita secreto, validación, firma, idempotencia o transformación de datos, esa lógica pertenece al servidor. No debe implementarse dentro del componente visual.
