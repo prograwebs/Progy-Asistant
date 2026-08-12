@@ -8,6 +8,15 @@ const securityHeaders = [
   { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains" },
 ];
 
+const noIndexHeaders = [
+  { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
+];
+
+const privateRouteHeaders = [
+  ...noIndexHeaders,
+  { key: "Cache-Control", value: "private, no-store, max-age=0" },
+];
+
 const nextConfig: NextConfig = {
   output: "standalone",
   reactStrictMode: true,
@@ -18,6 +27,22 @@ const nextConfig: NextConfig = {
       {
         source: "/:path*",
         headers: securityHeaders,
+      },
+      {
+        source: "/panel/:path*",
+        headers: privateRouteHeaders,
+      },
+      {
+        source: "/acceso",
+        headers: privateRouteHeaders,
+      },
+      {
+        source: "/auth/:path*",
+        headers: privateRouteHeaders,
+      },
+      {
+        source: "/api/:path*",
+        headers: privateRouteHeaders,
       },
     ];
   },

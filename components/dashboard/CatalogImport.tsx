@@ -1,6 +1,7 @@
 "use client";
 
 import { ChangeEvent, useMemo, useRef, useState } from "react";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../lib/config/limits";
 import styles from "./CatalogImport.module.css";
 
 type PreviewItem = {
@@ -46,6 +47,15 @@ export default function CatalogImport({
 
   function choose(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0] || null;
+    if (next && exceedsPayloadLimit(next.size)) {
+      event.target.value = "";
+      setFile(null);
+      setItems([]);
+      setWarnings([]);
+      setSuccess("");
+      setError(`El archivo supera el límite de ${MAX_PAYLOAD_MB} MB.`);
+      return;
+    }
     setFile(next);
     setItems([]);
     setWarnings([]);
@@ -140,7 +150,7 @@ export default function CatalogImport({
           <input ref={inputRef} type="file" accept=".pdf,.docx,.txt,.csv,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document" onChange={choose} />
           <label onClick={() => inputRef.current?.click()}>
             <strong>{file ? file.name : "Seleccionar catálogo o lista de precios"}</strong>
-            <span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "PDF, DOCX, TXT o CSV · máximo 12 MB"}</span>
+            <span>{file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : `PDF, DOCX, TXT o CSV · máximo ${MAX_PAYLOAD_MB} MB`}</span>
           </label>
         </div>
       )}

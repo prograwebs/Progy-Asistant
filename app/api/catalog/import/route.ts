@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/integrations";
 import { extractCatalogFromFile, OpenAIServiceError } from "../../../../lib/ai/openai";
 import { catalogImportAllowance } from "../../../../lib/billing/entitlements";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
 import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
 import { recordCatalogImport, recordOpenAIUsage } from "../../../../lib/usage/ledger";
 
@@ -18,10 +19,10 @@ type ImportItem = {
 
 function jsonError(error: unknown) {
   if (error instanceof OpenAIServiceError || error instanceof SupabaseDataError) {
-    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
   console.error("Progy catalog import error", error);
-  return Response.json({ error: "No pudimos procesar el catálogo en este momento." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  return Response.json({ error: "No pudimos procesar el catálogo en este momento." }, { status: 500, headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 function cleanText(value: unknown, max = 300) {
@@ -55,7 +56,9 @@ async function analyze(request: Request, userId: string) {
 
   if (!businessId) throw new SupabaseDataError("Selecciona un negocio antes de importar un catálogo.", 400);
   if (!(file instanceof File) || file.size === 0) throw new OpenAIServiceError("Selecciona un PDF o documento para analizar.", 400);
-  if (file.size > 12 * 1024 * 1024) throw new OpenAIServiceError("El archivo supera el límite de 12 MB. Divide el catálogo en un archivo más pequeño.", 413);
+  if (exceedsPayloadLimit(file.size)) {
+    throw new OpenAIServiceError(`El archivo supera el límite de ${MAX_PAYLOAD_MB} MB. Divide el catálogo en un archivo más pequeño.`, 413);
+  }
 
   const allowedTypes = new Set([
     "application/pdf",
@@ -81,7 +84,7 @@ async function analyze(request: Request, userId: string) {
         importsRemaining: allowance.importsRemaining,
         itemsRemaining: allowance.itemsRemaining,
       },
-    }, { status: 402, headers: { "Cache-Control": "no-store" } });
+    }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
 
   const extracted = await extractCatalogFromFile({
@@ -117,7 +120,7 @@ async function analyze(request: Request, userId: string) {
       importsRemaining: allowance.importsRemaining,
       itemsRemaining: allowance.itemsRemaining,
     },
-  }, { headers: { "Cache-Control": "no-store" } });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 async function confirm(request: Request) {
@@ -136,7 +139,7 @@ async function confirm(request: Request) {
       error: "El plan actual no permite guardar otra importación de catálogo en este momento.",
       code: "catalog_import_limit_reached",
       upgradeRequired: true,
-    }, { status: 402, headers: { "Cache-Control": "no-store" } });
+    }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
 
   const items = requested.slice(0, allowance.itemsRemaining).map((item) => {
@@ -177,7 +180,7 @@ async function confirm(request: Request) {
       importsRemaining: Math.max(0, allowance.importsRemaining - 1),
       itemsRemaining: Math.max(0, allowance.itemsRemaining - rows.length),
     },
-  }, { status: 201, headers: { "Cache-Control": "no-store" } });
+  }, { status: 201, headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 export async function POST(request: Request) {

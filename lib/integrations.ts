@@ -29,4 +29,4 @@ export {
   type ProgyVoice,
 } from "./voice/catalog";
 
-export { safeErrorMessage } from "./http/errors";
+export { providerErrorCode, publicDataError, safeErrorMessage } from "./http/errors";

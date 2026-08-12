@@ -17,10 +17,10 @@ function monthStartIso() {
 
 function jsonError(error: unknown) {
   if (error instanceof SupabaseDataError) {
-    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
   console.error("Progy assistant session error", error);
-  return Response.json({ error: "No pudimos preparar la prueba de Progy." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  return Response.json({ error: "No pudimos preparar la prueba de Progy." }, { status: 500, headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 async function planFor(businessId: string) {
@@ -59,7 +59,7 @@ async function startSession(businessId: string, user: { id: string; name: string
       upgradeRequired: true,
       plan: planCode,
       sessionsRemaining: 0,
-    }, { status: 402, headers: { "Cache-Control": "no-store" } });
+    }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
 
   const rows = await supabaseDataRequest<UnknownRow[]>("conversations", {
@@ -90,7 +90,7 @@ async function startSession(businessId: string, user: { id: string; name: string
       sessionsRemaining: testingMode ? 9999 : Math.max(0, entitlements.maxVoiceTestSessions - previous.length - 1),
       testingMode,
     },
-  }, { status: 201, headers: { "Cache-Control": "no-store" } });
+  }, { status: 201, headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 async function endSession(businessId: string, conversationId: string, durationSeconds: number, status: "completed" | "failed") {
@@ -122,7 +122,7 @@ async function endSession(businessId: string, conversationId: string, durationSe
     console.error("Progy voice plan usage update failed", error);
   }
 
-  return Response.json({ conversation: rows[0] }, { headers: { "Cache-Control": "no-store" } });
+  return Response.json({ conversation: rows[0] }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 export async function POST(request: Request) {

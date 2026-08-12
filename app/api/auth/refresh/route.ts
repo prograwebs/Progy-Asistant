@@ -15,7 +15,7 @@ export async function POST() {
         {
           status: 401,
           headers: {
-            "Cache-Control": "no-store",
+            "Cache-Control": "private, no-store, max-age=0",
           },
         },
       );
@@ -27,7 +27,7 @@ export async function POST() {
       },
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -42,7 +42,7 @@ export async function POST() {
       {
         status: 500,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );

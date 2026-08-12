@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { requireApiUser } from "../../../lib/integrations";
 import { SupabaseDataError, supabaseDataRequest } from "../../../lib/supabase-data";
 
@@ -15,8 +16,14 @@ const previewCategories = [
 type UnknownRow = Record<string, unknown>;
 
 function jsonError(error: unknown) {
-  if (error instanceof SupabaseDataError) return Response.json({ error: error.message }, { status: error.status });
-  return Response.json({ error: error instanceof Error ? error.message : "Ocurrió un error inesperado." }, { status: 500 });
+  if (error instanceof SupabaseDataError) {
+    return Response.json(
+      { error: error.message, ...(error.publicCode ? { code: error.publicCode } : {}) },
+      { status: error.status },
+    );
+  }
+  console.error("Progy workspace request failed", { correlationId: randomUUID() });
+  return Response.json({ error: "No pudimos completar la operación en este momento." }, { status: 500 });
 }
 
 function enc(value: string) { return encodeURIComponent(value); }

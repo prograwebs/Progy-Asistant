@@ -1,21 +1,32 @@
-import { getSupabaseAccessToken, integrationConfig, safeErrorMessage } from "./integrations";
+import { randomUUID } from "node:crypto";
+import { getSupabaseAccessToken, integrationConfig } from "./integrations";
+import { providerErrorCode, publicDataError } from "./http/errors";
+import { retryTransientPostgrestJwt } from "./http/postgrest-retry";
 
 type DataRequestOptions = RequestInit & { prefer?: string };
+export type SupabasePublicErrorCode = "session_refresh_required";
 
 export class SupabaseDataError extends Error {
   status: number;
+  publicCode?: SupabasePublicErrorCode;
 
-  constructor(message: string, status = 500) {
+  constructor(message: string, status = 500, publicCode?: SupabasePublicErrorCode) {
     super(message);
     this.name = "SupabaseDataError";
     this.status = status;
+    this.publicCode = publicCode;
   }
+}
+
+function dataOperation(path: string) {
+  const resource = path.split("?", 1)[0].replace(/^rpc\//, "rpc:");
+  return /^[a-z0-9_:/-]{1,80}$/i.test(resource) ? resource : "unknown";
 }
 
 export async function supabaseDataRequest<T>(path: string, options: DataRequestOptions = {}): Promise<T> {
   const token = await getSupabaseAccessToken();
   const { supabaseUrl, supabaseAnonKey } = integrationConfig();
-  if (!token) throw new SupabaseDataError("Tu sesión terminó. Vuelve a iniciar sesión.", 401);
+  if (!token) throw new SupabaseDataError("Tu sesión terminó. Vuelve a iniciar sesión.", 401, "session_refresh_required");
   if (!supabaseUrl || !supabaseAnonKey) throw new SupabaseDataError("Supabase todavía no está configurado.", 503);
 
   const headers = new Headers(options.headers);
@@ -25,21 +36,38 @@ export async function supabaseDataRequest<T>(path: string, options: DataRequestO
   if (options.body) headers.set("Content-Type", "application/json");
   if (options.prefer) headers.set("Prefer", options.prefer);
 
-  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
-    ...options,
-    headers,
-    cache: "no-store",
+  const correlationId = randomUUID();
+  const result = await retryTransientPostgrestJwt(async () => {
+    const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+      ...options,
+      headers,
+      cache: "no-store",
+    });
+    const raw = await response.text();
+    let payload: unknown = null;
+    if (raw) {
+      try { payload = JSON.parse(raw); } catch { payload = raw; }
+    }
+    return {
+      value: { response, payload },
+      status: response.status,
+      code: providerErrorCode(payload),
+    };
   });
-  const raw = await response.text();
-  let payload: unknown = null;
-  if (raw) {
-    try { payload = JSON.parse(raw); } catch { payload = raw; }
-  }
+  const { response, payload } = result;
   if (!response.ok) {
-    const fallback = response.status === 404
-      ? "La estructura de datos de Progy todavía no está instalada en Supabase."
-      : "No pudimos guardar los cambios en este momento.";
-    throw new SupabaseDataError(safeErrorMessage(payload, fallback), response.status);
+    const method = (options.method ?? "GET").toUpperCase();
+    console.error("Progy data request failed", {
+      operation: dataOperation(path),
+      status: response.status,
+      code: providerErrorCode(payload),
+      correlationId,
+    });
+    throw new SupabaseDataError(
+      publicDataError(response.status, method),
+      response.status,
+      response.status === 401 ? "session_refresh_required" : undefined,
+    );
   }
   return payload as T;
 }

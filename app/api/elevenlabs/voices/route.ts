@@ -12,7 +12,7 @@ export async function GET(request: Request) {
     if (!voices.length) {
       return Response.json({ error: "Tu cuenta de ElevenLabs no devolvió voces disponibles para este plan." }, { status: 503 });
     }
-    return Response.json({ voices }, { headers: { "Cache-Control": "private, max-age=600" } });
+    return Response.json({ voices }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
     if (error instanceof ElevenLabsVoiceError) return Response.json({ error: error.message }, { status: error.status });
     return Response.json({ error: "No pudimos cargar las voces disponibles." }, { status: 502 });

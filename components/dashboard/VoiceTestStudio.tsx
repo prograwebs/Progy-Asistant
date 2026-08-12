@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../lib/config/limits";
 import type { SelectedWorkspace } from "./types";
 import styles from "./VoiceTestStudio.module.css";
 
@@ -206,6 +207,11 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
     if (!blob.size) {
       setStatus("idle");
       setError("No recibimos audio. Intenta hablar durante un par de segundos.");
+      return;
+    }
+    if (exceedsPayloadLimit(blob.size)) {
+      setStatus("idle");
+      setError(`El audio supera el límite de ${MAX_PAYLOAD_MB} MB. Graba un turno más corto.`);
       return;
     }
 

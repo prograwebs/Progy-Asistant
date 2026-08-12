@@ -17,7 +17,7 @@ export async function GET() {
     {
       status: status.ready ? 200 : 503,
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control": "private, no-store, max-age=0",
       },
     },
   );

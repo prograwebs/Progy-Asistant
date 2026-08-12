@@ -7,13 +7,13 @@ Este checklist evita considerar una función terminada solo porque compila. El o
 GitHub Actions ejecuta:
 
 ```bash
-npm ci
-npm run lint
-npm run typecheck
-npm test
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run typecheck
+pnpm run test
 ```
 
-`npm test` ejecuta smoke tests de configuración/release y `next build` con el runtime estándar de Next.js.
+`pnpm run test` ejecuta smoke tests de configuración/release y `next build` con el runtime estándar de Next.js.
 
 ## Estrategia de pruebas
 
@@ -160,7 +160,7 @@ Cuando la revisión termine, el canal deberá probarse en un entorno controlado 
 
 ### 13. Release/hosting
 
-- `npm test` termina con `next build` exitoso;
+- `pnpm run test` termina con `next build` exitoso;
 - `/`, `/acceso`, `/panel` y rutas legales funcionan;
 - `/api/health` devuelve HTTP 200 con core y voice en `true`;
 - el dominio usa HTTPS;

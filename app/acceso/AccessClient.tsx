@@ -1,12 +1,11 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function AccessClient() {
   const params = useSearchParams();
-  const router = useRouter();
   const [mode, setMode] = useState<"signup" | "login">(params.get("mode") === "login" ? "login" : "signup");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState(() => params.get("error") || "");
@@ -35,8 +34,7 @@ export default function AccessClient() {
         setMessage("Cuenta creada. Revisa tu correo y confirma el registro antes de iniciar sesión.");
         setMode("login");
       } else {
-        router.push("/panel");
-        router.refresh();
+        window.location.replace("/panel");
       }
     } catch (error) {
       setIsError(true);

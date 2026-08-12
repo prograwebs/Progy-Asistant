@@ -3,6 +3,7 @@ import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "
 import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
 import { developmentTestingMode, entitlementsFor, normalizePlanCode, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
+import { exceedsBase64SourceLimit, exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
 import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
 import { recordElevenLabsUsage, recordOpenAIUsage } from "../../../../lib/usage/ledger";
 import { synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
@@ -14,10 +15,10 @@ type HistoryEntry = { role: "user" | "assistant"; text: string };
 
 function jsonError(error: unknown) {
   if (error instanceof OpenAIServiceError || error instanceof VoiceServiceError || error instanceof SupabaseDataError) {
-    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "no-store" } });
+    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
   console.error("Progy assistant turn error", error);
-  return Response.json({ error: "No pudimos completar la conversación. Inténtalo nuevamente." }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  return Response.json({ error: "No pudimos completar la conversación. Inténtalo nuevamente." }, { status: 500, headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }
 
 function parseHistory(value: unknown): HistoryEntry[] {
@@ -135,8 +136,8 @@ export async function POST(request: Request) {
       if (!(audio instanceof File) || audio.size === 0) {
         throw new OpenAIServiceError("No recibimos audio para procesar.", 400);
       }
-      if (audio.size > 8 * 1024 * 1024) {
-        throw new OpenAIServiceError("La prueba de audio es demasiado larga. Habla en turnos más cortos.", 413);
+      if (exceedsPayloadLimit(audio.size)) {
+        throw new OpenAIServiceError(`El audio supera el límite de ${MAX_PAYLOAD_MB} MB. Habla en turnos más cortos.`, 413);
       }
 
       const transcription = await transcribeAudio(audio, `progy-${user.id}`);
@@ -163,7 +164,7 @@ export async function POST(request: Request) {
         code: "voice_trial_limit_reached",
         plan: allowance.entitlements.code,
         upgradeRequired: true,
-      }, { status: 402, headers: { "Cache-Control": "no-store" } });
+      }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
     }
 
     const instructions = buildCompactAgentInstructions(context, userText);
@@ -189,6 +190,9 @@ export async function POST(request: Request) {
         speed: Number((context.agent.settings as Record<string, unknown> | undefined)?.voice_speed || 50),
         expression: Number((context.agent.settings as Record<string, unknown> | undefined)?.voice_expression || 55),
       });
+      if (exceedsBase64SourceLimit(speech.audio.byteLength)) {
+        throw new VoiceServiceError(`La respuesta de voz supera el límite de ${MAX_PAYLOAD_MB} MB. Inténtalo con una consulta más corta.`, 413);
+      }
       audio = {
         base64: audioBase64(speech.audio),
         contentType: speech.contentType,
@@ -214,7 +218,7 @@ export async function POST(request: Request) {
         sessionsRemaining: testingMode ? 9999 : allowance.sessionsRemaining,
         testingMode,
       },
-    }, { headers: { "Cache-Control": "no-store" } });
+    }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
     return jsonError(error);
   }

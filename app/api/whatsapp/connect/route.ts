@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       {
         status: 401,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
       {
         status: 400,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -117,7 +117,7 @@ export async function POST(request: Request) {
       {
         status: 400,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       {
         status: 400,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -155,7 +155,7 @@ export async function POST(request: Request) {
       {
         status: 503,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -224,7 +224,7 @@ export async function POST(request: Request) {
         {
           status: 502,
           headers: {
-            "Cache-Control": "no-store",
+            "Cache-Control": "private, no-store, max-age=0",
           },
         },
       );
@@ -336,7 +336,7 @@ export async function POST(request: Request) {
           {
             status: 502,
             headers: {
-              "Cache-Control": "no-store",
+              "Cache-Control": "private, no-store, max-age=0",
             },
           },
         );
@@ -371,7 +371,7 @@ export async function POST(request: Request) {
         {
           status: 502,
           headers: {
-            "Cache-Control": "no-store",
+            "Cache-Control": "private, no-store, max-age=0",
           },
         },
       );
@@ -458,7 +458,7 @@ export async function POST(request: Request) {
       },
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );
@@ -476,7 +476,7 @@ export async function POST(request: Request) {
       {
         status: 502,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "private, no-store, max-age=0",
         },
       },
     );

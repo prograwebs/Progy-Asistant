@@ -1,4 +1,5 @@
 import { requireApiUser } from "../../../../lib/integrations";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
 import { synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
 
 export async function POST(request: Request) {
@@ -24,12 +25,15 @@ export async function POST(request: Request) {
       speed: body.speed,
       expression: body.expression,
     });
+    if (exceedsPayloadLimit(speech.audio.byteLength)) {
+      throw new VoiceServiceError(`La muestra de voz supera el límite de ${MAX_PAYLOAD_MB} MB.`, 413);
+    }
 
     return new Response(speech.audio, {
       status: 200,
       headers: {
         "Content-Type": speech.contentType,
-        "Cache-Control": body.mode === "sample" ? "private, max-age=86400" : "no-store",
+        "Cache-Control": "private, no-store, max-age=0",
         "X-Progy-Characters": String(speech.characters),
       },
     });

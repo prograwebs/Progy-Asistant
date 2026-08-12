@@ -3,6 +3,17 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Business, Snapshot } from "./types";
 
+type WorkspaceResponse = Snapshot & {
+  error?: string;
+  code?: "session_refresh_required";
+};
+
+const SESSION_ENDED_MESSAGE = "Tu sesión terminó. Vuelve a iniciar sesión.";
+
+function redirectToLogin() {
+  window.location.replace(`/acceso?mode=login&error=${encodeURIComponent(SESSION_ENDED_MESSAGE)}`);
+}
+
 export function useWorkspace() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -16,24 +27,25 @@ export function useWorkspace() {
 
     async function requestWorkspace() {
       const response = await fetch(url, { cache: "no-store" });
-      const result = await response.json().catch(() => ({})) as Snapshot & { error?: string };
+      const result = await response.json().catch(() => ({})) as WorkspaceResponse;
       return { response, result };
     }
 
     try {
       let { response, result } = await requestWorkspace();
 
-      if (!response.ok && /jwt issued at future/i.test(result.error || "")) {
-        await new Promise((resolve) => window.setTimeout(resolve, 1200));
+      if (response.status === 401 && result.code === "session_refresh_required") {
+        const refresh = await fetch("/api/auth/refresh", { method: "POST", cache: "no-store" });
+        if (!refresh.ok) {
+          redirectToLogin();
+          return;
+        }
         ({ response, result } = await requestWorkspace());
       }
 
-      if (!response.ok && /jwt|token|session|unauthorized|auth/i.test(result.error || "")) {
-        const refresh = await fetch("/api/auth/refresh", { method: "POST", cache: "no-store" });
-        if (refresh.ok) {
-          await new Promise((resolve) => window.setTimeout(resolve, 400));
-          ({ response, result } = await requestWorkspace());
-        }
+      if (response.status === 401 && result.code === "session_refresh_required") {
+        redirectToLogin();
+        return;
       }
 
       if (!response.ok) throw new Error(result.error || "No pudimos abrir tu panel.");

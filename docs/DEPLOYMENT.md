@@ -5,7 +5,7 @@ Destino previsto: `https://progy.prograwebs.com`.
 ## 1. Requisitos del servidor
 
 - Node.js 22.13 o superior.
-- npm.
+- pnpm.
 - HTTPS activo en el dominio.
 - variables de entorno configuradas fuera del repositorio.
 - acceso saliente HTTPS a Supabase, OpenAI, ElevenLabs y, cuando se habilite, Meta.
@@ -20,9 +20,12 @@ SUPABASE_PUBLISHABLE_KEY
 OPENAI_API_KEY
 ELEVENLABS_API_KEY
 PROGY_APP_URL=https://progy.prograwebs.com
+NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB=4
 ```
 
 Modelos recomendados actualmente están documentados en `.env.example` y pueden cambiarse por entorno sin modificar código.
+
+`NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB` controla desde un único valor el tamaño máximo de audio, catálogos y respuestas binarias. El valor público no es un secreto y queda incorporado durante el build: después de cambiarlo hay que crear un nuevo deployment. En Vercel debe permanecer por debajo del límite vigente de request/response de las Functions; `4` deja margen para multipart frente al máximo actual de 4,5 MB.
 
 Para el primer despliegue mantén:
 
@@ -51,20 +54,19 @@ No deben existir variantes `NEXT_PUBLIC_` de esas credenciales privadas.
 En una copia limpia del repositorio:
 
 ```bash
-npm ci
-npm run lint
-npm run typecheck
-npm test
+pnpm install --frozen-lockfile
+pnpm run lint
+pnpm run typecheck
+pnpm run test
 ```
 
-`npm test` ejecuta los smoke tests de release y `next build`. No despliegues una revisión si cualquiera de estos pasos falla.
+`pnpm run test` ejecuta los smoke tests de release y `next build`. No despliegues una revisión si cualquiera de estos pasos falla.
 
 ## 5. Inicio en producción
 
-Después de `npm run build`:
-
+Después de `pnpm run build`:
 ```bash
-npm start
+pnpm start
 ```
 
 El proceso escucha por defecto en el puerto `4173`. El proxy/hosting debe servir `https://progy.prograwebs.com` hacia ese proceso.

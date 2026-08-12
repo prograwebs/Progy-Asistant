@@ -57,8 +57,8 @@ powershell -ExecutionPolicy Bypass -File .\scripts\start-windows.ps1
 También puede iniciarse directamente:
 
 ```bash
-npm ci
-npm run dev
+pnpm install --frozen-lockfile
+pnpm run dev
 ```
 
 La aplicación queda en `http://localhost:4173`.
@@ -101,12 +101,12 @@ Aplicación
 ## Calidad y validación
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
+pnpm run lint
+pnpm run typecheck
+pnpm run test
 ```
 
-`npm test` ejecuta las pruebas de configuración/release y un build de producción con Next.js. GitHub Actions ejecuta la misma validación en cada cambio de la rama y en el Pull Request.
+`pnpm run test` ejecuta las pruebas de configuración/release y un build de producción con Next.js. GitHub Actions ejecuta la misma validación en cada cambio de la rama y en el Pull Request.
 
 Para un despliegue real, valida además el flujo funcional con credenciales reales siguiendo [`docs/TESTING.md`](docs/TESTING.md).
 

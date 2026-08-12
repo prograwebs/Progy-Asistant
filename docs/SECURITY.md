@@ -92,5 +92,5 @@ Esto evita exponer un flujo incompleto al usuario y permite desplegar el núcleo
 - probar archivos y entradas maliciosas/ambiguas;
 - verificar rutas legales y eliminación de datos;
 - configurar rate limiting del hosting;
-- ejecutar `npm test` y smoke test de `DEPLOYMENT.md`;
+- ejecutar `pnpm run test` y smoke test de `DEPLOYMENT.md`;
 - mantener WhatsApp deshabilitado hasta completar su revisión externa.

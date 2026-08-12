@@ -8,9 +8,9 @@ Explica el problema o necesidad que resuelve.
 
 ## Validación
 
-- [ ] `npm run lint`
-- [ ] `npm run typecheck`
-- [ ] `npm test`
+- [ ] `pnpm run lint`
+- [ ] `pnpm run typecheck`
+- [ ] `pnpm run test`
 - [ ] prueba funcional relevante de `docs/TESTING.md`
 
 ## Seguridad y datos
