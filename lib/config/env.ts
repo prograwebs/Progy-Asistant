@@ -12,6 +12,7 @@ export function serverConfig() {
     openAiKey: clean(process.env.OPENAI_API_KEY),
     elevenLabsKey: clean(process.env.ELEVENLABS_API_KEY),
     elevenLabsVoiceId: clean(process.env.ELEVENLABS_VOICE_ID),
+    whatsappEnabled: process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true",
     metaAppId: clean(process.env.META_APP_ID || process.env.NEXT_PUBLIC_META_APP_ID),
     metaAppSecret: clean(process.env.META_APP_SECRET),
     metaConfigId: clean(process.env.NEXT_PUBLIC_META_CONFIG_ID),
@@ -59,7 +60,7 @@ export function releaseEnvironmentStatus() {
   const config = serverConfig();
   const coreReady = Boolean(config.supabaseUrl && config.supabaseAnonKey && config.openAiKey);
   const voiceReady = Boolean(config.elevenLabsKey);
-  const messagingReady = Boolean(config.metaAppId && config.metaAppSecret && config.metaConfigId);
+  const messagingReady = Boolean(config.whatsappEnabled && config.metaAppId && config.metaAppSecret && config.metaConfigId);
   return {
     coreReady,
     voiceReady,
