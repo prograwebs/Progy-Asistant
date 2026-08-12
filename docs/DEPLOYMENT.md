@@ -25,7 +25,7 @@ NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB=4
 
 Modelos recomendados actualmente están documentados en `.env.example` y pueden cambiarse por entorno sin modificar código.
 
-`NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB` controla desde un único valor el tamaño máximo de audio, catálogos y respuestas binarias. El valor público no es un secreto y queda incorporado durante el build: después de cambiarlo hay que crear un nuevo deployment. En Vercel debe permanecer por debajo del límite vigente de request/response de las Functions; `4` deja margen para multipart frente al máximo actual de 4,5 MB.
+`NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB` controla desde un único valor el tamaño máximo de audio, catálogos y respuestas binarias. El valor público no es un secreto y queda incorporado durante el build: después de cambiarlo hay que crear un nuevo deployment. En despliegue free debe permanecer por debajo del límite vigente de request/response de las Functions; `4` deja margen para multipart frente al máximo actual de 4,5 MB.
 
 Para el primer despliegue mantén:
 
