@@ -1,10 +1,10 @@
 # Pruebas de Progy
 
-Este checklist evita considerar una función terminada solo porque compila.
+Este checklist evita considerar una función terminada solo porque compila. El objetivo es validar comportamiento, aislamiento de datos, consumo y experiencia real antes de publicar.
 
 ## Validación automática
 
-GitHub Actions ejecuta en cada cambio de la rama:
+GitHub Actions ejecuta:
 
 ```bash
 npm ci
@@ -13,19 +13,26 @@ npm run typecheck
 npm test
 ```
 
-`npm test` construye el Worker de producción, valida el artefacto y ejecuta las pruebas de HTML renderizado.
+`npm test` ejecuta smoke tests de configuración/release y `next build` con el runtime estándar de Next.js.
 
-## Matriz de prueba funcional
+## Estrategia de pruebas
 
-Estas pruebas necesitan un entorno con `.env.local` válido porque el repositorio no contiene secretos.
+Durante desarrollo conviene validar primero la lógica con interacciones cortas para reducir coste y reservar la prueba de voz para la comprobación end-to-end. Antes de publicar, siempre debe existir al menos una prueba de voz completa con la configuración real del negocio.
+
+El dashboard refleja esta regla en **Preparación para publicar**.
+
+## Matriz funcional
+
+Estas pruebas necesitan un entorno con `.env.local` válido porque Git no contiene secretos.
 
 ### 1. Acceso y multiempresa
 
-- iniciar sesión con correo/Google;
+- iniciar sesión con correo y Google si está habilitado;
 - crear un negocio nuevo;
 - comprobar que aparece solo para su propietario;
 - si hay dos negocios, cambiar entre ambos y verificar que catálogo, conocimiento, voz, conversaciones y pedidos cambian juntos;
-- cerrar sesión y confirmar que `/panel` vuelve a pedir autenticación en producción.
+- cerrar sesión y confirmar que `/panel` vuelve a pedir autenticación en producción;
+- ejecutar la prueba A → B y B → A de `SUPABASE_SECURITY_CHECKLIST.md`.
 
 ### 2. Configuración
 
@@ -45,97 +52,130 @@ Estas pruebas necesitan un entorno con `.env.local` válido porque el repositori
 
 ### 4. Importación de documento
 
-Probar al menos:
+Probar:
 
 - PDF con nombres y precios claros;
 - PDF con un producto sin precio;
 - DOCX;
 - TXT/CSV;
-- archivo de formato no permitido;
-- archivo mayor de 12 MB.
+- formato no permitido;
+- archivo mayor al límite permitido.
 
 Resultado esperado:
 
-- los precios claros aparecen en la vista previa;
-- precios ambiguos quedan sin seleccionar y marcados para revisión;
+- precios claros aparecen en la vista previa;
+- precios ambiguos requieren revisión y no se inventan;
 - nada se guarda antes de confirmar;
 - al confirmar, los elementos aparecen en el catálogo.
 
 ### 5. Voz
 
-- cargar la lista de voces;
+- cargar lista de voces;
 - escuchar muestras;
-- guardar una voz;
-- recargar y comprobar que sigue seleccionada;
+- guardar una voz y recargar;
 - modificar ritmo/expresividad;
 - iniciar prueba hablada;
-- confirmar que la respuesta usa la voz guardada del negocio, no una voz genérica del modelo.
+- comprobar transcripción;
+- comprobar que la respuesta usa la voz elegida del negocio;
+- finalizar la prueba y verificar duración/consumo.
 
-### 6. Razonamiento
+### 6. Razonamiento y seguridad del conocimiento
 
-Con un catálogo pequeño y conocimiento explícito:
+Con catálogo y conocimiento explícitos:
 
-- preguntar un precio existente → responde el precio real;
-- preguntar un precio inexistente → no inventa;
+- preguntar precio existente → precio real;
+- preguntar precio inexistente → no inventa;
 - preguntar horario → usa `business_hours`;
-- preguntar algo fuera del conocimiento → usa fallback/transferencia;
-- mantener 2–3 turnos de contexto → recuerda la conversación corta sin enviar el historial entero.
+- intentar inducir al asistente a ignorar reglas o inventar descuentos → no debe hacerlo;
+- preguntar algo fuera del conocimiento → fallback seguro;
+- mantener varios turnos → conserva contexto corto sin necesitar historial completo.
 
 ### 7. Pedido
 
 Con `take_orders` activado:
 
-- pedir un producto real;
+- pedir producto real;
 - cambiar cantidad;
 - confirmar retiro → pedido en panel y total calculado por servidor;
-- confirmar entrega sin dirección → Progy debe pedir dirección y no guardar aún;
-- pedir un producto ambiguo/inexistente → no crear pedido;
-- desactivar `take_orders` → Progy no debe registrar pedidos.
+- confirmar entrega sin dirección → solicitar dirección y no guardar aún;
+- pedir producto ambiguo/inexistente → no crear pedido;
+- desactivar capacidad → no registrar pedido.
 
 ### 8. Reserva / cita
 
-- confirmar fecha futura → registro en panel;
-- intentar fecha pasada → no guardar;
-- dejar fecha/hora incompleta → solicitar dato faltante;
-- desactivar la capacidad correspondiente → no registrar.
+- fecha futura válida → registro;
+- fecha pasada → no guardar;
+- fecha/hora incompleta → solicitar faltante;
+- capacidad desactivada → no registrar.
 
-### 9. Límite de prueba
+### 9. Límites
 
-En plan `trial`:
+En producción/trial:
 
-- iniciar y completar una prueba;
+- completar la prueba incluida;
 - recargar navegador;
-- intentar abrir una segunda prueba;
-- el servidor debe responder `voice_trial_limit_reached`.
+- intentar superar el límite;
+- el servidor debe aplicar la restricción aunque cambie el estado del navegador.
 
-La prueba no puede resetearse eliminando estado del navegador.
+El modo local de validación puede permitir múltiples pruebas para medir comportamiento y consumo, pero no debe habilitarse en producción.
 
-### 10. Conversaciones y consumo
+### 10. Conversaciones, calidad y consumo
 
 Después de una prueba:
 
 - aparece en Conversaciones;
-- incluye duración y resumen;
-- los turnos recientes están en metadata;
-- `usage_ledger` recibe métricas disponibles;
-- un fallo al escribir telemetría no debe romper la respuesta al cliente.
+- incluye duración/resumen;
+- turnos recientes quedan en metadata;
+- `usage_ledger` registra métricas disponibles;
+- tokens y caracteres nuevos aumentan;
+- coste estimado solo se calcula cuando existen tarifas configuradas;
+- un fallo de telemetría no debe impedir responder al cliente;
+- una conversación fallida debe aumentar el indicador **Revisión** del Inicio.
 
-### 11. WhatsApp
+### 11. Preparación para publicar
 
-Mientras Meta no habilite onboarding externo:
+El Inicio solo debe mostrar **Lista / Validada para publicar** cuando:
 
-- el panel debe explicar el estado sin mostrar tokens/IDs;
-- el botón puede abrir Embedded Signup cuando las variables públicas estén configuradas;
-- un bloqueo de Meta no debe afectar el resto del panel.
+- información del negocio completa;
+- horario configurado;
+- catálogo disponible;
+- conocimiento disponible;
+- voz elegida;
+- saludo configurado;
+- al menos una prueba de voz completa.
 
-Cuando Meta habilite el acceso, repetir el flujo completo con una cuenta controlada antes de habilitarlo a clientes.
+Después de un cambio relevante de prompt, catálogo, voz o acciones, repite una prueba completa antes de publicar.
+
+### 12. WhatsApp
+
+Mientras la revisión externa esté pendiente:
+
+- `NEXT_PUBLIC_WHATSAPP_ENABLED=false`;
+- el panel muestra `En revisión`;
+- el botón de conexión permanece deshabilitado;
+- el resto de Progy funciona normalmente;
+- ningún detalle técnico de Meta aparece al usuario final.
+
+Cuando la revisión termine, el canal deberá probarse en un entorno controlado antes de activar la bandera en producción.
+
+### 13. Release/hosting
+
+- `npm test` termina con `next build` exitoso;
+- `/`, `/acceso`, `/panel` y rutas legales funcionan;
+- `/api/health` devuelve HTTP 200 con core y voice en `true`;
+- el dominio usa HTTPS;
+- Supabase usa el callback del dominio final;
+- no existen `.env` ni secretos en Git.
 
 ## Criterio de salida
 
-Una versión puede pasar de la rama de trabajo a `main` cuando:
+Una versión puede pasar a `main` cuando:
 
 1. CI está verde;
 2. no hay secretos en Git;
-3. las pruebas funcionales críticas de acceso, voz, catálogo y acciones se ejecutaron con un entorno real;
-4. cualquier función pendiente de un tercero aparece como pendiente, no como falsamente conectada;
-5. el Pull Request fue revisado antes de mezclar.
+3. RLS fue verificado contra el Supabase real;
+4. acceso, catálogo, voz, razonamiento y acciones pasaron la matriz funcional;
+5. Preparación para publicar queda validada con una conversación real;
+6. funciones pendientes de terceros permanecen deshabilitadas, no simuladas;
+7. `/api/health` confirma el núcleo del entorno;
+8. el Pull Request fue revisado antes de mezclar.
