@@ -22,9 +22,11 @@ export default function WhatsAppSection({ workspace }: { workspace: SelectedWork
   const [connection, setConnection] = useState<Connection | null>(null);
   const appId = process.env.NEXT_PUBLIC_META_APP_ID || "";
   const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || "";
-  const available = Boolean(appId && configId);
+  const featureEnabled = process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true";
+  const available = featureEnabled && Boolean(appId && configId);
 
   async function connect() {
+    if (!available) return;
     setConnecting(true);
     setError("");
     setMessage("");
@@ -45,31 +47,30 @@ export default function WhatsAppSection({ workspace }: { workspace: SelectedWork
       const result = await response.json().catch(() => ({})) as { error?: string; meta?: Connection };
       if (!response.ok) throw new Error(result.error || "No pudimos terminar la conexión de WhatsApp.");
       setConnection(result.meta || null);
-      setMessage("WhatsApp quedó autorizado. Cuando la conexión para clientes esté habilitada, Progy podrá usar este canal sin pasos técnicos adicionales.");
+      setMessage("WhatsApp quedó autorizado para este negocio.");
     } catch (cause) {
-      const text = cause instanceof Error ? cause.message : "No pudimos conectar WhatsApp.";
-      setError(/registrar clientes|onboard|access verification/i.test(text)
-        ? "La conexión para nuevos negocios todavía está siendo habilitada. No necesitas cambiar nada en Progy; vuelve a intentarlo cuando la revisión termine."
-        : text);
+      setError(cause instanceof Error ? cause.message : "No pudimos conectar WhatsApp.");
     } finally {
       setConnecting(false);
     }
   }
 
+  const statusTag = connection?.wabaId ? "Autorizado" : available ? "Preparado" : "En revisión";
+
   return <>
-    <SectionHeader eyebrow="UN CANAL MÁS PARA TU ASISTENTE" title="WhatsApp" description="La conexión se realiza desde una sola pantalla. El negocio no necesita copiar tokens, identificadores ni aprender herramientas técnicas." />
+    <SectionHeader eyebrow="UN CANAL MÁS PARA TU ASISTENTE" title="WhatsApp" description="La conexión se realizará desde una sola pantalla. El negocio no tendrá que copiar credenciales ni aprender configuraciones técnicas." />
     {error && <div className={styles.errorBanner}>{error}</div>}
     {message && <div className={styles.notice}>{message}</div>}
     <div className={styles.grid}>
-      <Card className={styles.cardHalf} title="Conectar el WhatsApp del negocio" description={`Cuenta para ${workspace.business.name}`} tag={connection?.wabaId ? "Autorizado" : available ? "Preparado" : "En preparación"}>
-        {connection?.wabaId ? <div className={styles.list}><div className={styles.listRow}><div><b>{connection.verifiedName || connection.wabaName || workspace.business.name}</b><small>{connection.phoneNumber || "Número autorizado"}</small></div><strong>✓</strong></div><div className={styles.listRow}><div><b>{connection.isOnBizApp ? "WhatsApp Business conservado" : "Canal autorizado"}</b><small>El negocio conserva una experiencia simple; los detalles técnicos quedan internos.</small></div></div></div> : <div className={styles.empty}><div><b>{available ? "Listo para autorizar cuando Meta habilite el acceso" : "Conexión en preparación"}</b><p>La configuración del negocio y del asistente puede continuar aunque WhatsApp todavía esté pendiente.</p></div></div>}
-        <div className={styles.actions}><button className={styles.primary} disabled={!available || connecting} onClick={() => void connect()}>{connecting ? "Abriendo WhatsApp…" : connection?.wabaId ? "Volver a autorizar" : "Conectar WhatsApp"}</button></div>
+      <Card className={styles.cardHalf} title="Conectar el WhatsApp del negocio" description={`Cuenta para ${workspace.business.name}`} tag={statusTag}>
+        {connection?.wabaId ? <div className={styles.list}><div className={styles.listRow}><div><b>{connection.verifiedName || connection.wabaName || workspace.business.name}</b><small>{connection.phoneNumber || "Número autorizado"}</small></div><strong>✓</strong></div><div className={styles.listRow}><div><b>{connection.isOnBizApp ? "WhatsApp Business conservado" : "Canal autorizado"}</b><small>La conexión quedó asociada al negocio activo.</small></div></div></div> : <div className={styles.empty}><div><b>{available ? "Listo para autorizar" : "Canal en revisión"}</b><p>{available ? "Autoriza la cuenta del negocio cuando quieras habilitar el canal." : "Puedes terminar de configurar y probar Progy. Activaremos esta conexión cuando la revisión externa esté finalizada."}</p></div></div>}
+        <div className={styles.actions}><button className={styles.primary} disabled={!available || connecting} onClick={() => void connect()}>{connecting ? "Abriendo WhatsApp…" : connection?.wabaId ? "Volver a autorizar" : available ? "Conectar WhatsApp" : "Disponible próximamente"}</button></div>
       </Card>
 
-      <Card className={styles.cardHalf} title="Qué podrá hacer Progy" description="Estas funciones se activarán sobre el mismo conocimiento del negocio.">
+      <Card className={styles.cardHalf} title="Qué podrá hacer Progy" description="El canal utilizará el mismo conocimiento y las mismas reglas que ya configuraste.">
         <div className={styles.list}>
           <div className={styles.listRow}><div><b>Responder mensajes</b><small>Consultas de productos, servicios, horarios y políticas.</small></div><strong>01</strong></div>
-          <div className={styles.listRow}><div><b>Enviar información útil</b><small>Catálogos, resúmenes y confirmaciones cuando corresponda.</small></div><strong>02</strong></div>
+          <div className={styles.listRow}><div><b>Enviar información útil</b><small>Confirmaciones y datos relevantes cuando corresponda.</small></div><strong>02</strong></div>
           <div className={styles.listRow}><div><b>Registrar resultados</b><small>Pedidos, citas y reservas visibles en el mismo panel.</small></div><strong>03</strong></div>
         </div>
       </Card>
