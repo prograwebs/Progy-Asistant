@@ -39,12 +39,13 @@ test("keeps the required OpenNext configuration and excludes legacy Sites scaffo
   const gitignore = read(".gitignore");
 
   assert.match(wrangler, /"main": "\.open-next\/worker\.js"/);
-  assert.match(wrangler, /"name": "progy-negocios"/);
+  assert.match(wrangler, /"name": "progy-asistant"/);
   assert.match(wrangler, /"compatibility_date": "2026-08-11"/);
   assert.match(wrangler, /"nodejs_compat"/);
   assert.match(wrangler, /"global_fetch_strictly_public"/);
   assert.match(wrangler, /"binding": "NEXT_INC_CACHE_R2_BUCKET"/);
   assert.match(wrangler, /"bucket_name": "progy-negocios-opennext-cache"/);
+  assert.match(wrangler, /"binding": "WORKER_SELF_REFERENCE"[\s\S]*"service": "progy-asistant"/);
   assert.doesNotMatch(wrangler, /"images"|"binding": "IMAGES"/);
   assert.match(openNext, /incrementalCache: r2IncrementalCache/);
   assert.match(nextConfig, /initOpenNextCloudflareForDev\(\)/);
