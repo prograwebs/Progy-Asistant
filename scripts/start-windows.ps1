@@ -16,7 +16,7 @@ if ($nodeMajor -lt 22) {
 
 if (-not (Test-Path ".env.local")) {
   Copy-Item ".env.example" ".env.local"
-  Write-Host "Se creo .env.local. Abre ese archivo, coloca tus cuatro claves y vuelve a ejecutar este comando." -ForegroundColor Yellow
+  Write-Host "Se creo .env.local. Configura las credenciales del servidor y vuelve a ejecutar este comando." -ForegroundColor Yellow
   exit 0
 }
 
@@ -27,4 +27,4 @@ if (-not (Test-Path "node_modules")) {
 }
 
 Write-Host "Progy estara disponible en http://localhost:4173" -ForegroundColor Green
-& npx.cmd vite --host 0.0.0.0 --port 4173
+& npm.cmd run dev
