@@ -14,6 +14,7 @@ type AssistantTurnResponse = {
   upgradeRequired?: boolean;
   action?: { type?: "none" | "order" | "booking"; executed?: boolean; id?: string; total?: number; message?: string };
   audio?: { base64?: string; contentType?: string; voiceId?: string } | null;
+  audioWarning?: { code?: string; message?: string } | null;
   limits?: { maxSessionSeconds?: number; sessionsRemaining?: number; testingMode?: boolean };
 };
 
@@ -194,6 +195,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
 
     setStatus("thinking");
     setError("");
+    setInfo("");
 
     const blob = await new Promise<Blob>((resolve) => {
       recorder.onstop = () => {
@@ -260,6 +262,9 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
         await audio.play();
       } else {
         setStatus("idle");
+        if (result.audioWarning?.message) {
+          setInfo(`${result.audioWarning.message} La respuesta de Progy quedó disponible en la conversación.`);
+        }
       }
     } catch (cause) {
       setStatus("idle");
