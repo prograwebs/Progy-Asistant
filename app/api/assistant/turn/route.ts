@@ -13,9 +13,17 @@ export const dynamic = "force-dynamic";
 type UnknownRow = Record<string, unknown>;
 type HistoryEntry = { role: "user" | "assistant"; text: string };
 
+type AudioWarning = {
+  code: string;
+  message: string;
+};
+
 function jsonError(error: unknown) {
   if (error instanceof OpenAIServiceError || error instanceof VoiceServiceError || error instanceof SupabaseDataError) {
-    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+    return Response.json(
+      { error: error.message, code: error instanceof VoiceServiceError ? error.code : undefined },
+      { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } },
+    );
   }
   console.error("Progy assistant turn error", error);
   return Response.json({ error: "No pudimos completar la conversación. Inténtalo nuevamente." }, { status: 500, headers: { "Cache-Control": "private, no-store, max-age=0" } });
@@ -69,6 +77,7 @@ async function persistConversationTurn(options: {
   userText: string;
   reply: string;
   action: Awaited<ReturnType<typeof executeAssistantDecision>>;
+  audioWarning?: AudioWarning | null;
 }) {
   if (!options.conversationId) return;
   const businessId = encodeURIComponent(options.businessId);
@@ -94,6 +103,7 @@ async function persistConversationTurn(options: {
       ...existingMetadata,
       turns,
       last_action: options.action.type === "none" ? existingMetadata.last_action : options.action,
+      ...(options.audioWarning ? { last_voice_warning: { code: options.audioWarning.code, at: new Date().toISOString() } } : {}),
     };
 
     await supabaseDataRequest(`conversations?id=eq.${conversationId}&business_id=eq.${businessId}`, {
@@ -182,28 +192,46 @@ export async function POST(request: Request) {
       : generated.decision.reply.trim();
 
     let audio: { base64: string; contentType: string; voiceId: string } | null = null;
+    let audioWarning: AudioWarning | null = null;
+
     if (wantsAudio) {
       const voiceId = typeof context.agent.voice_id === "string" ? context.agent.voice_id : null;
-      const speech = await synthesizeSpeech({
-        text: reply,
-        voiceId,
-        speed: Number((context.agent.settings as Record<string, unknown> | undefined)?.voice_speed || 50),
-        expression: Number((context.agent.settings as Record<string, unknown> | undefined)?.voice_expression || 55),
-      });
-      if (exceedsBase64SourceLimit(speech.audio.byteLength)) {
-        throw new VoiceServiceError(`La respuesta de voz supera el límite de ${MAX_PAYLOAD_MB} MB. Inténtalo con una consulta más corta.`, 413);
+      try {
+        const speech = await synthesizeSpeech({
+          text: reply,
+          voiceId,
+          speed: Number((context.agent.settings as Record<string, unknown> | undefined)?.voice_speed || 50),
+          expression: Number((context.agent.settings as Record<string, unknown> | undefined)?.voice_expression || 55),
+        });
+        if (exceedsBase64SourceLimit(speech.audio.byteLength)) {
+          audioWarning = {
+            code: "voice_response_too_large",
+            message: `La respuesta quedó escrita, pero el audio supera el límite de ${MAX_PAYLOAD_MB} MB.`,
+          };
+        } else {
+          audio = {
+            base64: audioBase64(speech.audio),
+            contentType: speech.contentType,
+            voiceId: speech.voiceId,
+          };
+          await recordElevenLabsUsage(businessId, speech.characters);
+        }
+      } catch (error) {
+        if (!(error instanceof VoiceServiceError)) throw error;
+        audioWarning = {
+          code: error.code,
+          message: error.message,
+        };
+        console.warn("Progy voice degraded to text response", {
+          code: error.code,
+          status: error.status,
+        });
       }
-      audio = {
-        base64: audioBase64(speech.audio),
-        contentType: speech.contentType,
-        voiceId: speech.voiceId,
-      };
-      await recordElevenLabsUsage(businessId, speech.characters);
     }
 
     if (transcriptionUsage) await recordOpenAIUsage(businessId, transcriptionUsage);
     await recordOpenAIUsage(businessId, generated.usage);
-    await persistConversationTurn({ businessId, conversationId, userText, reply, action });
+    await persistConversationTurn({ businessId, conversationId, userText, reply, action, audioWarning });
 
     const testingMode = developmentTestingMode();
     return Response.json({
@@ -213,6 +241,7 @@ export async function POST(request: Request) {
       missingInformation: generated.decision.missingInformation,
       action,
       audio,
+      audioWarning,
       limits: {
         maxSessionSeconds: testingMode ? Math.max(300, entitlementsFor(allowance.entitlements.code).maxVoiceTestSeconds) : entitlementsFor(allowance.entitlements.code).maxVoiceTestSeconds,
         sessionsRemaining: testingMode ? 9999 : allowance.sessionsRemaining,
