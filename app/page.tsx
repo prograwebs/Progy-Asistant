@@ -18,7 +18,7 @@ export default function Home() {
         <a className="brand" href="#inicio" aria-label="Progy, inicio">
           <span className="brand-mark"><i /><i /><i /></span>
           <span>Progy</span>
-          <small>por PrograWebs</small>
+          <small>por Prograwebs</small>
         </a>
         <nav aria-label="Navegación principal">
           <a href="#como-funciona">Cómo funciona</a>
@@ -36,7 +36,7 @@ export default function Home() {
         <div className="hero-glow" />
         <div className="hero-copy">
           <div className="eyebrow"><span className="status-dot" /> Asistente de voz para negocios reales</div>
-          <h1>Tu negocio responde.<br /><em>Incluso cuando tú no puedes.</em></h1>
+          <h1>Tu negocio responde<br /><span>Incluso cuando tú no puedes</span></h1>
           <p className="hero-lead">Progy atiende las llamadas de tus clientes, responde consultas y registra pedidos o reservas con una voz natural y el conocimiento de tu negocio.</p>
           <div className="hero-actions">
             <a className="button" href="/acceso">Crear mi Progy <span>↗</span></a>
@@ -82,7 +82,7 @@ export default function Home() {
       <section className="section intro-section" id="como-funciona">
         <div className="section-kicker">CONFIGURAR PROGY ES SIMPLE</div>
         <div className="section-heading">
-          <h2>Enséñale una vez.<br /><em>Progy atiende cada día.</em></h2>
+          <h2>Enséñale una vez<br /><span>Progy atiende cada día</span></h2>
           <p>No necesitas programar ni aprender herramientas complicadas. Te guiamos paso a paso para convertir la información de tu negocio en una atención consistente.</p>
         </div>
         <div className="steps-grid">
@@ -99,7 +99,7 @@ export default function Home() {
       <section className="section bento-section" id="soluciones">
         <div className="section-kicker">TODO EN UN SOLO LUGAR</div>
         <div className="section-heading compact">
-          <h2>Una conversación que<br /><em>termina en resultados.</em></h2>
+          <h2>Una conversación que<br /><span>termina en resultados</span></h2>
           <p>Progy no se limita a responder. Entiende lo que necesita cada cliente y ayuda a que el siguiente paso realmente ocurra.</p>
         </div>
         <div className="bento-grid">
@@ -125,7 +125,7 @@ export default function Home() {
 
       <section className="section industry-section">
         <div className="section-kicker">HECHO PARA TU NEGOCIO</div>
-        <div className="section-heading compact"><h2>Progy aprende la forma<br /><em>en que tú trabajas.</em></h2><p>Empieza con una estructura preparada para tu industria y personalízala según tus procesos.</p></div>
+        <div className="section-heading compact"><h2>Progy aprende la forma<br /><span>en que tú trabajas</span></h2><p>Empieza con una estructura preparada para tu industria y personalízala según tus procesos.</p></div>
         <div className="industry-grid">
           {industries.map((item, i)=><article key={item.title} className="industry-card"><span className="industry-tag">{item.tag}</span><small>0{i+1}</small><h3>{item.title}</h3><p>{item.text}</p><a href="/acceso">Configurar plantilla <span>→</span></a></article>)}
         </div>
@@ -133,7 +133,7 @@ export default function Home() {
 
       <section className="section pricing-section" id="planes">
         <div className="section-kicker">CRECE A TU RITMO</div>
-        <div className="section-heading centered"><h2>Empieza gratis. Activa más<br /><em>cuando tu negocio lo necesite.</em></h2><p>Prueba la experiencia antes de pagar. Todos los planes muestran con claridad el consumo de tu asistente.</p></div>
+        <div className="section-heading centered"><h2>Empieza gratis. Activa más<br /><span>cuando tu negocio lo necesite</span></h2><p>Prueba la experiencia antes de pagar. Todos los planes muestran con claridad el consumo de tu asistente.</p></div>
         <div className="pricing-grid">
           <article className="price-card"><div><small>PRUEBA</small><h3>Descubre Progy</h3><p>Para configurar y escuchar tu primer asistente.</p></div><div className="price"><b>$0</b><span>sin tarjeta</span></div><ul><li>✓ Un asistente de prueba</li><li>✓ Conocimiento básico</li><li>✓ Pruebas de voz limitadas</li><li>✓ Simulación desde la web</li></ul><a className="button button-ghost" href="/acceso">Comenzar gratis</a></article>
           <article className="price-card featured"><div className="recommended">MÁS ELEGIDO</div><div><small>NEGOCIO</small><h3>Progy en acción</h3><p>Para negocios que quieren atender y convertir más.</p></div><div className="price"><b>A medida</b><span>según consumo</span></div><ul><li>✓ Llamadas por WhatsApp</li><li>✓ Más minutos y voces</li><li>✓ Pedidos y reservas</li><li>✓ Historial y resúmenes</li><li>✓ Transferencia a una persona</li></ul><a className="button" href="/acceso">Crear mi Progy <span>↗</span></a></article>
@@ -142,7 +142,7 @@ export default function Home() {
       </section>
 
       <section className="section faq-section" id="preguntas">
-        <div><div className="section-kicker">PREGUNTAS FRECUENTES</div><h2>Antes de darle<br /><em>la bienvenida a Progy.</em></h2><p>Si tienes un proceso particular, nuestro equipo puede ayudarte a configurarlo.</p><a href="#contacto" className="text-cta">Conversar con PrograWebs →</a></div>
+        <div><div className="section-kicker">PREGUNTAS FRECUENTES</div><h2>Antes de darle<br /><span>la bienvenida a Progy</span></h2><p>Si tienes un proceso particular, nuestro equipo puede ayudarte a configurarlo.</p><a href="#contacto" className="text-cta">Conversar con Prograwebs →</a></div>
         <div className="faq-list">
           <details open><summary>¿Necesito conocimientos técnicos?<span>+</span></summary><p>No. Progy se configura con preguntas claras sobre tu negocio, como si estuvieras formando a una persona nueva en tu equipo.</p></details>
           <details><summary>¿Puedo probar la voz antes de pagar?<span>+</span></summary><p>Sí. La prueba gratuita incluye una simulación y una cuota limitada para elegir la voz y revisar cómo responderá.</p></details>
@@ -154,14 +154,14 @@ export default function Home() {
       <section className="cta-section" id="contacto">
         <div className="cta-orb"><span /><span /><span /></div>
         <div><small>CONSTRUYE UNA MEJOR ATENCIÓN</small><h2>Tu próximo cliente<br />ya está llamando.</h2><p>Configura tu primer asistente y descubre cómo Progy puede atender mejor, incluso en los momentos más ocupados.</p></div>
-        <div className="cta-actions"><a className="button button-light" href="/acceso">Probar Progy gratis <span>↗</span></a><p>¿Necesitas ayuda? <a href="https://prograwebs.com/">Habla con PrograWebs</a></p></div>
+        <div className="cta-actions"><a className="button button-light" href="/acceso">Probar Progy gratis <span>↗</span></a><p>¿Necesitas ayuda? <a href="https://prograwebs.com/">Habla con Prograwebs</a></p></div>
       </section>
 
       <footer>
         <div className="footer-brand"><a className="brand" href="#inicio"><span className="brand-mark"><i /><i /><i /></span><span>Progy</span></a><p>Tecnología explicada para negocios reales.</p></div>
         <div><strong>Producto</strong><a href="#como-funciona">Cómo funciona</a><a href="#soluciones">Soluciones</a><a href="#planes">Planes</a></div>
-        <div><strong>PrograWebs</strong><a href="https://prograwebs.com/">Nosotros</a><a href="#contacto">Contacto</a><a href="#preguntas">Preguntas frecuentes</a></div>
-        <div className="footer-end"><p>Una solución de <b>PrograWebs</b><br />Ecuador</p><small>© 2026 PrograWebs</small></div>
+        <div><strong>Prograwebs</strong><a href="https://prograwebs.com/">Nosotros</a><a href="#contacto">Contacto</a><a href="#preguntas">Preguntas frecuentes</a></div>
+        <div className="footer-end"><p>Una solución de <b>Prograwebs</b><br />Ecuador</p><small>© 2026 Prograwebs</small></div>
       </footer>
     </main>
   );

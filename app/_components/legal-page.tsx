@@ -65,7 +65,7 @@ const styles: Record<string, CSSProperties> = {
     background:
       "radial-gradient(circle at top, #18130d 0%, #0b0b0b 38%, #070707 100%)",
     color: "#f3eee7",
-    fontFamily: '"Times New Roman", Times, serif',
+    fontFamily: "var(--font-display), sans-serif",
   },
 
   header: {
@@ -113,7 +113,7 @@ const styles: Record<string, CSSProperties> = {
   eyebrow: {
     display: "block",
     color: "#d59b58",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "var(--font-body), sans-serif",
     fontSize: 12,
     letterSpacing: "0.18em",
     marginBottom: 18,
@@ -137,7 +137,7 @@ const styles: Record<string, CSSProperties> = {
   date: {
     marginTop: 22,
     color: "#807a72",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "var(--font-body), sans-serif",
     fontSize: 13,
   },
 
@@ -146,7 +146,7 @@ const styles: Record<string, CSSProperties> = {
     margin: "0 auto",
     padding: "10px 24px 90px",
     color: "#d8d2ca",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "var(--font-body), sans-serif",
     fontSize: 16,
     lineHeight: 1.8,
   },
@@ -164,7 +164,7 @@ const styles: Record<string, CSSProperties> = {
 
   footerText: {
     color: "#857f77",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "var(--font-body), sans-serif",
     fontSize: 13,
   },
 
@@ -172,7 +172,7 @@ const styles: Record<string, CSSProperties> = {
     display: "flex",
     gap: 22,
     flexWrap: "wrap",
-    fontFamily: "Arial, sans-serif",
+    fontFamily: "var(--font-body), sans-serif",
     fontSize: 13,
   },
 };

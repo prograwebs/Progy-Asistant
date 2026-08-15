@@ -57,7 +57,7 @@ export default function AccessClient() {
       </Link>
       <section className="access-copy">
         <div className="eyebrow"><span className="status-dot" /> TU NUEVO ASISTENTE EMPIEZA AQUÍ</div>
-        <h1>Configura una atención<br /><em>que nunca se detiene.</em></h1>
+        <h1>Configura una atención<br /><span>que nunca se detiene</span></h1>
         <p>En pocos minutos, Progy aprenderá sobre tu negocio, tu forma de atender y los resultados que quieres conseguir.</p>
         <div className="access-benefits">
           <div><span>01</span><p><b>Cuéntanos sobre tu negocio</b><small>Productos, servicios y forma de atención.</small></p></div>
