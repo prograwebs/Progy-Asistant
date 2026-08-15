@@ -1351,11 +1351,41 @@ footer small {
     background: #0b0e10;
     color: white;
     padding: 0 13px;
-    outline: 0
+    outline: 0;
+    font-size: 12px;
+    line-height: 1.4
 }
 
 .access-card input:focus {
     border-color: var(--accent)
+}
+
+.password-input-wrap {
+    position: relative;
+    display: block
+}
+
+.password-input-wrap input {
+    width: 100%;
+    padding-right: 70px
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 12px;
+    transform: translateY(-50%);
+    border: 0;
+    padding: 3px;
+    background: transparent;
+    color: #b98250;
+    cursor: pointer;
+    font-size: 9px
+}
+
+.password-toggle:hover,
+.password-toggle:focus-visible {
+    color: #edba80
 }
 
 .access-card form .button {
@@ -3435,18 +3465,6 @@ footer small {
     background: white;
     border-color: white;
     transform: translateY(-1px)
-}
-
-.google-mark {
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: conic-gradient(from -45deg, #4285f4 0 25%, #34a853 0 50%, #fbbc05 0 75%, #ea4335 0);
-    color: white;
-    font: 600 12px var(--font-body), sans-serif;
-    box-shadow: inset 0 0 0 5px white
 }
 
 .oauth-callback {

@@ -3,12 +3,14 @@
 import { FormEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { Brand } from "@/components/public/Brand";
 
 export default function AccessClient() {
   const params = useSearchParams();
   const [mode, setMode] = useState<"signup" | "login">(params.get("mode") === "login" ? "login" : "signup");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(() => params.get("error") || "");
   const [isError, setIsError] = useState(() => Boolean(params.get("error")));
 
@@ -47,6 +49,7 @@ export default function AccessClient() {
 
   function changeMode(next: "signup" | "login") {
     setMode(next);
+    setShowPassword(false);
     setMessage("");
     setIsError(false);
   }
@@ -75,15 +78,29 @@ export default function AccessClient() {
         <form onSubmit={submit}>
           {mode === "signup" && <label>Nombre completo<input name="name" type="text" autoComplete="name" placeholder="¿Cómo te llamas?" required /></label>}
           <label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="tu@negocio.com" required /></label>
-          <label>Contraseña<input name="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} placeholder="Mínimo 8 caracteres" minLength={8} required /></label>
+          <label className="password-field">
+            Contraseña
+            <span className="password-input-wrap">
+              <input name="password" placeholder="Ingresa tu contraseña" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} required />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? "Ocultar" : "Mostrar"}
+              </button>
+            </span>
+          </label>
           {message && <div className={`form-message ${isError ? "error" : "success"}`} role="status">{message}</div>}
           <button className="button hover:cursor-pointer" type="submit" disabled={loading}>
-            {loading ? "Procesando…" : mode === "signup" ? "Crear mi cuenta" : "Entrar a Progy"} <span>↗</span>
+            {loading ? "Procesando…" : mode === "signup" ? "Crear mi cuenta" : "Iniciar sesión"}
           </button>
         </form>
         <div className="form-divider"><span>O CONTINÚA CON</span></div>
         <a className="social-button" href="/api/auth/google">
-          <span className="google-mark" aria-hidden="true">G</span>
+          <Image src="/google.svg" alt="" width={16} height={16} aria-hidden="true" />
           Continuar con Google
         </a>
         <p className="access-login">
