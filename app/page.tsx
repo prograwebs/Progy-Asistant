@@ -1,3 +1,6 @@
+import LandingMotion from "@/components/landing/LandingMotion";
+import { Brand } from "@/components/public/Brand";
+
 const industries = [
   { tag: "RE", title: "Restaurantes", text: "Toma pedidos, confirma entrega o retiro y comparte el resumen por WhatsApp." },
   { tag: "CL", title: "Clínicas", text: "Responde dudas, identifica la necesidad y agenda citas sin interrumpir al equipo." },
@@ -13,13 +16,9 @@ const features = [
 
 export default function Home() {
   return (
-    <main>
+    <LandingMotion>
       <header className="topbar">
-        <a className="brand" href="#inicio" aria-label="Progy, inicio">
-          <span className="brand-mark"><i /><i /><i /></span>
-          <span>Progy</span>
-          <small>por Prograwebs</small>
-        </a>
+        <Brand href="#inicio" />
         <nav aria-label="Navegación principal">
           <a href="#como-funciona">Cómo funciona</a>
           <a href="#soluciones">Soluciones</a>
@@ -158,11 +157,11 @@ export default function Home() {
       </section>
 
       <footer>
-        <div className="footer-brand"><a className="brand" href="#inicio"><span className="brand-mark"><i /><i /><i /></span><span>Progy</span></a><p>Tecnología explicada para negocios reales.</p></div>
+        <div className="footer-brand"><Brand href="#inicio" showCompany={false} /><p>Tecnología explicada para negocios reales.</p></div>
         <div><strong>Producto</strong><a href="#como-funciona">Cómo funciona</a><a href="#soluciones">Soluciones</a><a href="#planes">Planes</a></div>
         <div><strong>Prograwebs</strong><a href="https://prograwebs.com/">Nosotros</a><a href="#contacto">Contacto</a><a href="#preguntas">Preguntas frecuentes</a></div>
         <div className="footer-end"><p>Una solución de <b>Prograwebs</b><br />Ecuador</p><small>© 2026 Prograwebs</small></div>
       </footer>
-    </main>
+    </LandingMotion>
   );
 }

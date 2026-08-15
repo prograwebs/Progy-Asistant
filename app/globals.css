@@ -20,6 +20,20 @@ html {
     scroll-behavior: smooth
 }
 
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
+
 body {
     margin: 0;
     background: var(--ink);
@@ -52,7 +66,8 @@ body:before {
     align-items: center;
     justify-content: space-between;
     border-bottom: 1px solid #202327;
-    position: relative;
+    position: sticky;
+    top: 0;
     z-index: 20;
     background: rgba(8, 10, 12, .78);
     backdrop-filter: blur(18px)
@@ -91,7 +106,9 @@ body:before {
 .brand-mark i {
     width: 2px;
     border-radius: 4px;
-    background: var(--accent)
+    background: var(--accent);
+    transform-origin: center center;
+    will-change: transform
 }
 
 .brand-mark i:nth-child(1) {
@@ -795,7 +812,9 @@ nav a:hover,
     border: 0;
     background: var(--accent);
     color: #15100b;
-    font-size: 10px
+    font-size: 10px;
+    cursor: pointer;
+    transform-origin: center
 }
 
 .mini-wave {
@@ -810,7 +829,9 @@ nav a:hover,
     width: 2px;
     background: #b07a49;
     border-radius: 2px;
-    max-height: 28px
+    max-height: 28px;
+    transform-origin: center center;
+    will-change: transform
 }
 
 .voice-preview small {
@@ -888,7 +909,9 @@ nav a:hover,
     place-items: center;
     color: var(--accent);
     font-family: var(--font-display), sans-serif;
-    margin-bottom: 45px
+    margin-bottom: 45px;
+    transform-origin: center center;
+    will-change: transform
 }
 
 .industry-card h3 {
@@ -910,7 +933,9 @@ nav a:hover,
 }
 
 .industry-card a span {
-    color: var(--accent)
+    color: var(--accent);
+    display: inline-block;
+    will-change: transform
 }
 
 .pricing-section {
@@ -1089,13 +1114,17 @@ nav a:hover,
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 4px
+    gap: 4px;
+    transform-origin: center center;
+    will-change: transform
 }
 
 .cta-orb span {
     width: 4px;
     background: #17110c;
-    border-radius: 3px
+    border-radius: 3px;
+    transform-origin: center center;
+    will-change: transform
 }
 
 .cta-orb span:nth-child(1) {
