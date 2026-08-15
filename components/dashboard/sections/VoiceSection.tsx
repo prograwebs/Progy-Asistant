@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { SelectedWorkspace, VoiceOption, WorkspaceAction } from "../types";
 import { Card, EmptyState, SectionHeader } from "../ui";
+import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";
 
 export default function VoiceSection({ workspace, action }: { workspace: SelectedWorkspace; action: WorkspaceAction }) {
@@ -103,7 +104,7 @@ export default function VoiceSection({ workspace, action }: { workspace: Selecte
     {error && <div className={styles.errorBanner}>{error}</div>}
     <div className={styles.grid}>
       <Card title="Elige una voz" description="Puedes escuchar una muestra antes de guardar." tag={loading ? "Cargando" : `${voices.length} voces`}>
-        {loading ? <div className={styles.loading} style={{ minHeight: 220 }}><div><div className={styles.spinner} />Preparando voces…</div></div> : voices.length ? <div className={styles.voiceGrid}>{voices.slice(0, 30).map((voice) => <article className={`${styles.voice} ${selected === voice.id ? styles.selected : ""}`} key={voice.id} onClick={() => setSelected(voice.id)}><b>{voice.name}</b><small>{voice.description}</small>{voice.recommended && <em>Recomendada</em>}<button type="button" className={styles.voicePlay} onClick={(event) => { event.stopPropagation(); void preview(voice); }}>{busy === `play:${voice.id}` ? "Reproduciendo…" : "▶ Escuchar"}</button></article>)}</div> : <EmptyState title="No hay voces disponibles" text="Vuelve a intentarlo más tarde o revisa la configuración del servicio de voz desde el entorno de administración." />}
+        {loading ? <div className={styles.loading} style={{ minHeight: 220 }}><div><div className={styles.spinner} />Preparando voces…</div></div> : voices.length ? <div className={styles.voiceGrid}>{voices.slice(0, 30).map((voice) => <article className={`${styles.voice} ${selected === voice.id ? styles.selected : ""}`} key={voice.id} onClick={() => setSelected(voice.id)}><b>{voice.name}</b><small>{voice.description}</small>{voice.recommended && <em>Recomendada</em>}<button type="button" className={styles.voicePlay} onClick={(event) => { event.stopPropagation(); void preview(voice); }}>{busy === `play:${voice.id}` ? "Reproduciendo…" : <><DashboardIcon name="play" size={13} />Escuchar</>}</button></article>)}</div> : <EmptyState title="No hay voces disponibles" text="Vuelve a intentarlo más tarde o revisa la configuración del servicio de voz desde el entorno de administración." />}
         <div className={styles.actions}><button className={styles.secondary} onClick={() => void loadVoices(true)} disabled={loading}>Actualizar lista</button></div>
       </Card>
 
@@ -115,7 +116,7 @@ export default function VoiceSection({ workspace, action }: { workspace: Selecte
       </Card>
 
       <Card className={styles.cardHalf} title="Voz seleccionada" description="Esta será la voz usada por la prueba del asistente.">
-        {chosen || selected ? <div className={styles.listRow}><div><b>{chosen?.name || "Voz configurada"}</b><small>{chosen?.description || "La voz ya estaba guardada para este negocio."}</small></div><strong>✓ Lista</strong></div> : <EmptyState title="Aún no has elegido una voz" text="Escucha varias opciones y selecciona la que represente mejor a tu negocio." />}
+        {chosen || selected ? <div className={styles.listRow}><div><b>{chosen?.name || "Voz configurada"}</b><small>{chosen?.description || "La voz ya estaba guardada para este negocio."}</small></div><strong><DashboardIcon name="check" size={16} /> Lista</strong></div> : <EmptyState title="Aún no has elegido una voz" text="Escucha varias opciones y selecciona la que represente mejor a tu negocio." />}
         <div className={styles.actions}><button className={styles.primary} onClick={() => void save()} disabled={!selected || busy === "save"}>{busy === "save" ? "Guardando…" : "Usar esta voz"}</button></div>
       </Card>
     </div>

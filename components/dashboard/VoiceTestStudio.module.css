@@ -247,6 +247,9 @@
   border: 1px solid rgba(134,240,186,.16);
   color: #a8e9c7;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @media (max-width: 980px) {

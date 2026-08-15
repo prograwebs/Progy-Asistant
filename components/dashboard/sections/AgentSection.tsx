@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import type { SelectedWorkspace, WorkspaceAction } from "../types";
 import { Card, SectionHeader } from "../ui";
+import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";
 
 const featureCopy: Record<string, { title: string; text: string }> = {
@@ -73,7 +74,7 @@ export default function AgentSection({ workspace, action }: { workspace: Selecte
             ["cálido, natural y profesional", "Cálido y cercano", "Amable, humano y profesional."],
             ["directo, claro y profesional", "Claro y profesional", "Respuestas precisas y sobrias."],
             ["ágil, positivo y resolutivo", "Ágil y resolutivo", "Rápido y orientado a completar la solicitud."],
-          ].map(([value, title, text]) => <button type="button" className={`${styles.listRow} ${tone === value ? styles.selected : ""}`} style={{ cursor: "pointer", textAlign: "left" }} key={value} onClick={() => setTone(value)}><div><b>{tone === value ? "✓ " : ""}{title}</b><small>{text}</small></div></button>)}
+          ].map(([value, title, text]) => <button type="button" className={`${styles.listRow} ${tone === value ? styles.selected : ""}`} style={{ cursor: "pointer", textAlign: "left" }} key={value} onClick={() => setTone(value)}><div><b>{tone === value && <DashboardIcon name="check" size={15} className={styles.inlineIcon} />}{title}</b><small>{text}</small></div></button>)}
         </div>
         <div className={styles.actions}>
           <label className={styles.field}><span><input name="collectName" type="checkbox" defaultChecked={agent?.collect_customer_name ?? true} /> Solicitar nombre cuando sea necesario</span></label>

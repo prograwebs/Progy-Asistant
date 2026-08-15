@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { SelectedWorkspace } from "../types";
 import { launchWhatsAppSignup } from "../metaSignup";
 import { Card, SectionHeader } from "../ui";
+import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";
 
 type Connection = {
@@ -63,7 +64,7 @@ export default function WhatsAppSection({ workspace }: { workspace: SelectedWork
     {message && <div className={styles.notice}>{message}</div>}
     <div className={styles.grid}>
       <Card className={styles.cardHalf} title="Conectar el WhatsApp del negocio" description={`Cuenta para ${workspace.business.name}`} tag={statusTag}>
-        {connection?.wabaId ? <div className={styles.list}><div className={styles.listRow}><div><b>{connection.verifiedName || connection.wabaName || workspace.business.name}</b><small>{connection.phoneNumber || "Número autorizado"}</small></div><strong>✓</strong></div><div className={styles.listRow}><div><b>{connection.isOnBizApp ? "WhatsApp Business conservado" : "Canal autorizado"}</b><small>La conexión quedó asociada al negocio activo.</small></div></div></div> : <div className={styles.empty}><div><b>{available ? "Listo para autorizar" : "Canal en revisión"}</b><p>{available ? "Autoriza la cuenta del negocio cuando quieras habilitar el canal." : "Puedes terminar de configurar y probar Progy. Activaremos esta conexión cuando la revisión externa esté finalizada."}</p></div></div>}
+        {connection?.wabaId ? <div className={styles.list}><div className={styles.listRow}><div><b>{connection.verifiedName || connection.wabaName || workspace.business.name}</b><small>{connection.phoneNumber || "Número autorizado"}</small></div><strong><DashboardIcon name="check" size={17} /></strong></div><div className={styles.listRow}><div><b>{connection.isOnBizApp ? "WhatsApp Business conservado" : "Canal autorizado"}</b><small>La conexión quedó asociada al negocio activo.</small></div></div></div> : <div className={styles.empty}><div><b>{available ? "Listo para autorizar" : "Canal en revisión"}</b><p>{available ? "Autoriza la cuenta del negocio cuando quieras habilitar el canal." : "Puedes terminar de configurar y probar Progy. Activaremos esta conexión cuando la revisión externa esté finalizada."}</p></div></div>}
         <div className={styles.actions}><button className={styles.primary} disabled={!available || connecting} onClick={() => void connect()}>{connecting ? "Abriendo WhatsApp…" : connection?.wabaId ? "Volver a autorizar" : available ? "Conectar WhatsApp" : "Disponible próximamente"}</button></div>
       </Card>
 
