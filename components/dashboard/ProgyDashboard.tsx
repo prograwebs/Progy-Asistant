@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FocusEvent, type MouseEvent } from "react";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
 import BusinessOnboarding from "./BusinessOnboarding";
@@ -16,22 +16,23 @@ import UsageSection from "./sections/UsageSection";
 import VoiceTestStudio from "./VoiceTestStudio";
 import { Card, SectionHeader } from "./ui";
 import { initials } from "./utils";
+import { DashboardIcon } from "./LineIcon";
 import styles from "./ProgyDashboard.module.css";
 
 type SectionId = "inicio" | "negocio" | "asistente" | "catalogo" | "conocimiento" | "voz" | "whatsapp" | "pruebas" | "conversaciones" | "pedidos" | "consumo" | "ajustes";
 
-const nav: Array<{ id: SectionId; icon: string; label: string }> = [
-  { id: "inicio", icon: "⌂", label: "Inicio" },
-  { id: "negocio", icon: "▦", label: "Mi negocio" },
-  { id: "asistente", icon: "◇", label: "Configurar Progy" },
-  { id: "catalogo", icon: "□", label: "Catálogo" },
-  { id: "conocimiento", icon: "▤", label: "Conocimiento" },
-  { id: "voz", icon: "◖", label: "Voz e idioma" },
-  { id: "pruebas", icon: "▷", label: "Pruebas" },
-  { id: "whatsapp", icon: "◉", label: "WhatsApp" },
-  { id: "conversaciones", icon: "☵", label: "Conversaciones" },
-  { id: "pedidos", icon: "✓", label: "Pedidos y reservas" },
-  { id: "consumo", icon: "◔", label: "Consumo y plan" },
+const nav: Array<{ id: SectionId; icon: Parameters<typeof DashboardIcon>[0]["name"]; label: string }> = [
+  { id: "inicio", icon: "home", label: "Inicio" },
+  { id: "negocio", icon: "business", label: "Mi negocio" },
+  { id: "asistente", icon: "assistant", label: "Configurar Progy" },
+  { id: "catalogo", icon: "catalog", label: "Catálogo" },
+  { id: "conocimiento", icon: "knowledge", label: "Conocimiento" },
+  { id: "voz", icon: "voice", label: "Voz e idioma" },
+  { id: "pruebas", icon: "test", label: "Pruebas" },
+  { id: "whatsapp", icon: "whatsapp", label: "WhatsApp" },
+  { id: "conversaciones", icon: "conversation", label: "Conversaciones" },
+  { id: "pedidos", icon: "orders", label: "Pedidos y reservas" },
+  { id: "consumo", icon: "usage", label: "Consumo y plan" },
 ];
 
 const headers: Record<SectionId, string> = {
@@ -52,6 +53,8 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
   const [section, setSection] = useState<SectionId>("inicio");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+  const [sidebarTooltip, setSidebarTooltip] = useState<{ label: string; top: number } | null>(null);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -61,6 +64,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   function go(next: string) {
     setSection((headers[next as SectionId] ? next : "inicio") as SectionId);
     setMobileOpen(false);
+    setSidebarTooltip(null);
   }
 
   if (loading && !snapshot) return <main className={styles.loading}><div><div className={styles.spinner} />Preparando tu espacio de trabajo…</div></main>;
@@ -74,26 +78,59 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const workspaceKey = workspace.business.id;
   const currentPlan = planLabel(workspace.plan?.plan_code || workspace.business.status);
 
-  return <main className={styles.app}>
+  function toggleSidebar() {
+    if (window.matchMedia("(max-width: 820px)").matches) {
+      setMobileOpen(false);
+      return;
+    }
+    setSidebarTooltip(null);
+    setSidebarCollapsed((collapsed) => !collapsed);
+  }
+
+  const isSidebarCollapsed = sidebarCollapsed && !mobileOpen;
+
+  function showSidebarTooltip(event: MouseEvent<HTMLButtonElement> | FocusEvent<HTMLButtonElement>, label: string) {
+    if (!isSidebarCollapsed) return;
+    const bounds = event.currentTarget.getBoundingClientRect();
+    setSidebarTooltip({ label, top: bounds.top + bounds.height / 2 });
+  }
+
+  const sidebarControlLabel = mobileOpen ? "Cerrar menú" : sidebarCollapsed ? "Expandir sidebar" : "Ocultar sidebar";
+
+  return <main className={`${styles.app} ${isSidebarCollapsed ? styles.collapsed : ""}`}>
     {mobileOpen && <button aria-label="Cerrar menú" className={styles.mobileOverlay} onClick={() => setMobileOpen(false)} />}
     <aside className={`${styles.sidebar} ${mobileOpen ? styles.open : ""}`}>
-      <div className={styles.brand}><span className={styles.brandMark}><i /><i /><i /></span>Progy</div>
+      <div className={styles.sidebarHeader}>
+        <div className={styles.brand}><span className={styles.brandMark}><i /><i /><i /></span><span className={styles.brandText}>Progy</span></div>
+        <button
+          className={styles.sidebarToggle}
+          type="button"
+          onClick={toggleSidebar}
+          aria-label={sidebarControlLabel}
+          aria-expanded={mobileOpen ? true : !sidebarCollapsed}
+          title={sidebarControlLabel}
+        >
+          <span className={styles.collapseIcon} aria-hidden="true">{sidebarCollapsed ? "›" : "‹"}</span>
+          <span className={styles.closeIcon} aria-hidden="true">×</span>
+        </button>
+      </div>
       <div className={styles.businessSwitch}>
         <span className={styles.businessAvatar}>{initials(workspace.business.name)}</span>
-        <div><b>{workspace.business.name}</b><small>{category?.name || "Negocio"} · {currentPlan}</small></div>
+        <div className={styles.businessDetails}><b>{workspace.business.name}</b><small>{category?.name || "Negocio"} · {currentPlan}</small></div>
       </div>
       {snapshot.businesses.length > 1 && <select className={styles.businessSelect} value={workspace.business.id} onChange={(event) => void load(event.target.value)}>{snapshot.businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select>}
 
       <nav className={styles.nav} aria-label="Panel de Progy">
         <div className={styles.navLabel}>TRABAJO</div>
-        {nav.map((item) => <button key={item.id} className={section === item.id ? styles.active : ""} onClick={() => go(item.id)}><span className={styles.navIcon}>{item.icon}</span>{item.label}</button>)}
+        {nav.map((item) => <button key={item.id} className={section === item.id ? styles.active : ""} onClick={() => go(item.id)} aria-label={item.label} onMouseEnter={(event) => showSidebarTooltip(event, item.label)} onMouseLeave={() => setSidebarTooltip(null)} onFocus={(event) => showSidebarTooltip(event, item.label)} onBlur={() => setSidebarTooltip(null)}><span className={styles.navIcon}><DashboardIcon name={item.icon} /></span><span className={styles.navText}>{item.label}</span></button>)}
         <div className={styles.navLabel}>CUENTA</div>
-        <button className={section === "ajustes" ? styles.active : ""} onClick={() => go("ajustes")}><span className={styles.navIcon}>⚙</span>Configuración</button>
+        <button className={section === "ajustes" ? styles.active : ""} onClick={() => go("ajustes")} aria-label="Configuración" onMouseEnter={(event) => showSidebarTooltip(event, "Configuración")} onMouseLeave={() => setSidebarTooltip(null)} onFocus={(event) => showSidebarTooltip(event, "Configuración")} onBlur={() => setSidebarTooltip(null)}><span className={styles.navIcon}><DashboardIcon name="settings" /></span><span className={styles.navText}>Configuración</span></button>
       </nav>
+      {isSidebarCollapsed && sidebarTooltip && <div className={styles.sidebarTooltip} role="tooltip" style={{ top: sidebarTooltip.top }}>{sidebarTooltip.label}</div>}
 
       <div className={styles.user}>
         <span className={styles.userAvatar}>{initials(user.name)}</span>
-        <div><b>{user.name}</b><small>{user.email}</small></div>
+        <div className={styles.userDetails}><b>{user.name}</b><small>{user.email}</small></div>
         <button className={styles.logout} onClick={() => void logout()}>Salir</button>
       </div>
     </aside>
@@ -139,7 +176,7 @@ function SettingsSection({ user, workspace, integrations }: { user: PanelUser; w
         </div>
       </Card>
       <Card className={styles.cardHalf} title="Estado del servicio" description="Progy comprueba internamente que todo lo necesario esté disponible.">
-        <div className={styles.listRow}><div><b>{serviceReady ? "Todo listo para trabajar" : "Hay una configuración pendiente"}</b><small>{serviceReady ? "Puedes seguir configurando y realizando pruebas." : "Algunas funciones pueden estar temporalmente limitadas."}</small></div><strong>{serviceReady ? "✓" : "○"}</strong></div>
+        <div className={styles.listRow}><div><b>{serviceReady ? "Todo listo para trabajar" : "Hay una configuración pendiente"}</b><small>{serviceReady ? "Puedes seguir configurando y realizando pruebas." : "Algunas funciones pueden estar temporalmente limitadas."}</small></div><strong><DashboardIcon name={serviceReady ? "check" : "pending"} size={17} /></strong></div>
       </Card>
     </div>
   </>;

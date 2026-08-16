@@ -97,7 +97,7 @@
 .avatar span::after { right: 8px; }
 
 .title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font-display), sans-serif;
   font-weight: 400;
   font-size: clamp(30px, 3.2vw, 42px);
   color: #f2efe8;
@@ -199,7 +199,7 @@
 .sideCard h3 {
   margin: 0 0 6px;
   color: #f2efe8;
-  font-family: "Times New Roman", serif;
+  font-family: var(--font-display), sans-serif;
   font-weight: 400;
   font-size: 21px;
 }
@@ -247,6 +247,9 @@
   border: 1px solid rgba(134,240,186,.16);
   color: #a8e9c7;
   font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 @media (max-width: 980px) {

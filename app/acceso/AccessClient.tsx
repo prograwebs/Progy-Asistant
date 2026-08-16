@@ -3,11 +3,14 @@
 import { FormEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
+import { Brand } from "@/components/public/Brand";
 
 export default function AccessClient() {
   const params = useSearchParams();
   const [mode, setMode] = useState<"signup" | "login">(params.get("mode") === "login" ? "login" : "signup");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(() => params.get("error") || "");
   const [isError, setIsError] = useState(() => Boolean(params.get("error")));
 
@@ -46,18 +49,17 @@ export default function AccessClient() {
 
   function changeMode(next: "signup" | "login") {
     setMode(next);
+    setShowPassword(false);
     setMessage("");
     setIsError(false);
   }
 
   return (
-    <main className="access-page">
-      <Link className="brand access-brand" href="/" aria-label="Volver a Progy">
-        <span className="brand-mark"><i /><i /><i /></span><span>Progy</span><small>por PrograWebs</small>
-      </Link>
+    <>
+      <Brand className="brand access-brand" companyLabel="por PrograWebs" ariaLabel="Volver a Progy" />
       <section className="access-copy">
         <div className="eyebrow"><span className="status-dot" /> TU NUEVO ASISTENTE EMPIEZA AQUÍ</div>
-        <h1>Configura una atención<br /><em>que nunca se detiene.</em></h1>
+        <h1>Configura una atención<br /><span>que nunca se detiene</span></h1>
         <p>En pocos minutos, Progy aprenderá sobre tu negocio, tu forma de atender y los resultados que quieres conseguir.</p>
         <div className="access-benefits">
           <div><span>01</span><p><b>Cuéntanos sobre tu negocio</b><small>Productos, servicios y forma de atención.</small></p></div>
@@ -71,22 +73,34 @@ export default function AccessClient() {
           <button className={mode === "login" ? "active" : ""} onClick={() => changeMode("login")} type="button">Iniciar sesión</button>
         </div>
         <div className="access-card-head">
-          <span className="chip">ACCESO SEGURO</span>
-          <h2>{mode === "signup" ? "Crea tu cuenta" : "Bienvenido de nuevo"}</h2>
-          <p>{mode === "signup" ? "Empieza con una prueba limitada, sin tarjeta." : "Continúa configurando y probando tu Progy."}</p>
+          <h3>{mode === "signup" ? "Crea tu cuenta" : "Bienvenido de nuevo"}</h3>
         </div>
         <form onSubmit={submit}>
           {mode === "signup" && <label>Nombre completo<input name="name" type="text" autoComplete="name" placeholder="¿Cómo te llamas?" required /></label>}
           <label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="tu@negocio.com" required /></label>
-          <label>Contraseña<input name="password" type="password" autoComplete={mode === "signup" ? "new-password" : "current-password"} placeholder="Mínimo 8 caracteres" minLength={8} required /></label>
+          <label className="password-field">
+            Contraseña
+            <span className="password-input-wrap">
+              <input name="password" placeholder="Ingresa tu contraseña" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} required />
+              <button
+                className="password-toggle"
+                type="button"
+                onClick={() => setShowPassword((visible) => !visible)}
+                aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? "Ocultar" : "Mostrar"}
+              </button>
+            </span>
+          </label>
           {message && <div className={`form-message ${isError ? "error" : "success"}`} role="status">{message}</div>}
-          <button className="button" type="submit" disabled={loading}>
-            {loading ? "Procesando…" : mode === "signup" ? "Crear mi cuenta" : "Entrar a Progy"} <span>↗</span>
+          <button className="button hover:cursor-pointer" type="submit" disabled={loading}>
+            {loading ? "Procesando…" : mode === "signup" ? "Crear mi cuenta" : "Iniciar sesión"}
           </button>
         </form>
         <div className="form-divider"><span>O CONTINÚA CON</span></div>
         <a className="social-button" href="/api/auth/google">
-          <span className="google-mark" aria-hidden="true">G</span>
+          <Image src="/google.svg" alt="" width={16} height={16} aria-hidden="true" />
           Continuar con Google
         </a>
         <p className="access-login">
@@ -95,9 +109,8 @@ export default function AccessClient() {
             {mode === "signup" ? "Iniciar sesión" : "Crear cuenta"}
           </button>
         </p>
-        <small className="access-note">Tus datos de acceso se procesan de forma segura mediante Supabase y nunca se envían a OpenAI ni a ElevenLabs.</small>
       </section>
       <Link className="access-back" href="/">← Volver al inicio</Link>
-    </main>
+    </>
   );
 }

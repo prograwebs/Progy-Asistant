@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../lib/config/limits";
 import type { SelectedWorkspace } from "./types";
+import { DashboardIcon } from "./LineIcon";
 import styles from "./VoiceTestStudio.module.css";
 
 type Turn = { role: "user" | "assistant"; text: string };
@@ -295,7 +296,7 @@ export default function VoiceTestStudio({ workspace, onRefresh }: { workspace: S
     <aside className={styles.sideCard}>
       <h3>Conversación</h3><p>El historial corto ayuda a Progy a mantener el contexto sin enviar conversaciones completas en cada turno.</p>
       <div className={styles.transcript}>{turns.length ? turns.map((turn, index) => <div className={`${styles.turn} ${turn.role === "user" ? styles.user : styles.assistant}`} key={`${turn.role}-${index}`}><small>{turn.role === "user" ? "Tú" : "Progy"}</small>{turn.text}</div>) : <div className={styles.empty}>La transcripción de esta prueba aparecerá aquí.</div>}</div>
-      {lastAction?.executed && <div className={styles.action}>{lastAction.type === "order" ? "✓ Pedido registrado" : "✓ Reserva registrada"}{lastAction.total !== undefined ? ` · $${Number(lastAction.total).toFixed(2)}` : ""}</div>}
+      {lastAction?.executed && <div className={styles.action}><DashboardIcon name="check" size={16} />{lastAction.type === "order" ? "Pedido registrado" : "Reserva registrada"}{lastAction.total !== undefined ? ` · $${Number(lastAction.total).toFixed(2)}` : ""}</div>}
     </aside>
   </div>;
 }

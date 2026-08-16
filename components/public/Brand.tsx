@@ -1,0 +1,21 @@
+import Link from "next/link";
+
+type BrandProps = {
+  href?: string;
+  className?: string;
+  showCompany?: boolean;
+  companyLabel?: string;
+  ariaLabel?: string;
+};
+
+export function Brand({ href = "/", className = "brand", showCompany = true, companyLabel = "por Prograwebs", ariaLabel = "Progy, inicio" }: BrandProps) {
+  const content = (
+    <>
+      <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>
+      <span>Progy</span>
+      {showCompany && <small>{companyLabel}</small>}
+    </>
+  );
+
+  return href ? <Link className={className} href={href} aria-label={ariaLabel}>{content}</Link> : <span className={className}>{content}</span>;
+}
