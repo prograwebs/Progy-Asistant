@@ -3,7 +3,7 @@
 import { useState, type FocusEvent, type MouseEvent } from "react";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
-import BusinessOnboarding from "./BusinessOnboarding";
+import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
 import OverviewSection from "./sections/OverviewSection";
 import BusinessSection from "./sections/BusinessSection";
 import AgentSection from "./sections/AgentSection";
@@ -70,7 +70,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   if (loading && !snapshot) return <main className={styles.loading}><div><div className={styles.spinner} />Preparando tu espacio de trabajo…</div></main>;
   if (error && !snapshot) return <main className={styles.loading}><div><div className={styles.errorBanner}>{error}</div><button className={styles.primary} onClick={() => void load()}>Volver a intentar</button></div></main>;
   if (!snapshot) return null;
-  if (!snapshot.selected) return <BusinessOnboarding user={user} categories={snapshot.categories} action={action} />;
+  if (!snapshot.selected) return <OnboardingRedirect to="/onboarding/business" />;
 
   const workspace = snapshot.selected;
   const category = snapshot.categories.find((item) => item.code === workspace.business.category_code);

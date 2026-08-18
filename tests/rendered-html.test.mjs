@@ -84,6 +84,22 @@ test("keeps required public and legal routes for deployment", () => {
   }
 });
 
+test("activates the standalone onboarding flow for new businesses", () => {
+  const dashboard = read("components/dashboard/ProgyDashboard.tsx");
+  assert.doesNotMatch(dashboard, /BusinessOnboarding/);
+  assert.match(dashboard, /OnboardingRedirect/);
+  assert.match(dashboard, /\/onboarding\/business/);
+  for (const route of [
+    "app/onboarding/page.tsx",
+    "app/onboarding/layout.tsx",
+    "app/onboarding/business/page.tsx",
+    "app/onboarding/demo/page.tsx",
+    "app/onboarding/connect/page.tsx",
+  ]) {
+    assert.equal(existsSync(path.join(root, route)), true, `${route} is required for onboarding`);
+  }
+});
+
 test("production template keeps secrets server-side and WhatsApp gated", () => {
   const env = read(".env.example");
   assert.match(env, /^OPENAI_API_KEY=/m);

@@ -4,15 +4,17 @@ import { FormEvent, useState } from "react";
 import type { Category, PanelUser, WorkspaceAction } from "./types";
 import styles from "./ProgyDashboard.module.css";
 
+interface BusinessOnboardingProps {
+  user: PanelUser;
+  categories: Category[];
+  action: WorkspaceAction;
+}
+
 export default function BusinessOnboarding({
   user,
   categories,
   action,
-}: {
-  user: PanelUser;
-  categories: Category[];
-  action: WorkspaceAction;
-}) {
+}: BusinessOnboardingProps) {
   const [categoryCode, setCategoryCode] = useState(categories[0]?.code || "other");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
