@@ -1,4 +1,4 @@
-import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/whatsaap/store";
+import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/whatsapp/store";
 import { requireApiUser } from "../../../../lib/integrations";
 
 
