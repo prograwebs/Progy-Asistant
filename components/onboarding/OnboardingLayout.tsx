@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PanelUser } from "../dashboard/types";
 import OnboardingSidebar from "./OnboardingSidebar";
-import { useOnboardingDraft } from "./useOnboardingDraft";
+import { OnboardingDraftProvider, useOnboardingDraft } from "./useOnboardingDraft";
 import type { OnboardingStep } from "./types";
 import styles from "./Onboarding.module.css";
 
@@ -15,6 +15,10 @@ function currentStep(pathname: string): OnboardingStep {
 }
 
 export default function OnboardingLayout({ user, children }: { user: PanelUser; children: ReactNode }) {
+  return <OnboardingDraftProvider><OnboardingFrame user={user}>{children}</OnboardingFrame></OnboardingDraftProvider>;
+}
+
+function OnboardingFrame({ user, children }: { user: PanelUser; children: ReactNode }) {
   const pathname = usePathname();
   const { draft } = useOnboardingDraft();
   const step = currentStep(pathname);

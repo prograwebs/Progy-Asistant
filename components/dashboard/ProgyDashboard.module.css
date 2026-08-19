@@ -295,6 +295,7 @@
 .list { display:flex;flex-direction:column;gap:8px; }
 .listRow { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:14px;align-items:center;border:1px solid #292d30;background:#101315;padding:12px 13px;border-radius:8px; }
 .listRow b{display:block;color:#dfdcd5;font-size:12px}.listRow small{display:block;color:#777d80;font-size:10px;margin-top:4px;line-height:1.5}.listRow strong{color:var(--dash-accent);font-size:12px;}
+.requiredTag{display:inline-block !important;margin:0 0 0 7px !important;color:var(--dash-accent) !important;font-size:9px !important;text-transform:uppercase;letter-spacing:.08em;}
 .listRow b, .listRow strong, .textButton, .voicePlay { display: inline-flex; align-items: center; gap: 5px; }
 .inlineIcon { display: inline-block; vertical-align: -3px; margin-right: 5px; }
 .textButton svg, .voicePlay svg { flex: 0 0 auto; }

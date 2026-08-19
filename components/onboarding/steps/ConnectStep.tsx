@@ -3,6 +3,7 @@
 import { ArrowLeft, ArrowRight, Bot, MessageCircle, UsersRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { launchWhatsAppSignup } from "../../dashboard/metaSignup";
 import BenefitList, { SecureConnectionNote } from "../BenefitList";
 import OnboardingComplete from "../OnboardingComplete";
 import { OnboardingProgress } from "../OnboardingProgress";
@@ -15,17 +16,44 @@ export default function ConnectStep() {
   const router = useRouter();
   const { draft, ready, updateDraft, resetDraft } = useOnboardingDraft();
   const [completed, setCompleted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const appId = process.env.NEXT_PUBLIC_META_APP_ID || "";
+  const configId = process.env.NEXT_PUBLIC_META_CONFIG_ID || "";
+  const available = process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true" && Boolean(appId && configId);
 
   if (!ready) return <OnboardingLoading />;
-  if (!draft.businessName.trim()) return <OnboardingRedirect to="/onboarding/business" />;
+  if (!draft.businessName.trim() || !draft.businessId) return <OnboardingRedirect to="/onboarding/business" />;
 
   if (completed || draft.connectionChoice) {
-    return <div className={styles.content}><OnboardingComplete draft={draft} choice={draft.connectionChoice ?? "skipped"} onRestart={() => { resetDraft(); setCompleted(false); router.push("/onboarding/business"); }} /></div>;
+    return <div className={styles.content}><OnboardingComplete draft={draft} choice={draft.connectionChoice ?? "skipped"} onContinue={() => router.push("/panel")} onRestart={() => { resetDraft(); setCompleted(false); router.push("/onboarding/business"); }} /></div>;
   }
 
-  function finish(choice: "connected" | "skipped") {
-    updateDraft({ connectionChoice: choice });
-    setCompleted(true);
+  async function finish(choice: "connected" | "skipped") {
+    setBusy(true);
+    setError("");
+    try {
+      if (choice === "skipped") {
+        const response = await fetch("/api/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "channelSkipped", businessId: draft.businessId }) });
+        const result = await response.json().catch(() => ({})) as { error?: string };
+        if (!response.ok) throw new Error(result.error || "No pudimos guardar este paso.");
+      } else {
+        if (!available) {
+          setError("WhatsApp todavía no está disponible en este entorno. Puedes continuar y conectarlo después.");
+          return;
+        }
+        const signup = await launchWhatsAppSignup(appId, configId);
+        const response = await fetch("/api/whatsapp/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: signup.code, wabaId: signup.wabaId, phoneNumberId: signup.phoneNumberId, businessId: signup.businessId, progyBusinessId: draft.businessId }) });
+        const result = await response.json().catch(() => ({})) as { error?: string };
+        if (!response.ok) throw new Error(result.error || "No pudimos terminar la conexión de WhatsApp.");
+      }
+      updateDraft({ connectionChoice: choice });
+      setCompleted(true);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No pudimos completar este paso.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <div className={styles.content}>
@@ -42,7 +70,8 @@ export default function ConnectStep() {
           <div className={styles.channelConnectors}><span>↔</span></div>
           <div className={styles.channelNode}><span className={styles.channelNodeIcon}><MessageCircle size={25} /></span><strong>WhatsApp Business</strong><small>Tu número actual</small></div>
         </div>
-        <div className={styles.connectActions}><button type="button" className={styles.primaryButton} onClick={() => finish("connected")}><MessageCircle size={16} /> Conectar WhatsApp <ArrowRight size={16} /></button><button type="button" className={styles.secondaryButton} onClick={() => finish("skipped")}>Lo haré después</button></div>
+        {error && <p className={styles.error} role="alert">{error}</p>}
+        <div className={styles.connectActions}><button type="button" className={styles.primaryButton} disabled={busy || !available} onClick={() => void finish("connected")}><MessageCircle size={16} /> {busy ? "Abriendo WhatsApp…" : available ? "Conectar WhatsApp" : "WhatsApp no disponible"} {available && !busy && <ArrowRight size={16} />}</button><button type="button" className={styles.secondaryButton} disabled={busy} onClick={() => void finish("skipped")}>Lo haré después</button></div>
         <SecureConnectionNote />
       </section>
       <aside className={styles.benefitsCard}><h2>Todo listo para atender mejor</h2><BenefitList /><div className={styles.helper}>La información mostrada durante este recorrido es de ejemplo.</div></aside>

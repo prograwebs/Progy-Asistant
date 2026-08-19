@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FocusEvent, type MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
 import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
@@ -13,6 +14,7 @@ import VoiceSection from "./sections/VoiceSection";
 import WhatsAppSection from "./sections/WhatsAppSection";
 import { ConversationsSection, OrdersSection } from "./sections/RecordsSections";
 import UsageSection from "./sections/UsageSection";
+import PreparationSection from "./sections/PreparationSection";
 import VoiceTestStudio from "./VoiceTestStudio";
 import { Card, SectionHeader } from "./ui";
 import { initials } from "./utils";
@@ -50,15 +52,18 @@ function planLabel(code?: string | null) {
 }
 
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
+  const router = useRouter();
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
   const [section, setSection] = useState<SectionId>("inicio");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarTooltip, setSidebarTooltip] = useState<{ label: string; top: number } | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [activationError, setActivationError] = useState("");
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/acceso?mode=login";
+    router.push("/acceso?mode=login");
   }
 
   function go(next: string) {
@@ -74,9 +79,29 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
 
   const workspace = snapshot.selected;
   const category = snapshot.categories.find((item) => item.code === workspace.business.category_code);
-  const ready = Boolean(workspace.agent?.voice_id && workspace.catalogItems.length && workspace.hours.length);
   const workspaceKey = workspace.business.id;
   const currentPlan = planLabel(workspace.plan?.plan_code || workspace.business.status);
+  const isActive = workspace.business.status === "active" || workspace.onboarding?.activation_status === "active";
+  const ready = isActive && Boolean(workspace.agent?.voice_id && workspace.catalogItems.length && workspace.hours.length);
+
+  async function activate() {
+    setActivating(true);
+    setActivationError("");
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "activate", businessId: workspace.business.id }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "No pudimos activar la atención.");
+      await load(workspace.business.id);
+    } catch (activationError) {
+      setActivationError(activationError instanceof Error ? activationError.message : "No pudimos activar la atención.");
+    } finally {
+      setActivating(false);
+    }
+  }
 
   function toggleSidebar() {
     if (window.matchMedia("(max-width: 820px)").matches) {
@@ -147,7 +172,9 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
       <div className={styles.content}>
         {notice && <div className={styles.notice}>{notice}</div>}
         {error && <div className={styles.errorBanner}>{error}</div>}
-        {section === "inicio" && <OverviewSection workspace={workspace} onGo={go} />}
+        {activationError && <div className={styles.errorBanner} role="alert">{activationError}</div>}
+        {section === "inicio" && !isActive && workspace.readiness && <PreparationSection workspace={workspace} readiness={workspace.readiness} onGo={go} onActivate={activate} activating={activating} />}
+        {section === "inicio" && isActive && <OverviewSection workspace={workspace} onGo={go} />}
         {section === "negocio" && <BusinessSection key={`business-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "asistente" && <AgentSection key={`agent-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "catalogo" && <CatalogSection key={`catalog-${workspaceKey}`} workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}

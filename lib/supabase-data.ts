@@ -78,12 +78,20 @@ export async function loadAgentContext(businessId: string) {
     supabaseDataRequest<Record<string, unknown>[]>(`businesses?id=eq.${id}&select=id,name,category_code,description,address,city,province,phone,whatsapp_phone`),
     supabaseDataRequest<Record<string, unknown>[]>(`agent_configs?business_id=eq.${id}&select=*`),
     supabaseDataRequest<Record<string, unknown>[]>(`business_hours?business_id=eq.${id}&select=day_of_week,opens_at,closes_at,is_closed&order=day_of_week.asc`),
-    supabaseDataRequest<Record<string, unknown>[]>(`catalog_items?business_id=eq.${id}&is_available=eq.true&select=name,description,price,sale_price,kind,duration_minutes&order=sort_order.asc&limit=80`),
-    supabaseDataRequest<Record<string, unknown>[]>(`knowledge_items?business_id=eq.${id}&is_active=eq.true&select=kind,title,question,answer&order=priority.desc&limit=80`),
+    supabaseDataRequest<Record<string, unknown>[]>(`catalog_items?business_id=eq.${id}&is_available=eq.true&select=name,description,price,sale_price,kind,duration_minutes,is_demo&order=sort_order.asc&limit=80`),
+    supabaseDataRequest<Record<string, unknown>[]>(`knowledge_items?business_id=eq.${id}&is_active=eq.true&select=kind,title,question,answer,is_demo&order=priority.desc&limit=80`),
     supabaseDataRequest<Record<string, unknown>[]>(`business_features?business_id=eq.${id}&enabled=eq.true&select=feature_code`),
   ]);
   if (!businesses[0]) throw new SupabaseDataError("No tienes acceso a este negocio.", 403);
-  return { business: businesses[0], agent: agents[0] ?? {}, hours, catalog, knowledge, features };
+  const activeBusiness = line(businesses[0].status) === "active";
+  return {
+    business: businesses[0],
+    agent: agents[0] ?? {},
+    hours,
+    catalog: activeBusiness ? catalog.filter((item) => !Boolean(item.is_demo)) : catalog,
+    knowledge: activeBusiness ? knowledge.filter((item) => !Boolean(item.is_demo)) : knowledge,
+    features,
+  };
 }
 
 function line(value: unknown) {

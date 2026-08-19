@@ -100,6 +100,53 @@ test("activates the standalone onboarding flow for new businesses", () => {
   }
 });
 
+test("onboarding production flow has durable state, versioned templates, and a server gate", async () => {
+  const migration = read("supabase/migrations/20260818000000_onboarding_flow.sql");
+  const categories = read("supabase/migrations/20260818000001_seed_business_categories.sql");
+  const features = read("supabase/migrations/20260818000002_seed_feature_definitions.sql");
+  const api = read("app/api/onboarding/route.ts");
+  const service = read("lib/onboarding/service.ts");
+  const workspace = read("app/api/workspace/route.ts");
+
+  assert.match(migration, /CREATE TABLE public\.business_onboarding/);
+  assert.match(migration, /can_view_business\(business_onboarding\.business_id\)/);
+  assert.match(migration, /can_manage_business\(business_onboarding\.business_id\)/);
+  assert.match(migration, /template_key text/);
+  assert.match(migration, /is_demo boolean DEFAULT false NOT NULL/);
+  assert.match(categories, /INSERT INTO public\.business_categories/);
+  assert.match(categories, /ON CONFLICT \(code\) DO UPDATE/);
+  assert.match(features, /INSERT INTO public\.feature_definitions/);
+  assert.match(features, /answer_questions/);
+  assert.match(features, /ON CONFLICT \(code\) DO UPDATE/);
+  for (const action of ["createBusiness", "saveDemo", "channelSkipped", "channelConnected", "activate"]) {
+    assert.match(api, new RegExp(action));
+  }
+  assert.match(service, /listElevenLabsVoices/);
+  assert.match(service, /activation_status: "active"/);
+  assert.match(service, /readiness\.ready/);
+  assert.match(workspace, /calculateReadiness/);
+
+  const templates = await importTypeScript("lib/onboarding/templates.ts");
+  const values = templates.listOnboardingTemplates();
+  assert.equal(values.length, 6);
+  for (const template of values) {
+    assert.equal(template.version, "v1");
+    assert.ok(template.features.length > 0);
+    assert.equal(template.scenarios.length, 2);
+    assert.ok(template.catalog.every((item) => item.key));
+    assert.ok(template.knowledge.every((item) => item.answer.length > 0));
+  }
+});
+
+test("onboarding never treats browser WhatsApp confirmation as server verification", () => {
+  const api = read("app/api/onboarding/route.ts");
+  const connect = read("components/onboarding/steps/ConnectStep.tsx");
+  assert.match(api, /El canal todavía no tiene una confirmación server-side disponible/);
+  assert.doesNotMatch(connect, /action: "channelConnected"/);
+  assert.match(connect, /NEXT_PUBLIC_WHATSAPP_ENABLED/);
+  assert.match(connect, /action: "channelSkipped"/);
+});
+
 test("production template keeps secrets server-side and WhatsApp gated", () => {
   const env = read(".env.example");
   assert.match(env, /^OPENAI_API_KEY=/m);

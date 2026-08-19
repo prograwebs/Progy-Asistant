@@ -1,10 +1,19 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { defaultOnboardingDraft } from "./data";
 import type { OnboardingDraft } from "./types";
 
 const STORAGE_KEY = "progy-onboarding-draft";
+
+type OnboardingDraftStore = {
+  draft: OnboardingDraft;
+  ready: boolean;
+  updateDraft: (patch: Partial<OnboardingDraft>) => void;
+  resetDraft: () => void;
+};
+
+const OnboardingDraftContext = createContext<OnboardingDraftStore | null>(null);
 
 function readDraft(): OnboardingDraft {
   try {
@@ -16,7 +25,7 @@ function readDraft(): OnboardingDraft {
   }
 }
 
-export function useOnboardingDraft() {
+function useOnboardingDraftState(): OnboardingDraftStore {
   const [draft, setDraft] = useState<OnboardingDraft>({ ...defaultOnboardingDraft });
   const [ready, setReady] = useState(false);
 
@@ -34,7 +43,7 @@ export function useOnboardingDraft() {
       try {
         window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
       } catch {
-        // The visual prototype continues to work when storage is unavailable.
+        // The flow can continue if browser session storage is unavailable.
       }
       return next;
     });
@@ -46,9 +55,20 @@ export function useOnboardingDraft() {
     try {
       window.sessionStorage.removeItem(STORAGE_KEY);
     } catch {
-      // The visual prototype does not depend on storage being available.
+      // Reset the in-memory draft even if browser storage is unavailable.
     }
   }, []);
 
   return { draft, ready, updateDraft, resetDraft };
+}
+
+export function OnboardingDraftProvider({ children }: { children: ReactNode }) {
+  const store = useOnboardingDraftState();
+  return createElement(OnboardingDraftContext.Provider, { value: store }, children);
+}
+
+export function useOnboardingDraft() {
+  const store = useContext(OnboardingDraftContext);
+  if (!store) throw new Error("useOnboardingDraft debe usarse dentro de OnboardingDraftProvider.");
+  return store;
 }

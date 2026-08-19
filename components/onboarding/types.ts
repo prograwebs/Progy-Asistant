@@ -21,8 +21,6 @@ export type OnboardingCategory = {
 export type OnboardingVoice = {
   id: string;
   name: string;
-  description: string;
-  tone: string;
 };
 
 export type DemoScenario = {
@@ -39,4 +37,5 @@ export type OnboardingDraft = {
   voiceId: string;
   scenarioId: string;
   connectionChoice: ConnectionChoice | null;
+  businessId: string;
 };

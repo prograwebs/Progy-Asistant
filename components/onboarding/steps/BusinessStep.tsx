@@ -14,6 +14,7 @@ export default function BusinessStep() {
   const router = useRouter();
   const { draft, ready, updateDraft } = useOnboardingDraft();
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
   const category = getCategory(draft.categoryCode);
 
   if (!ready) return <OnboardingLoading />;
@@ -24,14 +25,29 @@ export default function BusinessStep() {
     setError("");
   }
 
-  function continueToDemo() {
+  async function continueToDemo() {
     const name = draft.businessName.trim();
     if (!name) {
       setError("Escribe el nombre de tu negocio para continuar.");
       return;
     }
-    updateDraft({ businessName: name });
-    router.push("/onboarding/demo");
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "createBusiness", businessId: draft.businessId || undefined, name, categoryCode: draft.categoryCode }),
+      });
+      const result = await response.json().catch(() => ({})) as { error?: string; business?: { id?: string; name?: string }; };
+      if (!response.ok || !result.business?.id) throw new Error(result.error || "No pudimos preparar tu negocio.");
+      updateDraft({ businessName: result.business.name || name, businessId: result.business.id });
+      router.push("/onboarding/demo");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "No pudimos preparar tu negocio.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <div className={styles.content}>
@@ -55,7 +71,7 @@ export default function BusinessStep() {
       <div className={styles.infoBanner}><span className={styles.infoIcon}><Info size={17} /></span><span><strong>Progy podrá:</strong> {category.capabilities.join(" · ")}</span></div>
       <p className={styles.helper}><Info size={14} /> Podrás cambiar esta plantilla después. Por ahora usaremos información de ejemplo.</p>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      <div className={styles.formActions}><button type="button" className={styles.primaryButton} onClick={continueToDemo}>Crear mi Progy <ArrowRight size={17} /></button><button type="button" className={styles.textButton} onClick={() => router.push("/panel")}>Salir</button></div>
+      <div className={styles.formActions}><button type="button" className={styles.primaryButton} disabled={busy} onClick={() => void continueToDemo()}>{busy ? "Preparando tu Progy…" : "Crear mi Progy"} {!busy && <ArrowRight size={17} />}</button><button type="button" className={styles.textButton} onClick={() => router.push("/panel")}>Salir</button></div>
     </section>
   </div>;
 }

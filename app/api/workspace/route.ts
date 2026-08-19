@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { requireApiUser } from "../../../lib/integrations";
 import { SupabaseDataError, supabaseDataRequest } from "../../../lib/supabase-data";
+import { calculateReadiness } from "../../../lib/onboarding/service";
 
 const previewCategories = [
   { code: "restaurant", name: "Restaurante", description: "Menú, pedidos, entrega y reservas", icon: "◉" },
@@ -37,7 +38,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
   if (!selected) return { categories, businesses, selected: null };
 
   const id = enc(String(selected.id));
-  const [agents, hours, features, catalogCategories, catalogItems, knowledge, plans, conversations, orders, bookings, usage] = await Promise.all([
+  const [agents, hours, features, catalogCategories, catalogItems, knowledge, plans, conversations, orders, bookings, usage, onboardingRows] = await Promise.all([
     supabaseDataRequest<UnknownRow[]>(`agent_configs?business_id=eq.${id}&select=*`),
     supabaseDataRequest<UnknownRow[]>(`business_hours?business_id=eq.${id}&select=*&order=day_of_week.asc`),
     supabaseDataRequest<UnknownRow[]>(`business_features?business_id=eq.${id}&select=*&order=feature_code.asc`),
@@ -49,6 +50,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
     supabaseDataRequest<UnknownRow[]>(`orders?business_id=eq.${id}&select=*&order=created_at.desc&limit=30`),
     supabaseDataRequest<UnknownRow[]>(`bookings?business_id=eq.${id}&select=*&order=created_at.desc&limit=30`),
     supabaseDataRequest<UnknownRow[]>(`usage_ledger?business_id=eq.${id}&select=*&order=created_at.desc&limit=200`),
+    supabaseDataRequest<UnknownRow[]>(`business_onboarding?business_id=eq.${id}&select=*`),
   ]);
   let agent = agents[0] ?? null;
   if (agent && String(agent.agent_name || "").toLowerCase() === "kely") {
@@ -78,6 +80,8 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
       orders,
       bookings,
       usage,
+      onboarding: onboardingRows[0] ?? null,
+      readiness: onboardingRows[0] ? calculateReadiness(selected, onboardingRows[0], agent, hours, catalogItems) : null,
     },
   };
 }
@@ -87,7 +91,7 @@ export async function GET(request: Request) {
   if (!user) return Response.json({ error: "Inicia sesión para abrir tu panel." }, { status: 401 });
   if (process.env.NODE_ENV !== "production" && !process.env.SUPABASE_URL) {
     const business = { id: "preview-business", owner_id: user.id, category_code: "restaurant", name: "Café Horizonte", description: "Cafetería y desayunos", phone: "+593990000000", whatsapp_phone: "+593990000000", city: "Quito", province: "Pichincha", country_code: "EC", timezone: "America/Guayaquil", currency: "USD", status: "trial" };
-    return Response.json({ categories: previewCategories, businesses: [business], selected: { business, agent: { id: "preview-agent", business_id: business.id, agent_name: "Progy", language_code: "es-EC", greeting: "Hola, gracias por comunicarte con Café Horizonte. Soy Progy, ¿en qué puedo ayudarte?", tone: "cálido, natural y profesional", voice_id: null, collect_customer_name: true, collect_customer_phone: true, fallback_message: "Puedo comunicarte con una persona del negocio.", settings: {} }, hours: Array.from({ length: 7 }, (_, day) => ({ id: `hour-${day}`, day_of_week: day, opens_at: day ? "08:00" : null, closes_at: day ? "18:00" : null, is_closed: day === 0 })), features: [{ id: "feature-1", feature_code: "answer_questions", enabled: true, available_in_trial: true }, { id: "feature-2", feature_code: "take_orders", enabled: true, available_in_trial: true }], catalogCategories: [], catalogItems: [{ id: "item-1", kind: "product", name: "Desayuno de la casa", description: "Café, jugo y sándwich", price: 6.5, stock_quantity: 0, track_stock: false, is_available: true }], knowledge: [], plan: { plan_code: "trial", status: "active", included_voice_seconds: 600, used_voice_seconds: 0 }, conversations: [], orders: [], bookings: [], usage: [] } });
+    return Response.json({ categories: previewCategories, businesses: [business], selected: { business, agent: { id: "preview-agent", business_id: business.id, agent_name: "Progy", language_code: "es-EC", greeting: "Hola, gracias por comunicarte con Café Horizonte. Soy Progy, ¿en qué puedo ayudarte?", tone: "cálido, natural y profesional", voice_id: "preview-voice", collect_customer_name: true, collect_customer_phone: true, fallback_message: "Puedo comunicarte con una persona del negocio.", settings: {} }, hours: Array.from({ length: 7 }, (_, day) => ({ id: `hour-${day}`, day_of_week: day, opens_at: day ? "08:00" : null, closes_at: day === 0 ? null : "18:00", is_closed: day === 0 })), features: [{ id: "feature-1", feature_code: "answer_questions", enabled: true, available_in_trial: true }, { id: "feature-2", feature_code: "take_orders", enabled: true, available_in_trial: true }], catalogCategories: [], catalogItems: [{ id: "item-1", kind: "product", name: "Desayuno de la casa", description: "Cafetería y desayunos de ejemplo", price: 6.5, stock_quantity: 0, track_stock: false, is_available: true, is_demo: false }], knowledge: [], plan: { plan_code: "trial", status: "active", included_voice_seconds: 600, used_voice_seconds: 0 }, conversations: [], orders: [], bookings: [], usage: [], onboarding: { flow_status: "onboarding_completed", activation_status: "active", channel_status: "connected", template_version: "preview" }, readiness: { business: true, voice: true, hours: true, catalog: true, basicInfo: true, demo: true, channel: true, ready: true } } });
   }
   try {
     const businessId = new URL(request.url).searchParams.get("businessId");
