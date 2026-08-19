@@ -290,13 +290,6 @@ export default function WhatsAppSection({
       return;
     }
 
-    if (!testMessage.trim()) {
-      setError(
-        "Escribe el mensaje que quieres enviar.",
-      );
-      return;
-    }
-
     setSendingTest(true);
     setError("");
     setTestResult("");
@@ -318,8 +311,6 @@ export default function WhatsAppSection({
 
             to: testPhone,
 
-            message:
-              testMessage,
           }),
         },
       );
@@ -642,49 +633,32 @@ export default function WhatsAppSection({
               </small>
             </label>
 
-            <label
-              style={{
-                display: "grid",
-                gap: 6,
-              }}
-            >
-              <b>Mensaje</b>
+            <div
+  style={{
+    display: "grid",
+    gap: 6,
+  }}
+>
+  <b>Mensaje de prueba</b>
 
-              <textarea
-                value={testMessage}
-                onChange={(event) =>
-                  setTestMessage(
-                    event.target.value,
-                  )
-                }
-                rows={4}
-                maxLength={1000}
-                disabled={
-                  loadingConnection ||
-                  !connection?.wabaId ||
-                  sendingTest
-                }
-                style={{
-                  width: "100%",
-                  boxSizing:
-                    "border-box",
-                  resize: "vertical",
-                  padding:
-                    "12px 14px",
-                  borderRadius: 10,
-                  border:
-                    "1px solid rgba(255,255,255,.16)",
-                  background:
-                    "rgba(255,255,255,.04)",
-                  color: "inherit",
-                  opacity:
-                    loadingConnection ||
-                    !connection?.wabaId
-                      ? 0.6
-                      : 1,
-                }}
-              />
-            </label>
+  <div
+    style={{
+      padding: "12px 14px",
+      borderRadius: 10,
+      border:
+        "1px solid rgba(255,255,255,.16)",
+      background:
+        "rgba(255,255,255,.04)",
+    }}
+  >
+    Plantilla oficial de prueba de WhatsApp
+  </div>
+
+  <small>
+    Progy enviará el mensaje de prueba oficial
+    autorizado por Meta.
+  </small>
+</div>
 
             <div
               className={styles.actions}
@@ -697,8 +671,7 @@ export default function WhatsAppSection({
                   sendingTest ||
                   loadingConnection ||
                   !connection?.wabaId ||
-                  !testPhone.trim() ||
-                  !testMessage.trim()
+                  !testPhone.trim()                  
                 }
                 onClick={() =>
                   void sendTestMessage()
