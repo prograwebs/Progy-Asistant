@@ -56,11 +56,6 @@ export default function WhatsAppSection({
   const [testPhone, setTestPhone] =
     useState("");
 
-  const [testMessage, setTestMessage] =
-    useState(
-      "Hola, este es un mensaje de prueba enviado desde Progy.",
-    );
-
   const [sendingTest, setSendingTest] =
     useState(false);
 
@@ -74,21 +69,14 @@ export default function WhatsAppSection({
     process.env.NEXT_PUBLIC_META_CONFIG_ID || "";
 
   const featureEnabled =
-    process.env.NEXT_PUBLIC_WHATSAPP_ENABLED ===
-    "true";
+    process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true";
 
   const available =
     featureEnabled &&
     Boolean(appId && configId);
 
   /*
-   * Cargar automáticamente la conexión guardada
-   * cuando entramos a WhatsApp o cambiamos de negocio.
-   *
-   * Esto permite que la conexión sobreviva:
-   * - recargas
-   * - cerrar sesión
-   * - volver a iniciar sesión
+   * Recuperar conexión guardada.
    */
   useEffect(() => {
     let cancelled = false;
@@ -122,10 +110,6 @@ export default function WhatsAppSection({
         if (!response.ok) {
           setConnection(null);
 
-          /*
-           * No mostramos error si simplemente
-           * todavía no existe una conexión.
-           */
           if (
             response.status !== 404 &&
             response.status !== 204
@@ -170,10 +154,7 @@ export default function WhatsAppSection({
   }, [workspace.business.id]);
 
   /*
-   * Embedded Signup de Meta.
-   *
-   * Solo debe usarse cuando todavía
-   * no existe una conexión guardada.
+   * Conectar WhatsApp mediante Embedded Signup.
    */
   async function connect() {
     if (
@@ -212,18 +193,18 @@ export default function WhatsAppSection({
           },
 
           body: JSON.stringify({
-            code: signup.code,
-            wabaId: signup.wabaId,
+            code:
+              signup.code,
+
+            wabaId:
+              signup.wabaId,
+
             phoneNumberId:
               signup.phoneNumberId,
+
             businessId:
               signup.businessId,
 
-            /*
-             * Este es el negocio interno
-             * de Progy al que pertenece
-             * la conexión.
-             */
             progyBusinessId:
               workspace.business.id,
           }),
@@ -265,15 +246,14 @@ export default function WhatsAppSection({
   }
 
   /*
-   * Envía un mensaje real.
+   * Envía la plantilla oficial hello_world.
    *
-   * El navegador NO manda:
-   * - access token
-   * - phoneNumberId
+   * El navegador únicamente manda:
+   * - businessId
+   * - número destino
    *
-   * Solo manda el businessId de Progy.
-   * El servidor obtiene las credenciales
-   * guardadas en Supabase.
+   * Token y Phone Number ID permanecen
+   * exclusivamente en el servidor.
    */
   async function sendTestMessage() {
     if (!connection?.wabaId) {
@@ -309,8 +289,8 @@ export default function WhatsAppSection({
             businessId:
               workspace.business.id,
 
-            to: testPhone,
-
+            to:
+              testPhone,
           }),
         },
       );
@@ -328,7 +308,9 @@ export default function WhatsAppSection({
       }
 
       setTestResult(
-        "Mensaje enviado correctamente por WhatsApp.",
+        result.messageId
+          ? `Mensaje enviado correctamente. ID: ${result.messageId}`
+          : "Mensaje enviado correctamente por WhatsApp.",
       );
     } catch (cause) {
       setError(
@@ -359,28 +341,46 @@ export default function WhatsAppSection({
       />
 
       {error && (
-        <div className={styles.errorBanner}>
+        <div
+          className={
+            styles.errorBanner
+          }
+        >
           {error}
         </div>
       )}
 
       {message && (
-        <div className={styles.notice}>
+        <div
+          className={
+            styles.notice
+          }
+        >
           {message}
         </div>
       )}
 
-      <div className={styles.grid}>
+      <div
+        className={
+          styles.grid
+        }
+      >
         {/* CONEXIÓN */}
 
         <Card
-          className={styles.cardHalf}
+          className={
+            styles.cardHalf
+          }
           title="WhatsApp del negocio"
           description={`Cuenta para ${workspace.business.name}`}
           tag={statusTag}
         >
           {loadingConnection ? (
-            <div className={styles.empty}>
+            <div
+              className={
+                styles.empty
+              }
+            >
               <div>
                 <b>
                   Comprobando conexión…
@@ -394,9 +394,15 @@ export default function WhatsAppSection({
               </div>
             </div>
           ) : connection?.wabaId ? (
-            <div className={styles.list}>
+            <div
+              className={
+                styles.list
+              }
+            >
               <div
-                className={styles.listRow}
+                className={
+                  styles.listRow
+                }
               >
                 <div>
                   <b>
@@ -420,7 +426,9 @@ export default function WhatsAppSection({
               </div>
 
               <div
-                className={styles.listRow}
+                className={
+                  styles.listRow
+                }
               >
                 <div>
                   <b>
@@ -444,7 +452,11 @@ export default function WhatsAppSection({
               </div>
             </div>
           ) : (
-            <div className={styles.empty}>
+            <div
+              className={
+                styles.empty
+              }
+            >
               <div>
                 <b>
                   {available
@@ -462,10 +474,14 @@ export default function WhatsAppSection({
           )}
 
           <div
-            className={styles.actions}
+            className={
+              styles.actions
+            }
           >
             <button
-              className={styles.primary}
+              className={
+                styles.primary
+              }
               disabled={
                 !available ||
                 connecting ||
@@ -494,13 +510,21 @@ export default function WhatsAppSection({
         {/* FUNCIONES */}
 
         <Card
-          className={styles.cardHalf}
+          className={
+            styles.cardHalf
+          }
           title="Qué podrá hacer Progy"
           description="El canal utilizará el mismo conocimiento y las mismas reglas configuradas para el negocio."
         >
-          <div className={styles.list}>
+          <div
+            className={
+              styles.list
+            }
+          >
             <div
-              className={styles.listRow}
+              className={
+                styles.listRow
+              }
             >
               <div>
                 <b>
@@ -514,11 +538,15 @@ export default function WhatsAppSection({
                 </small>
               </div>
 
-              <strong>01</strong>
+              <strong>
+                01
+              </strong>
             </div>
 
             <div
-              className={styles.listRow}
+              className={
+                styles.listRow
+              }
             >
               <div>
                 <b>
@@ -532,11 +560,15 @@ export default function WhatsAppSection({
                 </small>
               </div>
 
-              <strong>02</strong>
+              <strong>
+                02
+              </strong>
             </div>
 
             <div
-              className={styles.listRow}
+              className={
+                styles.listRow
+              }
             >
               <div>
                 <b>
@@ -549,7 +581,9 @@ export default function WhatsAppSection({
                 </small>
               </div>
 
-              <strong>03</strong>
+              <strong>
+                03
+              </strong>
             </div>
           </div>
         </Card>
@@ -557,7 +591,9 @@ export default function WhatsAppSection({
         {/* PRUEBA DE MENSAJERÍA */}
 
         <Card
-          className={styles.cardHalf}
+          className={
+            styles.cardHalf
+          }
           title="Prueba de mensajería"
           description="Envía un mensaje real desde Progy para comprobar que el canal funciona correctamente."
           tag="PRUEBA"
@@ -575,9 +611,9 @@ export default function WhatsAppSection({
                     styles.notice
                   }
                 >
-                  Conecta primero el
-                  WhatsApp del negocio para
-                  habilitar el envío.
+                  Conecta primero el WhatsApp
+                  del negocio para habilitar
+                  el envío.
                 </div>
               )}
 
@@ -592,8 +628,12 @@ export default function WhatsAppSection({
               </b>
 
               <input
-                value={testPhone}
-                onChange={(event) =>
+                value={
+                  testPhone
+                }
+                onChange={(
+                  event,
+                ) =>
                   setTestPhone(
                     event.target.value,
                   )
@@ -617,7 +657,8 @@ export default function WhatsAppSection({
                     "1px solid rgba(255,255,255,.16)",
                   background:
                     "rgba(255,255,255,.04)",
-                  color: "inherit",
+                  color:
+                    "inherit",
                   opacity:
                     loadingConnection ||
                     !connection?.wabaId
@@ -634,34 +675,42 @@ export default function WhatsAppSection({
             </label>
 
             <div
-  style={{
-    display: "grid",
-    gap: 6,
-  }}
->
-  <b>Mensaje de prueba</b>
+              style={{
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <b>
+                Mensaje de prueba
+              </b>
 
-  <div
-    style={{
-      padding: "12px 14px",
-      borderRadius: 10,
-      border:
-        "1px solid rgba(255,255,255,.16)",
-      background:
-        "rgba(255,255,255,.04)",
-    }}
-  >
-    Plantilla oficial de prueba de WhatsApp
-  </div>
+              <div
+                style={{
+                  padding:
+                    "12px 14px",
+                  borderRadius:
+                    10,
+                  border:
+                    "1px solid rgba(255,255,255,.16)",
+                  background:
+                    "rgba(255,255,255,.04)",
+                }}
+              >
+                Plantilla oficial de prueba
+                de WhatsApp
+              </div>
 
-  <small>
-    Progy enviará el mensaje de prueba oficial
-    autorizado por Meta.
-  </small>
-</div>
+              <small>
+                Progy enviará la plantilla
+                oficial hello_world
+                autorizada por Meta.
+              </small>
+            </div>
 
             <div
-              className={styles.actions}
+              className={
+                styles.actions
+              }
             >
               <button
                 className={
@@ -671,7 +720,7 @@ export default function WhatsAppSection({
                   sendingTest ||
                   loadingConnection ||
                   !connection?.wabaId ||
-                  !testPhone.trim()                  
+                  !testPhone.trim()
                 }
                 onClick={() =>
                   void sendTestMessage()
@@ -679,7 +728,7 @@ export default function WhatsAppSection({
               >
                 {sendingTest
                   ? "Enviando mensaje…"
-                  : "Enviar mensaje de prueba"}
+                  : "Enviar prueba a WhatsApp"}
               </button>
             </div>
 
