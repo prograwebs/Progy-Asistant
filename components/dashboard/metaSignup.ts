@@ -13,7 +13,7 @@ type MetaFacebookSdk = {
       override_default_response_type: true;
       extras: {
         setup: Record<string, unknown>;
-        featureType: string;
+        featureType?: string;
         sessionInfoVersion: string;
       };
     },
@@ -98,7 +98,7 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
     };
 
     function onMessage(event: MessageEvent) {
-      if (event.origin !== "https://www.facebook.com" && event.origin !== "https://web.facebook.com") return;
+      if (!event.origin.endsWith("facebook.com")) return;
       let payload: { type?: string; event?: string; data?: { waba_id?: string; phone_number_id?: string; business_id?: string; error_message?: string } } | null = null;
       try {
         payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
@@ -125,19 +125,18 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
     window.addEventListener("message", onMessage);
     facebook.login((response) => {
       code = response.authResponse?.code?.trim() || "";
-      if (!code) return fail("La autorización no se completó.");
+
+      if (!code) {
+        return fail("La autorización no se completó.");
+      }
+
       complete();
     }, {
       config_id: configId,
-      auth_type: "rerequest",
       response_type: "code",
       override_default_response_type: true,
       extras: {
         setup: {},
-        featureType: "whatsapp_business_app_onboarding",
-        // Coexistence / WhatsApp Business App onboarding currently expects
-        // session info v3. Using v4 can break the embedded flow before Meta
-        // returns the selected WABA/phone assets.
         sessionInfoVersion: "3",
       },
     });
