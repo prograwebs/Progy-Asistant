@@ -276,7 +276,7 @@ export default function WhatsAppSection({
 
     try {
       const response = await fetch(
-        "/api/whatsapp/send-test",
+        "/api/whatsapp/send-text",
         {
           method: "POST",
 
