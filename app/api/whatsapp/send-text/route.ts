@@ -9,6 +9,14 @@ export const dynamic = "force-dynamic";
 const GRAPH_VERSION =
   process.env.META_GRAPH_VERSION?.trim() || "v25.0";
 
+type MetaError = {
+  message?: string;
+  type?: string;
+  code?: number;
+  error_subcode?: number;
+  fbtrace_id?: string;
+};
+
 type MetaSendResponse = {
   messaging_product?: string;
 
@@ -22,13 +30,12 @@ type MetaSendResponse = {
     message_status?: string;
   }>;
 
-  error?: {
-    message?: string;
-    type?: string;
-    code?: number;
-    error_subcode?: number;
-    fbtrace_id?: string;
-  };
+  error?: MetaError;
+};
+
+type MetaRegisterResponse = {
+  success?: boolean;
+  error?: MetaError;
 };
 
 function normalizePhone(value: unknown) {
@@ -37,9 +44,120 @@ function normalizePhone(value: unknown) {
     .replace(/[^\d]/g, "");
 }
 
+async function sendHelloWorld(
+  phoneNumberId: string,
+  accessToken: string,
+  to: string,
+) {
+  const response = await fetch(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
+    {
+      method: "POST",
+
+      headers: {
+        Authorization:
+          `Bearer ${accessToken}`,
+
+        "Content-Type":
+          "application/json",
+
+        Accept:
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        messaging_product:
+          "whatsapp",
+
+        recipient_type:
+          "individual",
+
+        to,
+
+        type:
+          "template",
+
+        template: {
+          name:
+            "hello_world",
+
+          language: {
+            code:
+              "en_US",
+          },
+        },
+      }),
+
+      cache: "no-store",
+    },
+  );
+
+  const result =
+    (await response
+      .json()
+      .catch(() => ({}))) as MetaSendResponse;
+
+  return {
+    response,
+    result,
+  };
+}
+
+async function registerPhoneNumber(
+  phoneNumberId: string,
+  accessToken: string,
+) {
+  const pin =
+    process.env.META_WHATSAPP_REG_PIN?.trim() || "";
+
+  if (!/^\d{6}$/.test(pin)) {
+    throw new Error(
+      "META_WHATSAPP_REG_PIN no está configurado correctamente.",
+    );
+  }
+
+  const response = await fetch(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/register`,
+    {
+      method: "POST",
+
+      headers: {
+        Authorization:
+          `Bearer ${accessToken}`,
+
+        "Content-Type":
+          "application/json",
+
+        Accept:
+          "application/json",
+      },
+
+      body: JSON.stringify({
+        messaging_product:
+          "whatsapp",
+
+        pin,
+      }),
+
+      cache: "no-store",
+    },
+  );
+
+  const result =
+    (await response
+      .json()
+      .catch(() => ({}))) as MetaRegisterResponse;
+
+  return {
+    response,
+    result,
+  };
+}
+
 export async function POST(request: Request) {
   try {
-    const user = await requireApiUser();
+    const user =
+      await requireApiUser();
 
     if (!user) {
       return Response.json(
@@ -47,7 +165,9 @@ export async function POST(request: Request) {
           error:
             "Inicia sesión para enviar el mensaje de prueba.",
         },
-        { status: 401 },
+        {
+          status: 401,
+        },
       );
     }
 
@@ -67,15 +187,21 @@ export async function POST(request: Request) {
           error:
             "La solicitud no es válida.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
     const businessId =
-      String(body.businessId || "").trim();
+      String(
+        body.businessId || "",
+      ).trim();
 
     const to =
-      normalizePhone(body.to);
+      normalizePhone(
+        body.to,
+      );
 
     if (!businessId) {
       return Response.json(
@@ -83,7 +209,9 @@ export async function POST(request: Request) {
           error:
             "No pudimos identificar el negocio.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
@@ -97,14 +225,12 @@ export async function POST(request: Request) {
           error:
             "Escribe el número con código de país. Ejemplo: 593999999999.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
-    /*
-     * 1. Comprobar que el usuario
-     * puede administrar este negocio.
-     */
     const allowed =
       await canManageBusiness(
         user.id,
@@ -117,17 +243,12 @@ export async function POST(request: Request) {
           error:
             "No tienes permiso para utilizar este negocio.",
         },
-        { status: 403 },
+        {
+          status: 403,
+        },
       );
     }
 
-    /*
-     * 2. Recuperar de Supabase:
-     * - access token
-     * - phone number id
-     *
-     * Nunca llegan desde el navegador.
-     */
     const connection =
       await getWhatsAppConnection(
         businessId,
@@ -139,7 +260,9 @@ export async function POST(request: Request) {
           error:
             "No encontramos una conexión de WhatsApp guardada para este negocio.",
         },
-        { status: 409 },
+        {
+          status: 409,
+        },
       );
     }
 
@@ -150,67 +273,107 @@ export async function POST(request: Request) {
       return Response.json(
         {
           error:
-            "La conexión de WhatsApp está incompleta. Falta el número o la autorización.",
+            "La conexión de WhatsApp está incompleta.",
         },
-        { status: 409 },
+        {
+          status: 409,
+        },
       );
     }
 
     /*
-     * 3. Prueba oficial de Meta.
-     *
-     * Usamos la plantilla preaprobada
-     * hello_world para iniciar la prueba.
+     * Primer intento de envío.
      */
-    const metaResponse =
-      await fetch(
-        `https://graph.facebook.com/${GRAPH_VERSION}/${connection.phone_number_id}/messages`,
+    let {
+      response: metaResponse,
+      result,
+    } =
+      await sendHelloWorld(
+        connection.phone_number_id,
+        connection.access_token,
+        to,
+      );
+
+    /*
+     * Meta #133010:
+     * el número todavía no está registrado.
+     *
+     * Lo registramos automáticamente
+     * y volvemos a intentar una sola vez.
+     */
+    if (
+      !metaResponse.ok &&
+      result.error?.code === 133010
+    ) {
+      console.log(
+        "WhatsApp phone is not registered. Registering...",
         {
-          method: "POST",
-
-          headers: {
-            Authorization:
-              `Bearer ${connection.access_token}`,
-
-            "Content-Type":
-              "application/json",
-
-            Accept:
-              "application/json",
-          },
-
-          body: JSON.stringify({
-            messaging_product:
-              "whatsapp",
-
-            to,
-
-            type:
-              "template",
-
-            template: {
-              name:
-                "hello_world",
-
-              language: {
-                code:
-                  "en_US",
-              },
-            },
-          }),
-
-          cache: "no-store",
+          phoneNumberId:
+            connection.phone_number_id,
         },
       );
 
-    const result =
-      (await metaResponse
-        .json()
-        .catch(() => ({}))) as MetaSendResponse;
+      const {
+        response: registerResponse,
+        result: registerResult,
+      } =
+        await registerPhoneNumber(
+          connection.phone_number_id,
+          connection.access_token,
+        );
+
+      if (!registerResponse.ok) {
+        console.error(
+          "Progy WhatsApp registration failed",
+          {
+            status:
+              registerResponse.status,
+
+            code:
+              registerResult.error?.code,
+
+            subcode:
+              registerResult.error?.error_subcode,
+
+            message:
+              registerResult.error?.message,
+          },
+        );
+
+        return Response.json(
+          {
+            error:
+              registerResult.error?.message
+                ? `Meta al registrar el número: ${registerResult.error.message}`
+                : "Meta no pudo registrar el número de WhatsApp.",
+          },
+          {
+            status: 502,
+          },
+        );
+      }
+
+      /*
+       * Registro exitoso.
+       * Volvemos a intentar el mensaje.
+       */
+      const retry =
+        await sendHelloWorld(
+          connection.phone_number_id,
+          connection.access_token,
+          to,
+        );
+
+      metaResponse =
+        retry.response;
+
+      result =
+        retry.result;
+    }
 
     if (!metaResponse.ok) {
       console.error(
-        "Progy WhatsApp Meta test failed",
+        "Progy WhatsApp Meta send failed",
         {
           status:
             metaResponse.status,
@@ -232,26 +395,16 @@ export async function POST(request: Request) {
         },
       );
 
-      /*
-       * Para esta fase de revisión
-       * mostramos el mensaje de Meta.
-       *
-       * No contiene nuestro access token.
-       */
       return Response.json(
         {
           error:
             result.error?.message
               ? `Meta: ${result.error.message}`
               : `Meta rechazó el mensaje (HTTP ${metaResponse.status}).`,
-
-          metaCode:
-            result.error?.code ?? null,
-
-          metaSubcode:
-            result.error?.error_subcode ?? null,
         },
-        { status: 502 },
+        {
+          status: 502,
+        },
       );
     }
 
@@ -265,7 +418,9 @@ export async function POST(request: Request) {
           error:
             "Meta aceptó la solicitud, pero no devolvió el identificador del mensaje.",
         },
-        { status: 502 },
+        {
+          status: 502,
+        },
       );
     }
 
@@ -280,7 +435,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error(
-      "Progy WhatsApp send-test exception",
+      "Progy WhatsApp send-text exception",
       error,
     );
 
@@ -291,7 +446,9 @@ export async function POST(request: Request) {
             ? `Error del servidor: ${error.message}`
             : "No pudimos completar la prueba de WhatsApp.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }
