@@ -1,4 +1,8 @@
 import { requireApiUser } from "../../../../lib/integrations";
+import {
+  canManageBusiness,
+  getWhatsAppConnection,
+} from "../../../../lib/whatsapp/store";
 
 export const dynamic = "force-dynamic";
 
@@ -6,7 +10,9 @@ const GRAPH_VERSION =
   process.env.META_GRAPH_VERSION?.trim() || "v25.0";
 
 type MetaSendResponse = {
-  messages?: Array<{ id?: string }>;
+  messages?: Array<{
+    id?: string;
+  }>;
   error?: {
     message?: string;
     type?: string;
@@ -26,44 +32,80 @@ export async function POST(request: Request) {
 
   if (!user) {
     return Response.json(
-      { error: "Inicia sesión para enviar el mensaje de prueba." },
+      {
+        error:
+          "Inicia sesión para enviar el mensaje de prueba.",
+      },
       { status: 401 },
     );
   }
 
-  const body = await request.json().catch(() => null) as
+  const body = await request
+    .json()
+    .catch(() => null) as
     | {
+        businessId?: string;
         to?: string;
         message?: string;
-        phoneNumberId?: string;
       }
     | null;
 
   if (!body) {
     return Response.json(
-      { error: "La solicitud no es válida." },
+      {
+        error:
+          "La solicitud no es válida.",
+      },
       { status: 400 },
     );
   }
 
-  const to = normalizePhone(body.to);
-  const message = String(body.message || "").trim().slice(0, 1000);
+  const businessId =
+    String(body.businessId || "").trim();
 
-  const configuredPhoneNumberId =
-    process.env.META_WHATSAPP_TEST_PHONE_NUMBER_ID?.trim() || "";
+  const to =
+    normalizePhone(body.to);
 
-  const phoneNumberId =
-    String(body.phoneNumberId || "").trim() ||
-    configuredPhoneNumberId;
+  const message =
+    String(body.message || "")
+      .trim()
+      .slice(0, 1000);
 
-  const accessToken =
-    process.env.META_WHATSAPP_TEST_TOKEN?.trim() || "";
-
-  if (!to || to.length < 8 || to.length > 15) {
+  if (!businessId) {
     return Response.json(
       {
         error:
-          "Escribe el número de destino con código de país. Ejemplo: 593999999999.",
+          "No pudimos identificar el negocio.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const allowed =
+    await canManageBusiness(
+      user.id,
+      businessId,
+    );
+
+  if (!allowed) {
+    return Response.json(
+      {
+        error:
+          "No tienes permiso para utilizar este negocio.",
+      },
+      { status: 403 },
+    );
+  }
+
+  if (
+    !to ||
+    to.length < 8 ||
+    to.length > 15
+  ) {
+    return Response.json(
+      {
+        error:
+          "Escribe el número con código de país. Ejemplo: 593999999999.",
       },
       { status: 400 },
     );
@@ -71,59 +113,86 @@ export async function POST(request: Request) {
 
   if (!message) {
     return Response.json(
-      { error: "Escribe el mensaje que quieres enviar." },
+      {
+        error:
+          "Escribe el mensaje que quieres enviar.",
+      },
       { status: 400 },
     );
   }
 
-  if (!phoneNumberId || !accessToken) {
+  const connection =
+    await getWhatsAppConnection(
+      businessId,
+    );
+
+  if (
+    !connection ||
+    !connection.phone_number_id ||
+    !connection.access_token
+  ) {
     return Response.json(
       {
         error:
-          "La mensajería de prueba todavía no está configurada en el servidor.",
+          "Conecta primero el WhatsApp del negocio.",
       },
-      { status: 503 },
+      { status: 409 },
     );
   }
 
   try {
     const response = await fetch(
-      `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
+      `https://graph.facebook.com/${GRAPH_VERSION}/${connection.phone_number_id}/messages`,
       {
         method: "POST",
+
         headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
+          Authorization:
+            `Bearer ${connection.access_token}`,
+
+          "Content-Type":
+            "application/json",
         },
+
         body: JSON.stringify({
           messaging_product: "whatsapp",
           recipient_type: "individual",
           to,
           type: "text",
+
           text: {
             preview_url: false,
             body: message,
           },
         }),
+
         cache: "no-store",
       },
     );
 
     const result =
-      (await response.json().catch(() => ({}))) as MetaSendResponse;
+      (await response
+        .json()
+        .catch(() => ({}))) as MetaSendResponse;
 
     if (!response.ok) {
-      console.error("Progy WhatsApp test message failed", {
-        status: response.status,
-        code: result.error?.code,
-        subcode: result.error?.error_subcode,
-        message: result.error?.message,
-      });
+      console.error(
+        "Progy WhatsApp message failed",
+        {
+          status: response.status,
+          code: result.error?.code,
+          subcode:
+            result.error?.error_subcode,
+          message:
+            result.error?.message,
+        },
+      );
 
       return Response.json(
         {
           error:
-            "WhatsApp no pudo enviar el mensaje. Revisa la configuración del número de prueba.",
+            result.error?.message ||
+            "WhatsApp no pudo enviar el mensaje.",
         },
         { status: 502 },
       );
@@ -131,13 +200,22 @@ export async function POST(request: Request) {
 
     return Response.json({
       ok: true,
-      messageId: result.messages?.[0]?.id || null,
+
+      messageId:
+        result.messages?.[0]?.id ||
+        null,
     });
   } catch (error) {
-    console.error("Progy WhatsApp test message exception", error);
+    console.error(
+      "Progy WhatsApp message exception",
+      error,
+    );
 
     return Response.json(
-      { error: "No pudimos enviar el mensaje de WhatsApp." },
+      {
+        error:
+          "No pudimos enviar el mensaje de WhatsApp.",
+      },
       { status: 502 },
     );
   }
