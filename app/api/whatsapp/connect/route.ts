@@ -1,9 +1,6 @@
+import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/whatsaap/store";
 import { requireApiUser } from "../../../../lib/integrations";
-import {
-  canManageBusiness,
-  getWhatsAppConnection,
-  saveWhatsAppConnection,
-} from "../../../../lib/whatsapp/store";
+
 
 export const dynamic = "force-dynamic";
 
