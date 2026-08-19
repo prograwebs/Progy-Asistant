@@ -107,14 +107,20 @@ async function registerPhoneNumber(
   phoneNumberId: string,
   accessToken: string,
 ) {
-  const pin =
-    process.env.META_WHATSAPP_REG_PIN?.trim() || "";
+const pin =
+  process.env.META_WHATSAPP_REG_PIN?.trim() || "";
 
-  if (!/^\d{6}$/.test(pin)) {
-    throw new Error(
-      "META_WHATSAPP_REG_PIN no está configurado correctamente.",
-    );
-  }
+console.log("WhatsApp registration PIN config", {
+  configured: Boolean(pin),
+  length: pin.length,
+  numeric: /^\d+$/.test(pin),
+});
+
+if (!/^\d{6}$/.test(pin)) {
+  throw new Error(
+    "META_WHATSAPP_REG_PIN no está configurado correctamente.",
+  );
+}
 
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/register`,
