@@ -1,5 +1,8 @@
-import { canManageBusiness, getWhatsAppConnection } from "@/lib/whatsaap/store";
 import { requireApiUser } from "../../../../lib/integrations";
+import {
+  canManageBusiness,
+  getWhatsAppConnection,
+} from "../../../../lib/whatsapp/store";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +13,7 @@ type MetaSendResponse = {
   messages?: Array<{
     id?: string;
   }>;
+
   error?: {
     message?: string;
     type?: string;
@@ -50,8 +54,7 @@ export async function POST(request: Request) {
   if (!body) {
     return Response.json(
       {
-        error:
-          "La solicitud no es válida.",
+        error: "La solicitud no es válida.",
       },
       { status: 400 },
     );
@@ -154,7 +157,9 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           messaging_product: "whatsapp",
           recipient_type: "individual",
+
           to,
+
           type: "text",
 
           text: {
