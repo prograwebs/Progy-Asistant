@@ -1,15 +1,30 @@
 import { requireApiUser } from "../../../../lib/integrations";
+import {
+  canManageBusiness,
+  getWhatsAppConnection,
+  saveWhatsAppConnection,
+} from "../../../../lib/whatsapp/store";
 
 export const dynamic = "force-dynamic";
 
 const GRAPH_VERSION =
   process.env.META_GRAPH_VERSION?.trim() || "v25.0";
 
+const NO_STORE_HEADERS = {
+  "Cache-Control": "private, no-store, max-age=0",
+};
+
 type ConnectPayload = {
   code?: string;
   wabaId?: string;
   phoneNumberId?: string;
   businessId?: string;
+
+  /*
+   * ID interno del negocio dentro de Progy.
+   * No es el Business ID de Meta.
+   */
+  progyBusinessId?: string;
 };
 
 type MetaError = {
@@ -50,7 +65,10 @@ type MetaWabaResponse = {
 };
 
 function cleanId(value: unknown) {
-  if (typeof value !== "string") return "";
+  if (typeof value !== "string") {
+    return "";
+  }
+
   const trimmed = value.trim();
 
   return /^\d+$/.test(trimmed)
@@ -58,6 +76,21 @@ function cleanId(value: unknown) {
     : "";
 }
 
+/*
+ * ============================================================
+ * POST
+ * ============================================================
+ *
+ * Recibe el resultado de Embedded Signup.
+ *
+ * 1. Valida al usuario.
+ * 2. Valida el negocio de Progy.
+ * 3. Cambia el code de Meta por access_token.
+ * 4. Obtiene el número de WhatsApp.
+ * 5. Obtiene información de la WABA.
+ * 6. GUARDA todo en Supabase.
+ * 7. Devuelve solamente información segura al navegador.
+ */
 export async function POST(request: Request) {
   const user = await requireApiUser();
 
@@ -69,9 +102,7 @@ export async function POST(request: Request) {
       },
       {
         status: 401,
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
-        },
+        headers: NO_STORE_HEADERS,
       },
     );
   }
@@ -79,7 +110,8 @@ export async function POST(request: Request) {
   let body: ConnectPayload;
 
   try {
-    body = (await request.json()) as ConnectPayload;
+    body =
+      (await request.json()) as ConnectPayload;
   } catch {
     return Response.json(
       {
@@ -88,9 +120,7 @@ export async function POST(request: Request) {
       },
       {
         status: 400,
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
-        },
+        headers: NO_STORE_HEADERS,
       },
     );
   }
@@ -100,13 +130,79 @@ export async function POST(request: Request) {
       ? body.code.trim()
       : "";
 
-  const wabaId = cleanId(body.wabaId);
+  const wabaId =
+    cleanId(body.wabaId);
 
   let phoneNumberId =
     cleanId(body.phoneNumberId);
 
-  const businessId =
+  /*
+   * Este es el Business ID de Meta.
+   */
+  const metaBusinessId =
     cleanId(body.businessId);
+
+  /*
+   * Este es el UUID de public.businesses en Progy.
+   */
+  const progyBusinessId =
+    typeof body.progyBusinessId === "string"
+      ? body.progyBusinessId.trim()
+      : "";
+
+  if (!progyBusinessId) {
+    return Response.json(
+      {
+        error:
+          "No pudimos identificar el negocio de Progy.",
+      },
+      {
+        status: 400,
+        headers: NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  /*
+   * Comprobamos que el usuario realmente
+   * puede administrar este negocio.
+   */
+  try {
+    const allowed =
+      await canManageBusiness(
+        user.id,
+        progyBusinessId,
+      );
+
+    if (!allowed) {
+      return Response.json(
+        {
+          error:
+            "No tienes permiso para configurar este negocio.",
+        },
+        {
+          status: 403,
+          headers: NO_STORE_HEADERS,
+        },
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Progy WhatsApp business permission check failed",
+      error,
+    );
+
+    return Response.json(
+      {
+        error:
+          "No pudimos comprobar los permisos del negocio.",
+      },
+      {
+        status: 500,
+        headers: NO_STORE_HEADERS,
+      },
+    );
+  }
 
   if (!code) {
     return Response.json(
@@ -116,9 +212,7 @@ export async function POST(request: Request) {
       },
       {
         status: 400,
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
-        },
+        headers: NO_STORE_HEADERS,
       },
     );
   }
@@ -131,9 +225,7 @@ export async function POST(request: Request) {
       },
       {
         status: 400,
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
-        },
+        headers: NO_STORE_HEADERS,
       },
     );
   }
@@ -144,7 +236,8 @@ export async function POST(request: Request) {
     "";
 
   const appSecret =
-    process.env.META_APP_SECRET?.trim() || "";
+    process.env.META_APP_SECRET?.trim() ||
+    "";
 
   if (!appId || !appSecret) {
     return Response.json(
@@ -154,20 +247,18 @@ export async function POST(request: Request) {
       },
       {
         status: 503,
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
-        },
+        headers: NO_STORE_HEADERS,
       },
     );
   }
 
   try {
     /*
-     * 1. Cambiamos el código temporal de Meta
-     * por la credencial de acceso.
-     *
-     * El APP SECRET nunca llega al navegador.
+     * ========================================================
+     * 1. Cambiar código temporal por access token
+     * ========================================================
      */
+
     const tokenUrl = new URL(
       `https://graph.facebook.com/${GRAPH_VERSION}/oauth/access_token`,
     );
@@ -191,9 +282,11 @@ export async function POST(request: Request) {
       tokenUrl,
       {
         method: "GET",
+
         headers: {
           Accept: "application/json",
         },
+
         cache: "no-store",
       },
     );
@@ -223,9 +316,7 @@ export async function POST(request: Request) {
         },
         {
           status: 502,
-          headers: {
-            "Cache-Control": "private, no-store, max-age=0",
-          },
+          headers: NO_STORE_HEADERS,
         },
       );
     }
@@ -234,18 +325,18 @@ export async function POST(request: Request) {
       tokenPayload.access_token;
 
     /*
-     * 2. Obtenemos el número.
-     *
-     * En Embedded Signup normal Meta suele
-     * devolver phone_number_id.
-     *
-     * En WhatsApp Business App / Coexistence
-     * puede devolver únicamente el WABA ID,
-     * así que consultamos los números de
-     * esa WABA.
+     * ========================================================
+     * 2. Obtener número de WhatsApp
+     * ========================================================
      */
-    let phone: MetaPhone | null = null;
 
+    let phone: MetaPhone | null =
+      null;
+
+    /*
+     * Si Embedded Signup devolvió directamente
+     * phone_number_id, intentamos consultarlo.
+     */
     if (phoneNumberId) {
       const phoneUrl = new URL(
         `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}`,
@@ -256,17 +347,22 @@ export async function POST(request: Request) {
         "id,display_phone_number,verified_name,is_on_biz_app,platform_type",
       );
 
-      const phoneResponse = await fetch(
-        phoneUrl,
-        {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
-            Accept: "application/json",
+      const phoneResponse =
+        await fetch(
+          phoneUrl,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              Accept:
+                "application/json",
+            },
+
+            cache: "no-store",
           },
-          cache: "no-store",
-        },
-      );
+        );
 
       const phonePayload =
         (await phoneResponse
@@ -277,19 +373,23 @@ export async function POST(request: Request) {
         console.error(
           "Progy Meta phone verification error",
           {
-            status: phoneResponse.status,
-            error: phonePayload.error,
+            status:
+              phoneResponse.status,
+
+            error:
+              phonePayload.error,
           },
         );
       } else {
-        phone = phonePayload;
+        phone =
+          phonePayload;
       }
     }
 
     /*
-     * Si el evento no trajo phone_number_id
-     * o no pudimos consultarlo directamente,
-     * lo obtenemos desde la WABA.
+     * Si Meta no devolvió phone_number_id
+     * o la consulta anterior no funcionó,
+     * obtenemos los números desde la WABA.
      */
     if (!phone?.id) {
       const phonesUrl = new URL(
@@ -301,17 +401,22 @@ export async function POST(request: Request) {
         "id,display_phone_number,verified_name,is_on_biz_app,platform_type",
       );
 
-      const phonesResponse = await fetch(
-        phonesUrl,
-        {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
-            Accept: "application/json",
+      const phonesResponse =
+        await fetch(
+          phonesUrl,
+          {
+            method: "GET",
+
+            headers: {
+              Authorization:
+                `Bearer ${accessToken}`,
+              Accept:
+                "application/json",
+            },
+
+            cache: "no-store",
           },
-          cache: "no-store",
-        },
-      );
+        );
 
       const phonesPayload =
         (await phonesResponse
@@ -322,8 +427,11 @@ export async function POST(request: Request) {
         console.error(
           "Progy Meta WABA phone list error",
           {
-            status: phonesResponse.status,
-            error: phonesPayload.error,
+            status:
+              phonesResponse.status,
+
+            error:
+              phonesPayload.error,
           },
         );
 
@@ -335,9 +443,8 @@ export async function POST(request: Request) {
           },
           {
             status: 502,
-            headers: {
-              "Cache-Control": "private, no-store, max-age=0",
-            },
+            headers:
+              NO_STORE_HEADERS,
           },
         );
       }
@@ -346,14 +453,17 @@ export async function POST(request: Request) {
         phonesPayload.data ?? [];
 
       /*
-       * Para negocios que ya utilizan
-       * WhatsApp Business App preferimos
-       * explícitamente el número en coexistencia.
+       * Si existe un número correspondiente
+       * a WhatsApp Business App / coexistencia,
+       * lo preferimos.
+       *
+       * Si no, utilizamos el primer número.
        */
       phone =
         phones.find(
           (item) =>
-            item.is_on_biz_app === true,
+            item.is_on_biz_app ===
+            true,
         ) ??
         phones[0] ??
         null;
@@ -362,7 +472,10 @@ export async function POST(request: Request) {
         phone?.id?.trim() || "";
     }
 
-    if (!phone?.id || !phoneNumberId) {
+    if (
+      !phone?.id ||
+      !phoneNumberId
+    ) {
       return Response.json(
         {
           error:
@@ -370,17 +483,17 @@ export async function POST(request: Request) {
         },
         {
           status: 502,
-          headers: {
-            "Cache-Control": "private, no-store, max-age=0",
-          },
+          headers: NO_STORE_HEADERS,
         },
       );
     }
 
     /*
-     * 3. Consultamos el nombre de la
-     * cuenta WhatsApp Business.
+     * ========================================================
+     * 3. Obtener nombre de la WABA
+     * ========================================================
      */
+
     const wabaUrl = new URL(
       `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}`,
     );
@@ -390,30 +503,145 @@ export async function POST(request: Request) {
       "id,name",
     );
 
-    const wabaResponse = await fetch(
-      wabaUrl,
-      {
-        headers: {
-          Authorization:
-            `Bearer ${accessToken}`,
-          Accept: "application/json",
+    const wabaResponse =
+      await fetch(
+        wabaUrl,
+        {
+          method: "GET",
+
+          headers: {
+            Authorization:
+              `Bearer ${accessToken}`,
+            Accept:
+              "application/json",
+          },
+
+          cache: "no-store",
         },
-        cache: "no-store",
-      },
-    );
+      );
 
     const wabaPayload =
       (await wabaResponse
         .json()
         .catch(() => ({}))) as MetaWabaResponse;
 
+    if (!wabaResponse.ok) {
+      console.error(
+        "Progy Meta WABA details error",
+        {
+          status:
+            wabaResponse.status,
+
+          error:
+            wabaPayload.error,
+        },
+      );
+
+      /*
+       * No detenemos la conexión por esto.
+       *
+       * El nombre de la WABA es informativo;
+       * ya tenemos WABA ID, teléfono y token.
+       */
+    }
+
     /*
-     * IMPORTANTE:
+     * ========================================================
+     * 4. Guardar conexión en Supabase
+     * ========================================================
      *
-     * Por ahora NO devolvemos el token.
-     * En el siguiente paso lo guardaremos
-     * únicamente en el servidor/Supabase.
+     * ESTA ES LA PARTE QUE FALTABA.
+     *
+     * El access_token nunca se devuelve al navegador.
      */
+
+    const tokenExpiresAt =
+      typeof tokenPayload.expires_in ===
+      "number"
+        ? new Date(
+            Date.now() +
+              tokenPayload.expires_in *
+                1000,
+          ).toISOString()
+        : null;
+
+    try {
+      await saveWhatsAppConnection({
+        business_id:
+          progyBusinessId,
+
+        meta_business_id:
+          metaBusinessId || null,
+
+        waba_id:
+          wabaId,
+
+        waba_name:
+          wabaResponse.ok
+            ? wabaPayload.name || null
+            : null,
+
+        phone_number_id:
+          phoneNumberId,
+
+        phone_number:
+          phone.display_phone_number ||
+          null,
+
+        verified_name:
+          phone.verified_name ||
+          null,
+
+        is_on_biz_app:
+          phone.is_on_biz_app ===
+          true,
+
+        platform_type:
+          phone.platform_type ||
+          null,
+
+        access_token:
+          accessToken,
+
+        token_expires_at:
+          tokenExpiresAt,
+
+        status:
+          "connected",
+
+        connected_by:
+          user.id,
+      });
+    } catch (error) {
+      console.error(
+        "Progy WhatsApp connection save error",
+        error,
+      );
+
+      return Response.json(
+        {
+          error:
+            "WhatsApp fue autorizado, pero no pudimos guardar la conexión en Progy.",
+        },
+        {
+          status: 500,
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
+
+    /*
+     * ========================================================
+     * 5. Respuesta segura al navegador
+     * ========================================================
+     *
+     * NO enviamos:
+     * - access_token
+     * - app secret
+     * - claves Supabase
+     */
+
     return Response.json(
       {
         ok: true,
@@ -421,7 +649,7 @@ export async function POST(request: Request) {
 
         meta: {
           businessId:
-            businessId || null,
+            metaBusinessId || null,
 
           wabaId,
 
@@ -441,7 +669,8 @@ export async function POST(request: Request) {
             null,
 
           isOnBizApp:
-            phone.is_on_biz_app === true,
+            phone.is_on_biz_app ===
+            true,
 
           platformType:
             phone.platform_type ||
@@ -457,9 +686,8 @@ export async function POST(request: Request) {
         },
       },
       {
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
-        },
+        headers:
+          NO_STORE_HEADERS,
       },
     );
   } catch (error) {
@@ -475,9 +703,189 @@ export async function POST(request: Request) {
       },
       {
         status: 502,
-        headers: {
-          "Cache-Control": "private, no-store, max-age=0",
+        headers: NO_STORE_HEADERS,
+      },
+    );
+  }
+}
+
+/*
+ * ============================================================
+ * GET
+ * ============================================================
+ *
+ * Se ejecuta automáticamente cuando el usuario entra
+ * a la sección WhatsApp.
+ *
+ * Permite:
+ *
+ * - F5 y sigue conectado
+ * - cerrar sesión y volver a entrar
+ * - abrir Progy nuevamente
+ *
+ * Nunca devuelve access_token.
+ */
+export async function GET(
+  request: Request,
+) {
+  const user =
+    await requireApiUser();
+
+  if (!user) {
+    return Response.json(
+      {
+        error:
+          "Inicia sesión.",
+      },
+      {
+        status: 401,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  const url =
+    new URL(request.url);
+
+  const businessId =
+    url.searchParams
+      .get("businessId")
+      ?.trim() || "";
+
+  if (!businessId) {
+    return Response.json(
+      {
+        error:
+          "Falta el negocio.",
+      },
+      {
+        status: 400,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  /*
+   * Comprobar que el usuario pueda
+   * administrar el negocio solicitado.
+   */
+  try {
+    const allowed =
+      await canManageBusiness(
+        user.id,
+        businessId,
+      );
+
+    if (!allowed) {
+      return Response.json(
+        {
+          error:
+            "No tienes permiso para este negocio.",
         },
+        {
+          status: 403,
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
+  } catch (error) {
+    console.error(
+      "Progy WhatsApp GET permission error",
+      error,
+    );
+
+    return Response.json(
+      {
+        error:
+          "No pudimos comprobar los permisos del negocio.",
+      },
+      {
+        status: 500,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  /*
+   * Buscar la conexión guardada.
+   */
+  try {
+    const connection =
+      await getWhatsAppConnection(
+        businessId,
+      );
+
+    if (!connection) {
+      return Response.json(
+        {
+          connected: false,
+          meta: null,
+        },
+        {
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
+
+    /*
+     * IMPORTANTE:
+     *
+     * Solo enviamos información pública/segura.
+     * access_token se queda exclusivamente
+     * en el servidor.
+     */
+    return Response.json(
+      {
+        connected: true,
+
+        meta: {
+          wabaId:
+            connection.waba_id,
+
+          wabaName:
+            connection.waba_name,
+
+          phoneNumberId:
+            connection.phone_number_id,
+
+          phoneNumber:
+            connection.phone_number,
+
+          verifiedName:
+            connection.verified_name,
+
+          isOnBizApp:
+            connection.is_on_biz_app,
+
+          platformType:
+            connection.platform_type,
+        },
+      },
+      {
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  } catch (error) {
+    console.error(
+      "Progy WhatsApp connection read error",
+      error,
+    );
+
+    return Response.json(
+      {
+        error:
+          "No pudimos consultar la conexión de WhatsApp.",
+      },
+      {
+        status: 500,
+        headers:
+          NO_STORE_HEADERS,
       },
     );
   }
