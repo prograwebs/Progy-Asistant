@@ -60,7 +60,7 @@ export default function BusinessStep() {
       </header>
 
       <label className={styles.field}>Nombre de tu negocio
-        <input className={styles.input} value={draft.businessName} onChange={(event) => updateDraft({ businessName: event.target.value })} placeholder="Ej. Clínica San Gabriel" autoComplete="organization" />
+        <input className={styles.input} value={draft.businessName} onChange={(event) => updateDraft({ businessName: event.target.value })} placeholder="Ej. Clínica San Gabriel" autoComplete="organization" maxLength={160} />
       </label>
 
       <span className={styles.sectionLabel}>¿Qué tipo de negocio tienes?</span>
@@ -71,7 +71,7 @@ export default function BusinessStep() {
       <div className={styles.infoBanner}><span className={styles.infoIcon}><Info size={17} /></span><span><strong>Progy podrá:</strong> {category.capabilities.join(" · ")}</span></div>
       <p className={styles.helper}><Info size={14} /> Podrás cambiar esta plantilla después. Por ahora usaremos información de ejemplo.</p>
       {error && <p className={styles.error} role="alert">{error}</p>}
-      <div className={styles.formActions}><button type="button" className={styles.primaryButton} disabled={busy} onClick={() => void continueToDemo()}>{busy ? "Preparando tu Progy…" : "Crear mi Progy"} {!busy && <ArrowRight size={17} />}</button><button type="button" className={styles.textButton} onClick={() => router.push("/panel")}>Salir</button></div>
+      <div className={styles.formActions}><button type="button" className={styles.primaryButton} disabled={busy} onClick={() => void continueToDemo()}>{busy ? "Preparando tu Progy…" : "Crear mi Progy"} {!busy && <ArrowRight size={17} />}</button></div>
     </section>
   </div>;
 }

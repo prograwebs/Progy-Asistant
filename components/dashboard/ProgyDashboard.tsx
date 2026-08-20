@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, type FocusEvent, type MouseEvent } from "react";
+import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
 import { useRouter } from "next/navigation";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
 import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
@@ -20,6 +22,8 @@ import { Card, SectionHeader } from "./ui";
 import { initials } from "./utils";
 import { DashboardIcon } from "./LineIcon";
 import styles from "./ProgyDashboard.module.css";
+
+gsap.registerPlugin(useGSAP);
 
 type SectionId = "inicio" | "negocio" | "asistente" | "catalogo" | "conocimiento" | "voz" | "whatsapp" | "pruebas" | "conversaciones" | "pedidos" | "consumo" | "ajustes";
 
@@ -49,6 +53,24 @@ function planLabel(code?: string | null) {
   if (normalized === "business") return "Negocio";
   if (normalized === "pro") return "Pro";
   return code || "Prueba";
+}
+
+function AnimatedBrandMark() {
+  const mark = useRef<HTMLSpanElement>(null);
+
+  useGSAP(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    gsap.to("i", {
+      scaleY: 0.42,
+      duration: 0.34,
+      ease: "sine.inOut",
+      transformOrigin: "center center",
+      stagger: { each: 0.12, from: "center", repeat: -1, yoyo: true },
+    });
+  }, { scope: mark });
+
+  return <span ref={mark} className={styles.brandMark} aria-hidden="true"><i /><i /><i /></span>;
 }
 
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
@@ -126,7 +148,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
     {mobileOpen && <button aria-label="Cerrar menú" className={styles.mobileOverlay} onClick={() => setMobileOpen(false)} />}
     <aside className={`${styles.sidebar} ${mobileOpen ? styles.open : ""}`}>
       <div className={styles.sidebarHeader}>
-        <div className={styles.brand}><span className={styles.brandMark}><i /><i /><i /></span><span className={styles.brandText}>Progy</span></div>
+        <div className={styles.brand}><AnimatedBrandMark /><span className={styles.brandText}>Progy</span></div>
         <button
           className={styles.sidebarToggle}
           type="button"

@@ -1,6 +1,7 @@
 import { requireApiUser } from "../../../../lib/integrations";
 import { developmentTestingMode, entitlementsFor, normalizePlanCode } from "../../../../lib/billing/entitlements";
 import { SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
+import { resolveOnboardingVoiceId, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,8 @@ function monthStartIso() {
 }
 
 function jsonError(error: unknown) {
-  if (error instanceof SupabaseDataError) {
-    return Response.json({ error: error.message }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  if (error instanceof SupabaseDataError || error instanceof VoiceServiceError) {
+    return Response.json({ error: error.message, code: error instanceof VoiceServiceError ? error.code : undefined }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
   console.error("Progy assistant session error", error);
   return Response.json({ error: "No pudimos preparar la prueba de Progy." }, { status: 500, headers: { "Cache-Control": "private, no-store, max-age=0" } });
@@ -37,8 +38,9 @@ async function assertBusinessAccess(businessId: string, userId: string) {
   if (!rows[0]) throw new SupabaseDataError("No tienes acceso a este negocio.", 403);
 }
 
-async function startSession(businessId: string, user: { id: string; name: string }, scenario: string) {
+async function startSession(businessId: string, user: { id: string; name: string }, scenario: string, demoMode: boolean, requestedVoiceId?: string) {
   await assertBusinessAccess(businessId, user.id);
+  if (demoMode) await resolveOnboardingVoiceId(requestedVoiceId);
   const plan = await planFor(businessId);
   const planCode = normalizePlanCode(String(plan.plan_code || "trial"));
   const entitlements = entitlementsFor(planCode);
@@ -73,8 +75,9 @@ async function startSession(businessId: string, user: { id: string; name: string
       is_trial: planCode === "trial",
       outcome: scenario,
       metadata: {
-        source: "progy_voice_test",
+        source: demoMode ? "progy_onboarding_demo" : "progy_voice_test",
         scenario,
+        demo_mode: demoMode,
         plan_code: planCode,
         development_testing: testingMode,
       },
@@ -137,7 +140,7 @@ export async function POST(request: Request) {
 
     if (body.action === "start") {
       const scenario = String(body.scenario || "Prueba guiada de voz").trim().slice(0, 160);
-      return await startSession(businessId, user, scenario);
+      return await startSession(businessId, user, scenario, body.demoMode === true, String(body.voiceId || "").trim() || undefined);
     }
 
     if (body.action === "end") {

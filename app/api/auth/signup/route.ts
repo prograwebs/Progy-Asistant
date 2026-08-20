@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
 import { progyAuthCallbackUrl, safeErrorMessage, saveSupabaseSession, supabaseAuthRequest } from "../../../../lib/integrations";
+import { isRecord, requiredText, validEmail } from "../../../../lib/validation/input";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { name?: string; email?: string; password?: string };
-    if (!body.name?.trim() || !body.email?.trim() || !body.password || body.password.length < 8) {
+    const body = await request.json().catch(() => null) as unknown;
+    const name = isRecord(body) ? requiredText(body.name, 120) : null;
+    const email = isRecord(body) ? validEmail(body.email) : null;
+    const password = isRecord(body) && typeof body.password === "string" ? body.password : "";
+    if (!name || !email || password.trim().length < 8) {
       return NextResponse.json({ error: "Completa tu nombre, correo y una contraseña de al menos 8 caracteres." }, { status: 400 });
     }
 
     const response = await supabaseAuthRequest(`signup?redirect_to=${encodeURIComponent(progyAuthCallbackUrl())}`, {
       method: "POST",
       body: JSON.stringify({
-        email: body.email.trim().toLowerCase(),
-        password: body.password,
-        data: { full_name: body.name.trim() },
+        email,
+        password,
+        data: { full_name: name },
       }),
     });
     const payload = (await response.json()) as Record<string, unknown> & {

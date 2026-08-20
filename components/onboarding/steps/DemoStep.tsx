@@ -40,7 +40,8 @@ export default function DemoStep() {
           if (!response.ok) throw new Error(result.error || "No pudimos cargar las voces disponibles.");
           const availableVoices = result.voices || [];
           const recommendedVoices = availableVoices.filter((voice) => voice.recommended);
-          setVoices((recommendedVoices.length >= 2 ? recommendedVoices : availableVoices).slice(0, 2));
+          const visibleVoices = (recommendedVoices.length >= 2 ? recommendedVoices : availableVoices).slice(0, 2);
+          setVoices(visibleVoices);
         } catch (cause) {
           setVoiceError(cause instanceof Error ? cause.message : "No pudimos cargar las voces disponibles.");
         } finally {
@@ -50,6 +51,10 @@ export default function DemoStep() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, [draft.businessName, ready]);
+
+  useEffect(() => {
+    if (!draft.voiceId && voices[0]) updateDraft({ voiceId: voices[0].id });
+  }, [draft.voiceId, updateDraft, voices]);
 
   useEffect(() => {
     if (!playingVoice) return;
@@ -133,7 +138,7 @@ export default function DemoStep() {
 
   return <div className={styles.content}>
     <OnboardingProgress currentStep="demo" />
-    <header className={styles.demoHeader}><div><div className={styles.eyebrow}>CONOCE A PROGY</div><h1>Así podría atender Progy en {draft.businessName}</h1><p>Escoge una voz y escucha cómo respondería a uno de tus clientes.</p></div></header>
+    <header className={styles.demoHeader}><div><div className={styles.eyebrow}>CONOCE A PROGY</div><h1>Así podría atender Progy en {draft.businessName}</h1><p>Elige una voz, escribe o habla con Progy y descubre cómo atendería a tus clientes.</p></div></header>
     <div className={styles.demoGrid}>
       <div className={styles.demoPanel}>
         <div className={styles.demoPanelTitle}>1. Elige la voz de Progy<small>Selecciona el tono con el que hablará con tus clientes.</small></div>
@@ -141,7 +146,7 @@ export default function DemoStep() {
         <div className={`${styles.demoPanelTitle} ${styles.scenarioTitle}`}>2. Prueba una situación<small>Elige una pregunta de ejemplo para ver cómo respondería.</small></div>
         <div className={styles.scenarioList}>{scenarios.map((item) => <ScenarioButton key={item.id} scenario={item} selected={item.id === scenario.id} onSelect={() => selectScenario(item.id)} />)}</div>
       </div>
-      <div className={styles.demoPanel}><div className={styles.demoPanelTitle}>3. Vista previa de una conversación<small>Así es como Progy podría atender a tus clientes.</small></div><ConversationPreview businessName={draft.businessName} scenario={scenario} /></div>
+      <div className={`${styles.demoPanel} ${styles.demoConversationPanel}`}><div className={styles.demoPanelTitle}>3. Prueba a Progy<small>Escribe una pregunta o pulsa el micrófono. Esta demo usa información de ejemplo.</small></div><ConversationPreview key={draft.businessId} businessId={draft.businessId} businessName={draft.businessName} voiceId={draft.voiceId} scenario={scenario} suggestions={scenarios.map((item) => ({ id: item.id, text: item.prompt }))} onScenarioSelect={selectScenario} /></div>
     </div>
     {voiceNotice && <p className={styles.voiceNotice} role="status">{voiceNotice}</p>}
     {voiceError && displayedVoices.length > 0 && <p className={styles.error} role="alert">{voiceError}</p>}

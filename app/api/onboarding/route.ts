@@ -2,6 +2,7 @@ import { requireApiUser } from "../../../lib/auth/supabase";
 import { SupabaseDataError } from "../../../lib/supabase-data";
 import { activateBusiness, createBusinessFromTemplate, getOnboardingSnapshot, markChannelSkipped, saveDemoForBusiness } from "../../../lib/onboarding/service";
 import { listOnboardingTemplates } from "../../../lib/onboarding/templates";
+import { cleanText, isRecord, validIdentifier } from "../../../lib/validation/input";
 
 export const dynamic = "force-dynamic";
 
@@ -24,24 +25,24 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const user = await requireApiUser();
   if (!user) return Response.json({ error: "Tu sesión terminó. Vuelve a iniciar sesión." }, { status: 401 });
-  const body = await request.json().catch(() => null) as Record<string, unknown> | null;
-  if (!body || typeof body.action !== "string") return Response.json({ error: "La solicitud no es válida." }, { status: 400 });
+  const body = await request.json().catch(() => null) as unknown;
+  if (!isRecord(body) || typeof body.action !== "string") return Response.json({ error: "La solicitud no es válida." }, { status: 400 });
 
   try {
     if (body.action === "createBusiness") {
       const result = await createBusinessFromTemplate(user.id, {
-        name: String(body.name ?? ""),
-        categoryCode: String(body.categoryCode ?? ""),
-        businessId: body.businessId ? String(body.businessId) : undefined,
+        name: cleanText(body.name, 160),
+        categoryCode: cleanText(body.categoryCode, 80),
+        businessId: validIdentifier(body.businessId) ?? undefined,
       });
       return Response.json(result, { status: 201, headers: { "Cache-Control": "private, no-store, max-age=0" } });
     }
 
-    const businessId = String(body.businessId ?? "").trim();
+    const businessId = validIdentifier(body.businessId);
     if (!businessId) throw new SupabaseDataError("Selecciona un negocio antes de continuar.", 400);
 
     if (body.action === "saveDemo") {
-      const onboarding = await saveDemoForBusiness(user.id, { businessId, voiceId: String(body.voiceId ?? ""), scenarioId: String(body.scenarioId ?? "") });
+      const onboarding = await saveDemoForBusiness(user.id, { businessId, voiceId: cleanText(body.voiceId, 160), scenarioId: cleanText(body.scenarioId, 100) });
       return Response.json({ onboarding });
     }
     if (body.action === "channelSkipped") {

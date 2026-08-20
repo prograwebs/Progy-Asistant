@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronDown, LogOut } from "lucide-react";
+import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 import type { PanelUser } from "../dashboard/types";
 import { getCategory } from "./data";
 import { OnboardingIcon, ProgyMark } from "./OnboardingIcon";
@@ -17,7 +18,13 @@ const steps: Array<{ id: OnboardingStep; label: string }> = [
 const order: Record<OnboardingStep, number> = { business: 1, demo: 2, connect: 3 };
 
 export default function OnboardingSidebar({ user, draft, currentStep }: { user: PanelUser; draft: OnboardingDraft; currentStep: OnboardingStep }) {
+  const router = useRouter();
   const category = getCategory(draft.categoryCode);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/acceso?mode=login");
+  }
 
   return (
     <aside className={styles.sidebar}>
@@ -32,7 +39,6 @@ export default function OnboardingSidebar({ user, draft, currentStep }: { user: 
           <strong>{draft.businessName || "Tu negocio"}</strong>
           <small>{category.label}</small>
         </div>
-        <ChevronDown size={16} aria-hidden="true" />
       </div>
 
       <div className={styles.sidebarSectionLabel}>ONBOARDING</div>
@@ -61,7 +67,9 @@ export default function OnboardingSidebar({ user, draft, currentStep }: { user: 
           <strong>{user.name}</strong>
           <small>Admin · Propietario</small>
         </div>
-        <LogOut size={15} aria-hidden="true" />
+        <button type="button" className={styles.sidebarLogout} onClick={() => void logout()} aria-label="Cerrar sesión" title="Cerrar sesión">
+          <LogOut size={15} aria-hidden="true" />
+        </button>
       </div>
     </aside>
   );

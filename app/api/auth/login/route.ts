@@ -1,16 +1,19 @@
 import { NextResponse } from "next/server";
 import { safeErrorMessage, saveSupabaseSession, supabaseAuthRequest } from "../../../../lib/integrations";
+import { isRecord, validEmail } from "../../../../lib/validation/input";
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { email?: string; password?: string };
-    if (!body.email?.trim() || !body.password) {
+    const body = await request.json().catch(() => null) as unknown;
+    const email = isRecord(body) ? validEmail(body.email) : null;
+    const password = isRecord(body) && typeof body.password === "string" ? body.password : "";
+    if (!email || !password.trim()) {
       return NextResponse.json({ error: "Ingresa tu correo y contraseña." }, { status: 400 });
     }
 
     const response = await supabaseAuthRequest("token?grant_type=password", {
       method: "POST",
-      body: JSON.stringify({ email: body.email.trim().toLowerCase(), password: body.password }),
+      body: JSON.stringify({ email, password }),
     });
     const payload = (await response.json()) as Record<string, unknown> & {
       access_token?: string;

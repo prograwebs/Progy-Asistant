@@ -1,4 +1,5 @@
-import { integrationConfig, listElevenLabsVoices, resolveElevenLabsVoiceId } from "../integrations";
+import { integrationConfig, resolveElevenLabsVoiceId } from "../integrations";
+import { isLibraryVoice, listElevenLabsVoices } from "./catalog";
 
 export type VoiceServiceErrorCode =
   | "voice_not_configured"
@@ -20,6 +21,20 @@ export class VoiceServiceError extends Error {
     this.status = status;
     this.code = code;
   }
+}
+
+export async function resolveOnboardingVoiceId(requestedVoiceId?: string | null) {
+  const voiceId = requestedVoiceId?.trim();
+  if (!voiceId) {
+    throw new VoiceServiceError("Elige una voz antes de probar a Progy.", 400, "voice_not_configured");
+  }
+
+  const voice = (await listElevenLabsVoices()).find((candidate) => candidate.id === voiceId);
+  if (!voice || isLibraryVoice(voice)) {
+    throw new VoiceServiceError("La voz elegida ya no está disponible para esta prueba. Selecciona otra voz.", 400, "voice_not_available");
+  }
+
+  return voice.id;
 }
 
 type ProviderErrorDetail = {
