@@ -78,14 +78,12 @@ async function sendHelloWorld(
           "template",
 
         template: {
-          name:
-            "hello_world",
+  name: "progy_prueba_mensaje",
 
-          language: {
-            code:
-              "en_US",
-          },
-        },
+  language: {
+    code: "es",
+  },
+},
       }),
 
       cache: "no-store",

@@ -33,6 +33,28 @@ type SendMessageResponse = {
   messageId?: string | null;
 };
 
+type TemplateInfo = {
+  id?: string | null;
+  name?: string;
+  language?: string;
+  status?: string;
+  category?: string;
+};
+
+type TemplateResponse = {
+  ok?: boolean;
+  exists?: boolean;
+  alreadyExists?: boolean;
+  error?: string;
+  template?: TemplateInfo | null;
+};
+
+const TEMPLATE_NAME =
+  "progy_prueba_mensaje";
+
+const TEMPLATE_BODY =
+  "Hola, este es un mensaje de prueba enviado desde Progy mediante WhatsApp Business.";
+
 export default function WhatsAppSection({
   workspace,
 }: {
@@ -62,6 +84,18 @@ export default function WhatsAppSection({
   const [testResult, setTestResult] =
     useState("");
 
+  const [creatingTemplate, setCreatingTemplate] =
+    useState(false);
+
+  const [checkingTemplate, setCheckingTemplate] =
+    useState(false);
+
+  const [templateStatus, setTemplateStatus] =
+    useState("");
+
+  const [templateMessage, setTemplateMessage] =
+    useState("");
+
   const appId =
     process.env.NEXT_PUBLIC_META_APP_ID || "";
 
@@ -76,7 +110,7 @@ export default function WhatsAppSection({
     Boolean(appId && configId);
 
   /*
-   * Recuperar conexión guardada.
+   * Carga la conexión persistida en Supabase.
    */
   useEffect(() => {
     let cancelled = false;
@@ -127,7 +161,9 @@ export default function WhatsAppSection({
           result.connected &&
           result.meta
         ) {
-          setConnection(result.meta);
+          setConnection(
+            result.meta,
+          );
         } else {
           setConnection(null);
         }
@@ -154,7 +190,109 @@ export default function WhatsAppSection({
   }, [workspace.business.id]);
 
   /*
-   * Conectar WhatsApp mediante Embedded Signup.
+   * Comprueba automáticamente si nuestra
+   * plantilla ya existe y cuál es su estado.
+   */
+  useEffect(() => {
+    if (!connection?.wabaId) {
+      setTemplateStatus("");
+      setTemplateMessage("");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadTemplate() {
+      setCheckingTemplate(true);
+
+      try {
+        const response = await fetch(
+          `/api/whatsapp/templates?businessId=${encodeURIComponent(
+            workspace.business.id,
+          )}`,
+          {
+            method: "GET",
+            cache: "no-store",
+          },
+        );
+
+        const result =
+          (await response
+            .json()
+            .catch(() => ({}))) as TemplateResponse;
+
+        if (cancelled) {
+          return;
+        }
+
+        if (!response.ok) {
+          setTemplateStatus("");
+
+          /*
+           * No bloqueamos toda la pantalla
+           * si solamente falla la consulta
+           * de plantilla.
+           */
+          return;
+        }
+
+        if (
+          result.exists &&
+          result.template
+        ) {
+          const status =
+            (
+              result.template.status ||
+              ""
+            ).toUpperCase();
+
+          setTemplateStatus(
+            status,
+          );
+
+          if (
+            status === "APPROVED"
+          ) {
+            setTemplateMessage(
+              "Plantilla aprobada. Ya puedes enviar el mensaje de prueba.",
+            );
+          } else {
+            setTemplateMessage(
+              `Plantilla encontrada. Estado: ${
+                status || "PENDING"
+              }.`,
+            );
+          }
+        } else {
+          setTemplateStatus("");
+          setTemplateMessage("");
+        }
+      } catch {
+        if (!cancelled) {
+          setTemplateStatus("");
+        }
+      } finally {
+        if (!cancelled) {
+          setCheckingTemplate(false);
+        }
+      }
+    }
+
+    void loadTemplate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    connection?.wabaId,
+    workspace.business.id,
+  ]);
+
+  /*
+   * Embedded Signup.
+   *
+   * Solamente debe ejecutarse si no existe
+   * una conexión persistida.
    */
   async function connect() {
     if (
@@ -223,13 +361,17 @@ export default function WhatsAppSection({
         );
       }
 
-      if (!result.meta?.wabaId) {
+      if (
+        !result.meta?.wabaId
+      ) {
         throw new Error(
           "WhatsApp fue autorizado, pero Progy no recibió los datos de la conexión.",
         );
       }
 
-      setConnection(result.meta);
+      setConnection(
+        result.meta,
+      );
 
       setMessage(
         "WhatsApp quedó autorizado y guardado para este negocio.",
@@ -246,19 +388,200 @@ export default function WhatsAppSection({
   }
 
   /*
-   * Envía la plantilla oficial hello_world.
+   * Crear nuestra plantilla real
+   * dentro de la WABA conectada.
+   */
+  async function createTestTemplate() {
+    if (!connection?.wabaId) {
+      setError(
+        "Conecta primero el WhatsApp del negocio.",
+      );
+      return;
+    }
+
+    setCreatingTemplate(true);
+    setError("");
+    setTemplateMessage("");
+    setTestResult("");
+
+    try {
+      const response = await fetch(
+        "/api/whatsapp/templates",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            businessId:
+              workspace.business.id,
+          }),
+        },
+      );
+
+      const result =
+        (await response
+          .json()
+          .catch(() => ({}))) as TemplateResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "No pudimos crear la plantilla.",
+        );
+      }
+
+      const status =
+        (
+          result.template?.status ||
+          "PENDING"
+        ).toUpperCase();
+
+      setTemplateStatus(
+        status,
+      );
+
+      if (
+        status === "APPROVED"
+      ) {
+        setTemplateMessage(
+          "Plantilla aprobada. Ya puedes enviar el mensaje de prueba.",
+        );
+      } else if (
+        status === "PENDING"
+      ) {
+        setTemplateMessage(
+          "Plantilla creada correctamente. Meta la está revisando.",
+        );
+      } else {
+        setTemplateMessage(
+          `Plantilla creada. Estado: ${status}.`,
+        );
+      }
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "No pudimos crear la plantilla.",
+      );
+    } finally {
+      setCreatingTemplate(false);
+    }
+  }
+
+  /*
+   * Consulta nuevamente el estado de
+   * nuestra plantilla sin recargar
+   * toda la página.
+   */
+  async function refreshTemplateStatus() {
+    if (!connection?.wabaId) {
+      return;
+    }
+
+    setCheckingTemplate(true);
+    setError("");
+
+    try {
+      const response = await fetch(
+        `/api/whatsapp/templates?businessId=${encodeURIComponent(
+          workspace.business.id,
+        )}`,
+        {
+          method: "GET",
+          cache: "no-store",
+        },
+      );
+
+      const result =
+        (await response
+          .json()
+          .catch(() => ({}))) as TemplateResponse;
+
+      if (!response.ok) {
+        throw new Error(
+          result.error ||
+            "No pudimos comprobar la plantilla.",
+        );
+      }
+
+      if (
+        !result.exists ||
+        !result.template
+      ) {
+        setTemplateStatus("");
+        setTemplateMessage(
+          "La plantilla todavía no existe.",
+        );
+
+        return;
+      }
+
+      const status =
+        (
+          result.template.status ||
+          "PENDING"
+        ).toUpperCase();
+
+      setTemplateStatus(
+        status,
+      );
+
+      if (
+        status === "APPROVED"
+      ) {
+        setTemplateMessage(
+          "Plantilla aprobada. Ya puedes enviar el mensaje de prueba.",
+        );
+      } else if (
+        status === "PENDING"
+      ) {
+        setTemplateMessage(
+          "La plantilla sigue pendiente de aprobación por Meta.",
+        );
+      } else {
+        setTemplateMessage(
+          `Estado actual de la plantilla: ${status}.`,
+        );
+      }
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "No pudimos comprobar la plantilla.",
+      );
+    } finally {
+      setCheckingTemplate(false);
+    }
+  }
+
+  /*
+   * Envío real.
    *
-   * El navegador únicamente manda:
+   * El servidor obtiene de Supabase:
+   * - access token
+   * - Phone Number ID
+   *
+   * El navegador solo envía:
    * - businessId
-   * - número destino
-   *
-   * Token y Phone Number ID permanecen
-   * exclusivamente en el servidor.
+   * - destinatario
    */
   async function sendTestMessage() {
     if (!connection?.wabaId) {
       setError(
         "Conecta primero el WhatsApp del negocio.",
+      );
+      return;
+    }
+
+    if (
+      templateStatus !== "APPROVED"
+    ) {
+      setError(
+        "La plantilla debe estar aprobada antes de enviar el mensaje.",
       );
       return;
     }
@@ -331,6 +654,9 @@ export default function WhatsAppSection({
         : available
           ? "Preparado"
           : "En revisión";
+
+  const templateApproved =
+    templateStatus === "APPROVED";
 
   return (
     <>
@@ -588,6 +914,122 @@ export default function WhatsAppSection({
           </div>
         </Card>
 
+        {/* PLANTILLA PARA META */}
+
+        <Card
+          className={
+            styles.cardHalf
+          }
+          title="Plantilla de WhatsApp"
+          description="Crea y verifica la plantilla utilizada para la prueba de mensajería."
+          tag={
+            templateApproved
+              ? "APROBADA"
+              : templateStatus ||
+                "PREPARAR"
+          }
+        >
+          <div
+            style={{
+              display: "grid",
+              gap: 14,
+            }}
+          >
+            <div
+              style={{
+                padding:
+                  "14px 16px",
+                borderRadius:
+                  10,
+                border:
+                  "1px solid rgba(255,255,255,.16)",
+                background:
+                  "rgba(255,255,255,.04)",
+              }}
+            >
+              <b>
+                {TEMPLATE_NAME}
+              </b>
+
+              <p
+                style={{
+                  margin:
+                    "8px 0 0",
+                }}
+              >
+                {TEMPLATE_BODY}
+              </p>
+            </div>
+
+            {templateMessage && (
+              <div
+                className={
+                  styles.notice
+                }
+              >
+                {templateMessage}
+              </div>
+            )}
+
+            <div
+              className={
+                styles.actions
+              }
+            >
+              {!templateStatus && (
+                <button
+                  className={
+                    styles.primary
+                  }
+                  disabled={
+                    creatingTemplate ||
+                    checkingTemplate ||
+                    loadingConnection ||
+                    !connection?.wabaId
+                  }
+                  onClick={() =>
+                    void createTestTemplate()
+                  }
+                >
+                  {creatingTemplate
+                    ? "Creando plantilla…"
+                    : "Crear plantilla en WhatsApp"}
+                </button>
+              )}
+
+              {templateStatus &&
+                !templateApproved && (
+                  <button
+                    className={
+                      styles.primary
+                    }
+                    disabled={
+                      checkingTemplate
+                    }
+                    onClick={() =>
+                      void refreshTemplateStatus()
+                    }
+                  >
+                    {checkingTemplate
+                      ? "Comprobando estado…"
+                      : "Actualizar estado"}
+                  </button>
+                )}
+
+              {templateApproved && (
+                <button
+                  className={
+                    styles.primary
+                  }
+                  disabled
+                >
+                  Plantilla aprobada
+                </button>
+              )}
+            </div>
+          </div>
+        </Card>
+
         {/* PRUEBA DE MENSAJERÍA */}
 
         <Card
@@ -611,9 +1053,22 @@ export default function WhatsAppSection({
                     styles.notice
                   }
                 >
-                  Conecta primero el WhatsApp
-                  del negocio para habilitar
-                  el envío.
+                  Conecta primero el
+                  WhatsApp del negocio para
+                  habilitar el envío.
+                </div>
+              )}
+
+            {connection?.wabaId &&
+              !templateApproved && (
+                <div
+                  className={
+                    styles.notice
+                  }
+                >
+                  Primero crea la plantilla y
+                  espera a que Meta la marque
+                  como aprobada.
                 </div>
               )}
 
@@ -652,7 +1107,8 @@ export default function WhatsAppSection({
                     "border-box",
                   padding:
                     "12px 14px",
-                  borderRadius: 10,
+                  borderRadius:
+                    10,
                   border:
                     "1px solid rgba(255,255,255,.16)",
                   background:
@@ -696,14 +1152,14 @@ export default function WhatsAppSection({
                     "rgba(255,255,255,.04)",
                 }}
               >
-                Plantilla oficial de prueba
-                de WhatsApp
+                {TEMPLATE_BODY}
               </div>
 
               <small>
                 Progy enviará la plantilla
-                oficial hello_world
-                autorizada por Meta.
+                {` ${TEMPLATE_NAME} `}
+                mediante la cuenta de
+                WhatsApp Business conectada.
               </small>
             </div>
 
@@ -720,6 +1176,7 @@ export default function WhatsAppSection({
                   sendingTest ||
                   loadingConnection ||
                   !connection?.wabaId ||
+                  !templateApproved ||
                   !testPhone.trim()
                 }
                 onClick={() =>
