@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
 import type { PanelUser } from "../dashboard/types";
 import { getCategory } from "./data";
 import { OnboardingIcon, ProgyMark } from "./OnboardingIcon";
@@ -18,12 +17,11 @@ const steps: Array<{ id: OnboardingStep; label: string }> = [
 const order: Record<OnboardingStep, number> = { business: 1, demo: 2, connect: 3 };
 
 export default function OnboardingSidebar({ user, draft, currentStep }: { user: PanelUser; draft: OnboardingDraft; currentStep: OnboardingStep }) {
-  const router = useRouter();
   const category = getCategory(draft.categoryCode);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/acceso?mode=login");
+    window.location.replace("/acceso?mode=login");
   }
 
   return (

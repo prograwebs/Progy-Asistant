@@ -46,6 +46,9 @@ export default function ConnectStep() {
         const response = await fetch("/api/whatsapp/connect", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: signup.code, wabaId: signup.wabaId, phoneNumberId: signup.phoneNumberId, businessId: signup.businessId, progyBusinessId: draft.businessId }) });
         const result = await response.json().catch(() => ({})) as { error?: string };
         if (!response.ok) throw new Error(result.error || "No pudimos terminar la conexión de WhatsApp.");
+        const onboardingResponse = await fetch("/api/onboarding", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "channelConnected", businessId: draft.businessId }) });
+        const onboardingResult = await onboardingResponse.json().catch(() => ({})) as { error?: string };
+        if (!onboardingResponse.ok) throw new Error(onboardingResult.error || "No pudimos guardar el estado de conexión.");
       }
       updateDraft({ connectionChoice: choice });
       setCompleted(true);

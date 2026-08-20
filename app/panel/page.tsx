@@ -1,17 +1,20 @@
 import { redirect } from "next/navigation";
 import ProgyDashboard from "../../components/dashboard/ProgyDashboard";
 import { getSupabaseUser, publicIntegrationStatus } from "../../lib/integrations";
+import { resolveUserRoute } from "../../lib/onboarding/routing";
 
 export const dynamic = "force-dynamic";
 
 export default async function PanelPage() {
   const integrations = publicIntegrationStatus();
   const user = await getSupabaseUser();
-  if (!user && process.env.NODE_ENV === "production") redirect("/acceso?mode=login");
+  if (!user) redirect("/acceso?mode=login");
+  const destination = await resolveUserRoute(user.id);
+  if (destination.path !== "/panel") redirect(destination.path);
 
   return (
     <ProgyDashboard
-      user={user ?? { id: "preview-user", email: "preview@progy.local", name: "Harold Vega" }}
+      user={user}
       integrations={integrations}
     />
   );

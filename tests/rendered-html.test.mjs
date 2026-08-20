@@ -138,13 +138,47 @@ test("onboarding production flow has durable state, versioned templates, and a s
   }
 });
 
-test("onboarding never treats browser WhatsApp confirmation as server verification", () => {
+test("onboarding records WhatsApp only after server-side verification", () => {
   const api = read("app/api/onboarding/route.ts");
   const connect = read("components/onboarding/steps/ConnectStep.tsx");
-  assert.match(api, /El canal todavía no tiene una confirmación server-side disponible/);
-  assert.doesNotMatch(connect, /action: "channelConnected"/);
+  assert.match(api, /markChannelConnected/);
+  assert.match(connect, /action: "channelConnected"/);
   assert.match(connect, /NEXT_PUBLIC_WHATSAPP_ENABLED/);
   assert.match(connect, /action: "channelSkipped"/);
+});
+
+test("onboarding resumes from durable state and protects authenticated routes", () => {
+  const paths = read("lib/onboarding/paths.ts");
+  const routing = read("lib/onboarding/routing.ts");
+  const access = read("app/acceso/page.tsx");
+  const panel = read("app/panel/page.tsx");
+  const draft = read("components/onboarding/useOnboardingDraft.ts");
+  const auth = read("lib/auth/supabase.ts");
+  const onboardingLayout = read("app/onboarding/layout.tsx");
+
+  assert.match(paths, /business_created/);
+  assert.match(paths, /demo_completed/);
+  assert.match(paths, /channel_skipped/);
+  assert.match(paths, /channel_connected/);
+  assert.match(routing, /business_onboarding\?business_id/);
+  assert.match(routing, /order=created_at\.desc/);
+  assert.match(routing, /\?\? candidates\[0\]/);
+  assert.match(access, /if \(await getSupabaseUser\(\)\) redirect\("\/panel"\)/);
+  assert.match(panel, /resolveUserRoute/);
+  assert.match(draft, /initialDraft\?\.businessId/);
+  assert.match(draft, /businessId: ""/);
+  assert.match(read("components/dashboard/ProgyDashboard.tsx"), /window\.location\.replace\("\/acceso\?mode=login"\)/);
+  assert.match(read("components/onboarding/OnboardingSidebar.tsx"), /window\.location\.replace\("\/acceso\?mode=login"\)/);
+  const privateGuard = read("components/auth/PrivateSessionGuard.tsx");
+  assert.match(privateGuard, /\/api\/auth\/me/);
+  assert.match(privateGuard, /window\.location\.replace\("\/acceso\?mode=login"\)/);
+  assert.match(privateGuard, /pageshow/);
+  assert.doesNotMatch(auth, /preview-user/);
+  assert.match(onboardingLayout, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
+  assert.doesNotMatch(onboardingLayout, /NODE_ENV/);
+  assert.match(panel, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
+  assert.doesNotMatch(panel, /preview-user|NODE_ENV/);
+  assert.doesNotMatch(read("app/api/workspace/route.ts"), /preview-business/);
 });
 
 test("production template keeps secrets server-side and WhatsApp gated", () => {

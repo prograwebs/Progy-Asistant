@@ -25,17 +25,26 @@ function readDraft(): OnboardingDraft {
   }
 }
 
-function useOnboardingDraftState(): OnboardingDraftStore {
+function useOnboardingDraftState(initialDraft?: OnboardingDraft): OnboardingDraftStore {
   const [draft, setDraft] = useState<OnboardingDraft>({ ...defaultOnboardingDraft });
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      setDraft(readDraft());
+      const local = readDraft();
+      const next = initialDraft?.businessId
+        ? { ...local, ...initialDraft }
+        : { ...local, businessId: "" };
+      setDraft(next);
+      try {
+        window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // The flow can continue if browser session storage is unavailable.
+      }
       setReady(true);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [initialDraft]);
 
   const updateDraft = useCallback((patch: Partial<OnboardingDraft>) => {
     setDraft((current) => {
@@ -62,8 +71,8 @@ function useOnboardingDraftState(): OnboardingDraftStore {
   return { draft, ready, updateDraft, resetDraft };
 }
 
-export function OnboardingDraftProvider({ children }: { children: ReactNode }) {
-  const store = useOnboardingDraftState();
+export function OnboardingDraftProvider({ children, initialDraft }: { children: ReactNode; initialDraft?: OnboardingDraft }) {
+  const store = useOnboardingDraftState(initialDraft);
   return createElement(OnboardingDraftContext.Provider, { value: store }, children);
 }
 

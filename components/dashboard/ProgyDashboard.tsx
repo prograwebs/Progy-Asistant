@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
@@ -20,8 +19,10 @@ import PreparationSection from "./sections/PreparationSection";
 import VoiceTestStudio from "./VoiceTestStudio";
 import { Card, SectionHeader } from "./ui";
 import { initials } from "./utils";
+import { onboardingPathForStatus } from "../../lib/onboarding/paths";
 import { DashboardIcon } from "./LineIcon";
 import styles from "./ProgyDashboard.module.css";
+import PrivateSessionGuard from "../auth/PrivateSessionGuard";
 
 gsap.registerPlugin(useGSAP);
 
@@ -74,7 +75,6 @@ function AnimatedBrandMark() {
 }
 
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
-  const router = useRouter();
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
   const [section, setSection] = useState<SectionId>("inicio");
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -85,7 +85,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/acceso?mode=login");
+    window.location.replace("/acceso?mode=login");
   }
 
   function go(next: string) {
@@ -100,6 +100,8 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   if (!snapshot.selected) return <OnboardingRedirect to="/onboarding/business" />;
 
   const workspace = snapshot.selected;
+  const onboardingPath = onboardingPathForStatus(String(workspace.onboarding?.flow_status || ""), true);
+  if (onboardingPath !== "/panel") return <OnboardingRedirect to={onboardingPath} />;
   const category = snapshot.categories.find((item) => item.code === workspace.business.category_code);
   const workspaceKey = workspace.business.id;
   const currentPlan = planLabel(workspace.plan?.plan_code || workspace.business.status);
@@ -145,6 +147,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const sidebarControlLabel = mobileOpen ? "Cerrar menú" : sidebarCollapsed ? "Expandir sidebar" : "Ocultar sidebar";
 
   return <main className={`${styles.app} ${isSidebarCollapsed ? styles.collapsed : ""}`}>
+    <PrivateSessionGuard />
     {mobileOpen && <button aria-label="Cerrar menú" className={styles.mobileOverlay} onClick={() => setMobileOpen(false)} />}
     <aside className={`${styles.sidebar} ${mobileOpen ? styles.open : ""}`}>
       <div className={styles.sidebarHeader}>

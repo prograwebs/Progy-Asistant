@@ -181,6 +181,13 @@ export async function markChannelSkipped(userId: string, businessId: string) {
   return ensureOnboardingRow(businessId, { flow_status: "channel_skipped", channel_status: "skipped", channel_updated_at: new Date().toISOString() });
 }
 
+export async function markChannelConnected(userId: string, businessId: string) {
+  await findBusiness(userId, businessId);
+  const current = await ensureOnboardingRow(businessId);
+  if (text(current, "flow_status") !== "demo_completed") throw new SupabaseDataError("Completa la prueba de Progy antes de conectar WhatsApp.", 422);
+  return ensureOnboardingRow(businessId, { flow_status: "channel_connected", channel_status: "connected", channel_updated_at: new Date().toISOString() });
+}
+
 export function calculateReadiness(business: Row, onboarding: Row, agent: Row | null, hours: Row[], catalogItems: Row[]): OnboardingReadiness {
   const validHour = (hour: Row) => {
     if (bool(hour, "is_closed")) return false;

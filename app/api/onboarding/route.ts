@@ -1,6 +1,6 @@
 import { requireApiUser } from "../../../lib/auth/supabase";
 import { SupabaseDataError } from "../../../lib/supabase-data";
-import { activateBusiness, createBusinessFromTemplate, getOnboardingSnapshot, markChannelSkipped, saveDemoForBusiness } from "../../../lib/onboarding/service";
+import { activateBusiness, createBusinessFromTemplate, getOnboardingSnapshot, markChannelConnected, markChannelSkipped, saveDemoForBusiness } from "../../../lib/onboarding/service";
 import { listOnboardingTemplates } from "../../../lib/onboarding/templates";
 import { cleanText, isRecord, validIdentifier } from "../../../lib/validation/input";
 
@@ -50,7 +50,8 @@ export async function POST(request: Request) {
       return Response.json({ onboarding });
     }
     if (body.action === "channelConnected") {
-      throw new SupabaseDataError("El canal todavía no tiene una confirmación server-side disponible.", 503);
+      const onboarding = await markChannelConnected(user.id, businessId);
+      return Response.json({ onboarding });
     }
     if (body.action === "activate") {
       const onboarding = await activateBusiness(user.id, businessId);

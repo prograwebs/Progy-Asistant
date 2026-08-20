@@ -3,9 +3,10 @@
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 import type { PanelUser } from "../dashboard/types";
+import PrivateSessionGuard from "../auth/PrivateSessionGuard";
 import OnboardingSidebar from "./OnboardingSidebar";
 import { OnboardingDraftProvider, useOnboardingDraft } from "./useOnboardingDraft";
-import type { OnboardingStep } from "./types";
+import type { OnboardingDraft, OnboardingStep } from "./types";
 import styles from "./Onboarding.module.css";
 
 function currentStep(pathname: string): OnboardingStep {
@@ -14,8 +15,8 @@ function currentStep(pathname: string): OnboardingStep {
   return "business";
 }
 
-export default function OnboardingLayout({ user, children }: { user: PanelUser; children: ReactNode }) {
-  return <OnboardingDraftProvider><OnboardingFrame user={user}>{children}</OnboardingFrame></OnboardingDraftProvider>;
+export default function OnboardingLayout({ user, children, initialDraft }: { user: PanelUser; children: ReactNode; initialDraft?: OnboardingDraft }) {
+  return <OnboardingDraftProvider initialDraft={initialDraft}><OnboardingFrame user={user}>{children}</OnboardingFrame></OnboardingDraftProvider>;
 }
 
 function OnboardingFrame({ user, children }: { user: PanelUser; children: ReactNode }) {
@@ -25,6 +26,7 @@ function OnboardingFrame({ user, children }: { user: PanelUser; children: ReactN
 
   return (
     <main className={styles.app}>
+      <PrivateSessionGuard />
       <OnboardingSidebar user={user} draft={draft} currentStep={step} />
       <section className={styles.main}>
         <div className={styles.mobileBrand}><span><span className={styles.mobileBrandMark}><i /><i /><i /></span>Progy</span><small>Configuración inicial</small></div>
