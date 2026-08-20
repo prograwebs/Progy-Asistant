@@ -175,25 +175,42 @@
 @keyframes recordingPulse { 50% { box-shadow: 0 0 0 4px rgba(255, 129, 141, .08); } }
 .demoActions { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 15px; }
 
+.connectIntro { margin: 0 0 17px; }
+.connectIntro h1 { margin: 0 0 7px; color: #f5f2eb; font: 400 clamp(27px, 3.5vw, 38px)/1.12 var(--font-display), sans-serif; letter-spacing: -.04em; }
+.connectIntro p { max-width: 620px; margin: 0; color: #92989a; font-size: 12px; line-height: 1.6; }
 .connectLayout { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr); gap: 15px; align-items: start; }
-.connectCard, .benefitsCard { padding: 24px; border: 1px solid #2d3337; border-radius: 10px; background: #101416; }
-.connectCard h1 { margin: 7px 0 8px; color: #f5f2eb; font: 400 clamp(27px, 3.5vw, 38px)/1.12 var(--font-display), sans-serif; letter-spacing: -.04em; }
-.connectCard > p { margin: 0; color: #92989a; font-size: 12px; line-height: 1.6; }
-.channelDiagram { display: grid; grid-template-columns: 1fr 110px 1fr; align-items: center; gap: 5px; margin: 28px 0 23px; }
-.channelNode { display: grid; justify-items: center; gap: 8px; color: #dad6cf; font-size: 11px; text-align: center; }
-.channelNodeIcon { display: grid; place-items: center; width: 57px; height: 57px; border: 1px solid #72502e; border-radius: 50%; color: var(--onboarding-accent); background: #251a11; }
-.channelNodeCenter .channelNodeIcon { width: 68px; height: 68px; background: #1c1712; box-shadow: 0 0 0 8px rgba(219, 165, 106, .06); }
-.channelNode small { color: #777d80; font-size: 9px; }
-.channelConnectors { display: flex; align-items: center; justify-content: center; gap: 5px; color: #6e7477; }
-.channelConnectors::before, .channelConnectors::after { content: ""; width: 35px; border-top: 1px dashed #6e7477; }
-.channelConnectors span { color: var(--onboarding-accent); font-size: 14px; }
-.benefitsCard h2 { margin: 0 0 17px; color: #eeeae2; font: 500 16px/1.2 var(--font-display), sans-serif; }
-.benefitList { display: grid; gap: 8px; }
-.benefit { display: flex; align-items: flex-start; gap: 10px; padding: 11px; border: 1px solid #2b3135; border-radius: 7px; background: #14181b; }
-.benefitIcon { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 27px; border-radius: 50%; color: var(--onboarding-accent); background: #2a1d13; }
+.connectColumn { display: grid; gap: 10px; min-width: 0; }
+.connectCard, .benefitsCard { padding: 18px; border: 1px solid #252c30; border-radius: 10px; background: linear-gradient(145deg, rgba(18, 23, 26, .98), #101416); }
+.connectCardHeading { margin-bottom: 12px; }
+.connectCardHeading h2 { margin: 0 0 5px; color: #eeeae2; font: 500 15px/1.2 var(--font-display), sans-serif; }
+.connectCardHeading p { margin: 0; color: #777f82; font-size: 10px; }
+.channelDiagram { display: grid; grid-template-columns: minmax(0, 1fr) 92px minmax(0, 1fr) 92px minmax(0, 1fr); align-items: center; gap: 3px; margin: 14px 0 16px; }
+.channelNode { display: grid; justify-items: center; gap: 6px; min-width: 0; color: #dad6cf; font-size: 10px; text-align: center; }
+.channelNodeIcon { position: relative; display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid #704d2e; border-radius: 50%; color: var(--onboarding-accent); background: radial-gradient(circle, #302216, #211810); box-shadow: 0 0 0 6px rgba(219, 165, 106, .035); }
+.channelNodeCenter .channelNodeIcon { width: 61px; height: 61px; border-color: #8e6138; background: radial-gradient(circle, #2c2118, #1b1713); box-shadow: 0 0 0 7px rgba(219, 165, 106, .07), 0 0 26px rgba(219, 165, 106, .08); }
+.channelNodeCenter .channelNodeIcon::before { content: ""; position: absolute; width: 61px; height: 61px; border: 1px solid rgba(219, 165, 106, .12); border-radius: 50%; }
+.progyIconMark { position: relative; z-index: 1; display: flex; align-items: center; gap: 3px; height: 27px; }
+.progyIconMark i { display: block; width: 4px; border-radius: 4px; background: #e5a060; box-shadow: 0 0 8px rgba(229, 160, 96, .45); }
+.progyIconMark i:nth-child(1) { height: 15px; }.progyIconMark i:nth-child(2) { height: 27px; }.progyIconMark i:nth-child(3) { height: 20px; }
+.whatsappNodeIcon { color: #63d78a; border-color: #356c47; background: radial-gradient(circle, #1c3a27, #15251b); box-shadow: 0 0 0 6px rgba(99, 215, 138, .04), 0 0 20px rgba(99, 215, 138, .08); }
+.channelNode small { color: #777d80; font-size: 9px; line-height: 1.35; }
+.channelConnectors { display: flex; align-items: center; justify-content: center; gap: 4px; color: #6e7477; }
+.channelConnectors::before, .channelConnectors::after { content: ""; width: 27px; border-top: 1px dashed #565e61; }
+.channelConnectors span { color: #7b8385; font-size: 12px; line-height: 1; }
+.benefitsCard { padding: 18px; }
+.benefitsCard h2 { margin: 0 0 13px; color: #eeeae2; font: 500 15px/1.2 var(--font-display), sans-serif; }
+.benefitList { display: grid; gap: 6px; }
+.benefit { display: flex; align-items: flex-start; gap: 9px; padding: 9px; border: 1px solid #292f33; border-radius: 7px; background: rgba(20, 24, 27, .78); }
+.benefitIcon { display: grid; place-items: center; width: 27px; height: 27px; flex: 0 0 27px; border-radius: 50%; color: var(--onboarding-accent); background: #2a2118; }
 .benefit strong, .benefit small { display: block; }
 .benefit strong { color: #ddd9d1; font-size: 10px; font-weight: 600; }.benefit small { margin-top: 3px; color: #777d80; font-size: 9px; line-height: 1.45; }
-.secureNote { display: flex; align-items: flex-start; gap: 8px; margin-top: 15px; padding: 11px; border: 1px solid #2b3430; border-radius: 7px; color: #8eaa99; background: rgba(134, 240, 186, .035); font-size: 9px; line-height: 1.5; }
+.secureNote { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 9px 11px; border: 1px solid #252f2b; border-radius: 8px; color: #8eaa99; background: linear-gradient(90deg, rgba(134, 240, 186, .045), rgba(17, 23, 22, .72)); font-size: 9px; line-height: 1.4; }
+.secureNoteIcon { display: grid; place-items: center; width: 25px; height: 25px; flex: 0 0 25px; color: #c7985e; }
+.secureNoteCopy { display: grid; gap: 2px; min-width: 0; flex: 1; }
+.secureNoteCopy strong { color: #c4c1b8; font-size: 9px; font-weight: 500; }
+.secureNoteCopy small { color: #737c7a; font-size: 8px; line-height: 1.35; }
+.secureBadge { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; padding: 5px 7px; border: 1px solid #2b3932; border-radius: 6px; color: #86f0ba; background: rgba(134, 240, 186, .035); }
+.secureBadge > svg { flex: 0 0 auto; }.secureBadge span { display: grid; gap: 1px; }.secureBadge strong { color: #b4c1b8; font-size: 8px; font-weight: 500; }.secureBadge small { color: #68746e; font-size: 7px; }
 .connectActions { display: grid; gap: 9px; margin-top: 18px; }.connectActions .primaryButton, .connectActions .secondaryButton { width: 100%; }
 
 .completeCard { width: min(650px, 100%); padding: clamp(28px, 5vw, 55px); border: 1px solid #30363a; border-radius: 15px; background: rgba(14, 17, 20, .94); text-align: center; box-shadow: 0 30px 100px rgba(0, 0, 0, .28); }
@@ -206,4 +223,4 @@
   .app { display: block; }.sidebar { position: static; width: 100%; height: auto; display: grid; grid-template-columns: 1fr auto; gap: 12px 16px; padding: 15px 16px; border-right: 0; border-bottom: 1px solid #252a2e; }.brand { padding: 0; font-size: 24px; }.businessCard { grid-column: 1 / -1; grid-row: 2; }.sidebarSectionLabel { display: none; }.sidebarSteps { grid-column: 2; grid-row: 1; flex-direction: row; gap: 4px; align-items: center; }.sidebarSteps::before, .sidebarStep span:last-child, .sidebarUser { display: none; }.sidebarStep { min-height: 30px; padding: 0; }.sidebarStepActive { padding: 0 7px; }.main { display: block; padding: 25px 15px 40px; }.content { width: 100%; }.mobileBrand { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; color: #eeeae2; font: 500 16px/1 var(--font-display), sans-serif; }.mobileBrand > span { display: flex; align-items: center; gap: 8px; }.mobileBrand small { color: #777d80; font: 10px/1 var(--font-body), sans-serif; }.mobileBrandMark { width: 25px; height: 25px; grid-template-columns: repeat(3, 2px); gap: 2px; }.mobileBrandMark i { width: 2px; }.mobileBrandMark i:nth-child(1) { height: 6px; }.mobileBrandMark i:nth-child(2) { height: 12px; }.mobileBrandMark i:nth-child(3) { height: 8px; }
   .panel { padding: 24px 16px; }.progress { margin-bottom: 21px; }.progressItemLabel { display: none; }.progressTrack { margin-top: 12px; }.demoHeader { display: block; }.demoHeader p { line-height: 1.5; }.demoGrid { grid-template-columns: 1fr; }.conversation { min-height: 220px; max-height: 360px; }.demoActions { align-items: stretch; flex-direction: column-reverse; }.demoActions .primaryButton, .demoActions .textButton { width: 100%; }.channelDiagram { grid-template-columns: 1fr 70px 1fr; }.channelNodeIcon { width: 48px; height: 48px; }.channelNodeCenter .channelNodeIcon { width: 58px; height: 58px; }.channelConnectors::before, .channelConnectors::after { width: 18px; }.completeCard { padding: 35px 20px; }.completeSummary { flex-wrap: wrap; }
 }
-@media (max-width: 430px) { .categoryGrid { grid-template-columns: 1fr 1fr; gap: 7px; }.categoryCard { min-height: 125px; padding: 13px 6px; }.categoryLabel { font-size: 12px; }.categoryDescription { font-size: 9px; }.infoBanner { align-items: flex-start; }.formActions { display: grid; }.formActions .primaryButton, .formActions .textButton { width: 100%; }.connectCard, .benefitsCard { padding: 18px 14px; } }
+@media (max-width: 430px) { .categoryGrid { grid-template-columns: 1fr 1fr; gap: 7px; }.categoryCard { min-height: 125px; padding: 13px 6px; }.categoryLabel { font-size: 12px; }.categoryDescription { font-size: 9px; }.infoBanner { align-items: flex-start; }.formActions { display: grid; }.formActions .primaryButton, .formActions .textButton { width: 100%; }.connectCard, .benefitsCard { padding: 18px 14px; }.connectIntro h1 { font-size: 29px; }.channelDiagram { grid-template-columns: minmax(0, 1fr) 56px minmax(0, 1fr) 56px minmax(0, 1fr); gap: 0; }.channelNode { font-size: 9px; }.channelNode small { font-size: 8px; }.channelConnectors::before, .channelConnectors::after { width: 14px; }.secureNote { align-items: flex-start; flex-wrap: wrap; }.secureBadge { margin-left: 34px; } }

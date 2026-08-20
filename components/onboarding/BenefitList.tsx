@@ -13,5 +13,12 @@ export default function BenefitList() {
 }
 
 export function SecureConnectionNote() {
-  return <div className={styles.secureNote}><ShieldCheck size={16} /><span>La conexión real se realizará directamente con Meta. No tendrás que copiar tokens ni configurar credenciales manualmente.</span></div>;
+  return <div className={styles.secureNote}>
+    <span className={styles.secureNoteIcon}><ShieldCheck size={16} /></span>
+    <span className={styles.secureNoteCopy}>
+      <strong>Tus datos y conversaciones están protegidos.</strong>
+      <small>La conexión se realiza directamente con Meta, sin copiar tokens ni configurar credenciales manualmente.</small>
+    </span>
+    <span className={styles.secureBadge}><Check size={12} /><span><strong>Conexión segura</strong><small>Integración oficial</small></span></span>
+  </div>;
 }
