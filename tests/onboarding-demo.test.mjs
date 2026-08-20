@@ -66,6 +66,16 @@ test("assistant context tolerates a stale schema cache for demo markers", () => 
   assert.match(data, /activeBusiness && !knowledgeResult\.hasDemoMarker \? \[\] : knowledgeResult\.rows/);
 });
 
+test("assistant data errors expose only a development operation hint", () => {
+  const data = read("lib/supabase-data.ts");
+  const turnRoute = read("app/api/assistant/turn/route.ts");
+
+  assert.match(data, /operation\?: string/);
+  assert.match(data, /dataOperation\(path\)/);
+  assert.match(turnRoute, /process\.env\.NODE_ENV !== "production"/);
+  assert.match(turnRoute, /operation: error\.operation/);
+});
+
 test("onboarding assistant demo validates voice overrides and never executes actions", () => {
   const turnRoute = read("app/api/assistant/turn/route.ts");
   const sessionRoute = read("app/api/assistant/session/route.ts");

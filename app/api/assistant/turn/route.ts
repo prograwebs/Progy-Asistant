@@ -37,8 +37,11 @@ function jsonError(error: unknown) {
     return Response.json({ error: error.message, code: error.code }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
   }
   if (error instanceof OpenAIServiceError || error instanceof VoiceServiceError || error instanceof SupabaseDataError) {
+    const debug = error instanceof SupabaseDataError && process.env.NODE_ENV !== "production" && error.operation
+      ? { operation: error.operation }
+      : {};
     return Response.json(
-      { error: error.message, code: error instanceof VoiceServiceError ? error.code : undefined },
+      { error: error.message, code: error instanceof VoiceServiceError ? error.code : undefined, ...debug },
       { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } },
     );
   }

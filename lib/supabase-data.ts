@@ -9,12 +9,14 @@ export type SupabasePublicErrorCode = "session_refresh_required";
 export class SupabaseDataError extends Error {
   status: number;
   publicCode?: SupabasePublicErrorCode;
+  operation?: string;
 
-  constructor(message: string, status = 500, publicCode?: SupabasePublicErrorCode) {
+  constructor(message: string, status = 500, publicCode?: SupabasePublicErrorCode, operation?: string) {
     super(message);
     this.name = "SupabaseDataError";
     this.status = status;
     this.publicCode = publicCode;
+    this.operation = operation;
   }
 }
 
@@ -67,6 +69,7 @@ export async function supabaseDataRequest<T>(path: string, options: DataRequestO
       publicDataError(response.status, method),
       response.status,
       response.status === 401 ? "session_refresh_required" : undefined,
+      dataOperation(path),
     );
   }
   return payload as T;
