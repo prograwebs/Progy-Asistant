@@ -7,7 +7,15 @@ import {
 export const dynamic = "force-dynamic";
 
 const GRAPH_VERSION =
-  process.env.META_GRAPH_VERSION?.trim() || "v25.0";
+  process.env.META_GRAPH_VERSION?.trim() || "v26.0";
+
+/*
+ * Deben coincidir EXACTO con lo que se usó
+ * al crear la plantilla en
+ * /api/whatsapp/templates (route.ts).
+ */
+const TEMPLATE_NAME = "progy_prueba_mensaje";
+const TEMPLATE_LANGUAGE = "es";
 
 const TEST_MESSAGE =
   "Hola, este es un mensaje de prueba enviado desde Progy mediante WhatsApp Business.";
@@ -47,11 +55,24 @@ function normalizePhone(value: unknown) {
     .replace(/[^\d]/g, "");
 }
 
-async function sendTextMessage(
+async function sendTemplateMessage(
   phoneNumberId: string,
   accessToken: string,
   to: string,
 ) {
+  /*
+   * IMPORTANTE:
+   * Un negocio real casi siempre le escribe
+   * PRIMERO a un cliente que nunca abrió
+   * una ventana de servicio de 24h con él.
+   * Meta solo permite iniciar esa conversación
+   * con un mensaje de plantilla aprobado,
+   * nunca con texto libre (type: "text").
+   * Por eso este mensaje de prueba también
+   * debe salir como plantilla: así se
+   * comporta igual que el envío real que
+   * hará Progy para cada negocio.
+   */
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
     {
@@ -78,14 +99,16 @@ async function sendTextMessage(
         to,
 
         type:
-          "text",
+          "template",
 
-        text: {
-          preview_url:
-            false,
+        template: {
+          name:
+            TEMPLATE_NAME,
 
-          body:
-            TEST_MESSAGE,
+          language: {
+            code:
+              TEMPLATE_LANGUAGE,
+          },
         },
       }),
 
@@ -298,18 +321,16 @@ export async function POST(request: Request) {
     }
 
     /*
-     * 5. Intentar enviar texto normal.
-     *
-     * IMPORTANTE:
-     * El cliente debe haber enviado primero
-     * un mensaje al WhatsApp del negocio
-     * para abrir la ventana de atención.
+     * 5. Intentar enviar la plantilla
+     * aprobada (no texto libre: el cliente
+     * puede no haberle escrito nunca antes
+     * al negocio).
      */
     let {
       response: metaResponse,
       result,
     } =
-      await sendTextMessage(
+      await sendTemplateMessage(
         connection.phone_number_id,
         connection.access_token,
         to,
@@ -373,7 +394,7 @@ export async function POST(request: Request) {
        * segundo y último intento.
        */
       const retry =
-        await sendTextMessage(
+        await sendTemplateMessage(
           connection.phone_number_id,
           connection.access_token,
           to,

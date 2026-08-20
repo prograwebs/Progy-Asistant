@@ -90,11 +90,33 @@ export default function WhatsAppSection({
   const [checkingTemplate, setCheckingTemplate] =
     useState(false);
 
-  const [templateStatus, setTemplateStatus] =
-    useState("");
+  const [
+    fetchedTemplateStatus,
+    setFetchedTemplateStatus,
+  ] = useState("");
 
-  const [templateMessage, setTemplateMessage] =
-    useState("");
+  const [
+    fetchedTemplateMessage,
+    setFetchedTemplateMessage,
+  ] = useState("");
+
+  /*
+   * Cuando no hay conexión no queremos mostrar
+   * datos de una plantilla que quedaron
+   * guardados de un negocio/conexión anterior.
+   * En vez de "limpiar" el estado dentro de un
+   * useEffect (lo cual dispara un render en
+   * cascada y rompe la regla de lint
+   * react-hooks/set-state-in-effect), lo
+   * derivamos directamente aquí.
+   */
+  const templateStatus = connection?.wabaId
+    ? fetchedTemplateStatus
+    : "";
+
+  const templateMessage = connection?.wabaId
+    ? fetchedTemplateMessage
+    : "";
 
   const appId =
     process.env.NEXT_PUBLIC_META_APP_ID || "";
@@ -195,8 +217,6 @@ export default function WhatsAppSection({
    */
   useEffect(() => {
     if (!connection?.wabaId) {
-      setTemplateStatus("");
-      setTemplateMessage("");
       return;
     }
 
@@ -226,7 +246,7 @@ export default function WhatsAppSection({
         }
 
         if (!response.ok) {
-          setTemplateStatus("");
+          setFetchedTemplateStatus("");
 
           /*
            * No bloqueamos toda la pantalla
@@ -246,30 +266,30 @@ export default function WhatsAppSection({
               ""
             ).toUpperCase();
 
-          setTemplateStatus(
+          setFetchedTemplateStatus(
             status,
           );
 
           if (
             status === "APPROVED"
           ) {
-            setTemplateMessage(
+            setFetchedTemplateMessage(
               "Plantilla aprobada. Ya puedes enviar el mensaje de prueba.",
             );
           } else {
-            setTemplateMessage(
+            setFetchedTemplateMessage(
               `Plantilla encontrada. Estado: ${
                 status || "PENDING"
               }.`,
             );
           }
         } else {
-          setTemplateStatus("");
-          setTemplateMessage("");
+          setFetchedTemplateStatus("");
+          setFetchedTemplateMessage("");
         }
       } catch {
         if (!cancelled) {
-          setTemplateStatus("");
+          setFetchedTemplateStatus("");
         }
       } finally {
         if (!cancelled) {
@@ -401,7 +421,7 @@ export default function WhatsAppSection({
 
     setCreatingTemplate(true);
     setError("");
-    setTemplateMessage("");
+    setFetchedTemplateMessage("");
     setTestResult("");
 
     try {
@@ -440,24 +460,24 @@ export default function WhatsAppSection({
           "PENDING"
         ).toUpperCase();
 
-      setTemplateStatus(
+      setFetchedTemplateStatus(
         status,
       );
 
       if (
         status === "APPROVED"
       ) {
-        setTemplateMessage(
+        setFetchedTemplateMessage(
           "Plantilla aprobada. Ya puedes enviar el mensaje de prueba.",
         );
       } else if (
         status === "PENDING"
       ) {
-        setTemplateMessage(
+        setFetchedTemplateMessage(
           "Plantilla creada correctamente. Meta la está revisando.",
         );
       } else {
-        setTemplateMessage(
+        setFetchedTemplateMessage(
           `Plantilla creada. Estado: ${status}.`,
         );
       }
@@ -512,8 +532,8 @@ export default function WhatsAppSection({
         !result.exists ||
         !result.template
       ) {
-        setTemplateStatus("");
-        setTemplateMessage(
+        setFetchedTemplateStatus("");
+        setFetchedTemplateMessage(
           "La plantilla todavía no existe.",
         );
 
@@ -526,24 +546,24 @@ export default function WhatsAppSection({
           "PENDING"
         ).toUpperCase();
 
-      setTemplateStatus(
+      setFetchedTemplateStatus(
         status,
       );
 
       if (
         status === "APPROVED"
       ) {
-        setTemplateMessage(
+        setFetchedTemplateMessage(
           "Plantilla aprobada. Ya puedes enviar el mensaje de prueba.",
         );
       } else if (
         status === "PENDING"
       ) {
-        setTemplateMessage(
+        setFetchedTemplateMessage(
           "La plantilla sigue pendiente de aprobación por Meta.",
         );
       } else {
-        setTemplateMessage(
+        setFetchedTemplateMessage(
           `Estado actual de la plantilla: ${status}.`,
         );
       }
