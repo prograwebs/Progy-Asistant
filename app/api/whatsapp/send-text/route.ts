@@ -9,6 +9,9 @@ export const dynamic = "force-dynamic";
 const GRAPH_VERSION =
   process.env.META_GRAPH_VERSION?.trim() || "v25.0";
 
+const TEST_MESSAGE =
+  "Hola, este es un mensaje de prueba enviado desde Progy mediante WhatsApp Business.";
+
 type MetaError = {
   message?: string;
   type?: string;
@@ -44,7 +47,7 @@ function normalizePhone(value: unknown) {
     .replace(/[^\d]/g, "");
 }
 
-async function sendHelloWorld(
+async function sendTextMessage(
   phoneNumberId: string,
   accessToken: string,
   to: string,
@@ -75,18 +78,19 @@ async function sendHelloWorld(
         to,
 
         type:
-          "template",
+          "text",
 
-        template: {
-  name: "progy_prueba_mensaje",
+        text: {
+          preview_url:
+            false,
 
-  language: {
-    code: "es",
-  },
-},
+          body:
+            TEST_MESSAGE,
+        },
       }),
 
-      cache: "no-store",
+      cache:
+        "no-store",
     },
   );
 
@@ -105,20 +109,14 @@ async function registerPhoneNumber(
   phoneNumberId: string,
   accessToken: string,
 ) {
-const pin =
-  process.env.META_WHATSAPP_REG_PIN?.trim() || "";
+  const pin =
+    process.env.META_WHATSAPP_REG_PIN?.trim() || "";
 
-console.log("WhatsApp registration PIN config", {
-  configured: Boolean(pin),
-  length: pin.length,
-  numeric: /^\d+$/.test(pin),
-});
-
-if (!/^\d{6}$/.test(pin)) {
-  throw new Error(
-    "META_WHATSAPP_REG_PIN no está configurado correctamente.",
-  );
-}
+  if (!/^\d{6}$/.test(pin)) {
+    throw new Error(
+      "META_WHATSAPP_REG_PIN no está configurado correctamente.",
+    );
+  }
 
   const response = await fetch(
     `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/register`,
@@ -143,7 +141,8 @@ if (!/^\d{6}$/.test(pin)) {
         pin,
       }),
 
-      cache: "no-store",
+      cache:
+        "no-store",
     },
   );
 
@@ -160,6 +159,9 @@ if (!/^\d{6}$/.test(pin)) {
 
 export async function POST(request: Request) {
   try {
+    /*
+     * 1. Usuario autenticado.
+     */
     const user =
       await requireApiUser();
 
@@ -175,6 +177,9 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * 2. Leer solicitud.
+     */
     const body =
       (await request
         .json()
@@ -235,6 +240,9 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * 3. Comprobar permisos del negocio.
+     */
     const allowed =
       await canManageBusiness(
         user.id,
@@ -253,6 +261,10 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * 4. Obtener conexión de WhatsApp
+     * guardada en Supabase.
+     */
     const connection =
       await getWhatsAppConnection(
         businessId,
@@ -286,40 +298,39 @@ export async function POST(request: Request) {
     }
 
     /*
-     * Primer intento de envío.
+     * 5. Intentar enviar texto normal.
+     *
+     * IMPORTANTE:
+     * El cliente debe haber enviado primero
+     * un mensaje al WhatsApp del negocio
+     * para abrir la ventana de atención.
      */
     let {
       response: metaResponse,
       result,
     } =
-      await sendHelloWorld(
+      await sendTextMessage(
         connection.phone_number_id,
         connection.access_token,
         to,
       );
 
     /*
-     * Meta #133010:
-     * el número todavía no está registrado.
-     *
-     * Lo registramos automáticamente
-     * y volvemos a intentar una sola vez.
+     * 6. Si Meta indica que el número
+     * todavía no está registrado,
+     * lo registramos y reintentamos
+     * solamente una vez.
      */
     if (
       !metaResponse.ok &&
       result.error?.code === 133010
     ) {
-      console.log(
-        "WhatsApp phone is not registered. Registering...",
-        {
-          phoneNumberId:
-            connection.phone_number_id,
-        },
-      );
-
       const {
-        response: registerResponse,
-        result: registerResult,
+        response:
+          registerResponse,
+
+        result:
+          registerResult,
       } =
         await registerPhoneNumber(
           connection.phone_number_id,
@@ -358,11 +369,11 @@ export async function POST(request: Request) {
       }
 
       /*
-       * Registro exitoso.
-       * Volvemos a intentar el mensaje.
+       * Número registrado:
+       * segundo y último intento.
        */
       const retry =
-        await sendHelloWorld(
+        await sendTextMessage(
           connection.phone_number_id,
           connection.access_token,
           to,
@@ -375,6 +386,9 @@ export async function POST(request: Request) {
         retry.result;
     }
 
+    /*
+     * 7. Error devuelto por Meta.
+     */
     if (!metaResponse.ok) {
       console.error(
         "Progy WhatsApp Meta send failed",
@@ -405,6 +419,14 @@ export async function POST(request: Request) {
             result.error?.message
               ? `Meta: ${result.error.message}`
               : `Meta rechazó el mensaje (HTTP ${metaResponse.status}).`,
+
+          metaCode:
+            result.error?.code ??
+            null,
+
+          metaSubcode:
+            result.error?.error_subcode ??
+            null,
         },
         {
           status: 502,
@@ -412,6 +434,9 @@ export async function POST(request: Request) {
       );
     }
 
+    /*
+     * 8. Meta aceptó el mensaje.
+     */
     const messageId =
       result.messages?.[0]?.id ||
       null;
@@ -436,6 +461,9 @@ export async function POST(request: Request) {
       recipient:
         result.contacts?.[0]?.wa_id ||
         to,
+
+      message:
+        TEST_MESSAGE,
     });
   } catch (error) {
     console.error(
