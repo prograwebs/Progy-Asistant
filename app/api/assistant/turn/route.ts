@@ -2,6 +2,7 @@ import { requireApiUser } from "../../../../lib/integrations";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "../../../../lib/ai/openai";
 import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
+import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../../../lib/assistant/demo-limits";
 import { developmentTestingMode, entitlementsFor, normalizePlanCode, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
 import { exceedsBase64SourceLimit, exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
 import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
@@ -19,7 +20,22 @@ type AudioWarning = {
   message: string;
 };
 
+class DemoTurnError extends Error {
+  status: number;
+  code: "demo_question_limit_reached" | "demo_duplicate_question";
+
+  constructor(message: string, code: DemoTurnError["code"]) {
+    super(message);
+    this.name = "DemoTurnError";
+    this.status = 409;
+    this.code = code;
+  }
+}
+
 function jsonError(error: unknown) {
+  if (error instanceof DemoTurnError) {
+    return Response.json({ error: error.message, code: error.code }, { status: error.status, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+  }
   if (error instanceof OpenAIServiceError || error instanceof VoiceServiceError || error instanceof SupabaseDataError) {
     return Response.json(
       { error: error.message, code: error instanceof VoiceServiceError ? error.code : undefined },
@@ -82,12 +98,20 @@ async function trialAllowance(businessId: string, conversationId?: string | null
   return voiceTrialAllowance({ planCode, usedSessions, usedSeconds });
 }
 
-async function isDemoConversation(businessId: string, conversationId: string) {
+async function demoConversationState(businessId: string, conversationId: string) {
   const rows = await supabaseDataRequest<UnknownRow[]>(
     `conversations?id=${encodeURIComponent(conversationId)}&business_id=${encodeURIComponent(businessId)}&select=id,metadata`,
   );
+  if (!rows[0]) return null;
   const metadata = rows[0]?.metadata;
-  return Boolean(metadata && typeof metadata === "object" && !Array.isArray(metadata) && (metadata as Record<string, unknown>).demo_mode === true);
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return { isDemo: false, userTexts: [] };
+  const metadataObject = metadata as Record<string, unknown>;
+  const turns = Array.isArray(metadataObject.turns) ? metadataObject.turns : [];
+  const userTexts = turns
+    .map((turn) => turn as Record<string, unknown>)
+    .filter((turn) => turn.role === "user" && typeof turn.text === "string")
+    .map((turn) => String(turn.text));
+  return { isDemo: metadataObject.demo_mode === true, userTexts };
 }
 
 async function persistConversationTurn(options: {
@@ -192,7 +216,7 @@ export async function POST(request: Request) {
     if (!userText) throw new OpenAIServiceError("No logramos identificar qué deseas preguntar.", 422);
     if (conversationId && !demoMode) {
       try {
-        if (await isDemoConversation(businessId, conversationId)) demoMode = true;
+        if ((await demoConversationState(businessId, conversationId))?.isDemo) demoMode = true;
       } catch (error) {
         // Conversation mode is a safety enhancement, not a reason to interrupt
         // an existing dashboard turn when a remote schema/RLS read is degraded.
@@ -201,6 +225,19 @@ export async function POST(request: Request) {
           conversationId,
           error: error instanceof SupabaseDataError ? error.message : "unknown_error",
         });
+      }
+    }
+
+    if (demoMode) {
+      if (!conversationId) throw new SupabaseDataError("La conversación demo no es válida.", 400);
+      const state = await demoConversationState(businessId, conversationId);
+      if (!state?.isDemo) throw new SupabaseDataError("La conversación demo no es válida.", 403);
+      if (state.userTexts.length >= MAX_DEMO_QUESTIONS) {
+        throw new DemoTurnError("Ya usaste las 3 preguntas de esta demo. Puedes volver a escuchar las respuestas.", "demo_question_limit_reached");
+      }
+      const normalizedQuestion = normalizeDemoQuestion(userText);
+      if (normalizedQuestion && state.userTexts.some((previous) => normalizeDemoQuestion(previous) === normalizedQuestion)) {
+        throw new DemoTurnError("Ya hiciste esa pregunta. Puedes volver a escuchar su respuesta.", "demo_duplicate_question");
       }
     }
 

@@ -72,18 +72,46 @@ export async function supabaseDataRequest<T>(path: string, options: DataRequestO
   return payload as T;
 }
 
+async function optionalContextRows(path: string) {
+  try {
+    return await supabaseDataRequest<Record<string, unknown>[]>(path);
+  } catch (error) {
+    if (!(error instanceof SupabaseDataError) || error.status !== 400) throw error;
+    console.warn("Progy optional context query unavailable; continuing with an empty section");
+    return [];
+  }
+}
+
+async function contextRowsWithDemoMarker(pathWithMarker: string, pathWithoutMarker: string) {
+  try {
+    return { rows: await supabaseDataRequest<Record<string, unknown>[]>(pathWithMarker), hasDemoMarker: true };
+  } catch (error) {
+    if (!(error instanceof SupabaseDataError) || error.status !== 400) throw error;
+    console.warn("Progy context demo marker unavailable; using compatible context query");
+    return { rows: await optionalContextRows(pathWithoutMarker), hasDemoMarker: false };
+  }
+}
+
 export async function loadAgentContext(businessId: string) {
   const id = encodeURIComponent(businessId);
-  const [businesses, agents, hours, catalog, knowledge, features] = await Promise.all([
-    supabaseDataRequest<Record<string, unknown>[]>(`businesses?id=eq.${id}&select=id,name,category_code,description,address,city,province,phone,whatsapp_phone`),
-    supabaseDataRequest<Record<string, unknown>[]>(`agent_configs?business_id=eq.${id}&select=*`),
-    supabaseDataRequest<Record<string, unknown>[]>(`business_hours?business_id=eq.${id}&select=day_of_week,opens_at,closes_at,is_closed&order=day_of_week.asc`),
-    supabaseDataRequest<Record<string, unknown>[]>(`catalog_items?business_id=eq.${id}&is_available=eq.true&select=name,description,price,sale_price,kind,duration_minutes,is_demo&order=sort_order.asc&limit=80`),
-    supabaseDataRequest<Record<string, unknown>[]>(`knowledge_items?business_id=eq.${id}&is_active=eq.true&select=kind,title,question,answer,is_demo&order=priority.desc&limit=80`),
-    supabaseDataRequest<Record<string, unknown>[]>(`business_features?business_id=eq.${id}&enabled=eq.true&select=feature_code`),
+  const [businesses, agents, hours, catalogResult, knowledgeResult, features] = await Promise.all([
+    supabaseDataRequest<Record<string, unknown>[]>(`businesses?id=eq.${id}&select=id,name,category_code,status,description,address,city,province,phone,whatsapp_phone`),
+    optionalContextRows(`agent_configs?business_id=eq.${id}&select=*`),
+    optionalContextRows(`business_hours?business_id=eq.${id}&select=day_of_week,opens_at,closes_at,is_closed&order=day_of_week.asc`),
+    contextRowsWithDemoMarker(
+      `catalog_items?business_id=eq.${id}&is_available=eq.true&select=name,description,price,sale_price,kind,duration_minutes,is_demo&order=sort_order.asc&limit=80`,
+      `catalog_items?business_id=eq.${id}&is_available=eq.true&select=name,description,price,sale_price,kind,duration_minutes&order=sort_order.asc&limit=80`,
+    ),
+    contextRowsWithDemoMarker(
+      `knowledge_items?business_id=eq.${id}&is_active=eq.true&select=kind,title,question,answer,is_demo&order=priority.desc&limit=80`,
+      `knowledge_items?business_id=eq.${id}&is_active=eq.true&select=kind,title,question,answer&order=priority.desc&limit=80`,
+    ),
+    optionalContextRows(`business_features?business_id=eq.${id}&enabled=eq.true&select=feature_code`),
   ]);
   if (!businesses[0]) throw new SupabaseDataError("No tienes acceso a este negocio.", 403);
   const activeBusiness = line(businesses[0].status) === "active";
+  const catalog = activeBusiness && !catalogResult.hasDemoMarker ? [] : catalogResult.rows;
+  const knowledge = activeBusiness && !knowledgeResult.hasDemoMarker ? [] : knowledgeResult.rows;
   return {
     business: businesses[0],
     agent: agents[0] ?? {},

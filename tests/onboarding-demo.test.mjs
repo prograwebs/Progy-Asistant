@@ -19,9 +19,51 @@ test("onboarding demo uses the live assistant flow instead of static conversatio
   assert.match(component, /includeAudio: true/);
   assert.match(component, /Escuchar respuesta/);
   assert.match(component, /suggestionChip/);
+  assert.match(component, /UserRound/);
+  assert.match(component, /MAX_DEMO_QUESTIONS/);
+  assert.match(component, /normalizeDemoQuestion/);
+  assert.match(component, /freeQuestionUsed/);
+  assert.match(component, /usedSuggestionIds/);
+  assert.match(component, /createPortal/);
+  assert.match(component, /suggestionsTargetId/);
+  assert.doesNotMatch(component, /Continúa la conversación|Prueba a Progy en vivo|waveform/);
+  assert.doesNotMatch(component, /Prueba preguntando:/);
+  assert.doesNotMatch(component, /conversationHint/);
   assert.doesNotMatch(component, /scenario\.reply/);
+  assert.doesNotMatch(step, /ScenarioButton/);
+  assert.doesNotMatch(step, /Prueba una situación/);
+  assert.match(step, /2\. Prueba la demo/);
   assert.match(step, /businessId=\{draft\.businessId\}/);
   assert.match(step, /suggestions=\{scenarios\.map/);
+});
+
+test("onboarding demo normalizes voice labels and enforces server-side question limits", () => {
+  const voiceCard = read("components/onboarding/VoiceCard.tsx");
+  const styles = read("components/onboarding/Onboarding.module.css");
+  const limits = read("lib/assistant/demo-limits.ts");
+  const turnRoute = read("app/api/assistant/turn/route.ts");
+
+  assert.match(voiceCard, /split\(\/\\s\+\(\?:-\|–\|—\|\\\|\)/);
+  assert.match(styles, /grid-template-columns: 39px minmax\(0, 1fr\) 20px/);
+  assert.match(styles, /\.voiceCheck \{ position: static/);
+  assert.match(styles, /\.leftSuggestionArea/);
+  assert.match(styles, /min-height: 250px; max-height: 320px/);
+  assert.match(limits, /MAX_DEMO_QUESTIONS = 3/);
+  assert.match(limits, /normalizeDemoQuestion/);
+  assert.match(turnRoute, /demo_question_limit_reached/);
+  assert.match(turnRoute, /demo_duplicate_question/);
+  assert.match(turnRoute, /demoConversationState/);
+});
+
+test("assistant context tolerates a stale schema cache for demo markers", () => {
+  const data = read("lib/supabase-data.ts");
+
+  assert.match(data, /contextRowsWithDemoMarker/);
+  assert.match(data, /optionalContextRows/);
+  assert.match(data, /error\.status !== 400/);
+  assert.match(data, /hasDemoMarker/);
+  assert.match(data, /activeBusiness && !catalogResult\.hasDemoMarker \? \[\] : catalogResult\.rows/);
+  assert.match(data, /activeBusiness && !knowledgeResult\.hasDemoMarker \? \[\] : knowledgeResult\.rows/);
 });
 
 test("onboarding assistant demo validates voice overrides and never executes actions", () => {

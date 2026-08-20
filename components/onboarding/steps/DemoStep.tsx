@@ -7,7 +7,6 @@ import type { VoiceOption } from "../../dashboard/types";
 import ConversationPreview from "../ConversationPreview";
 import { getScenario, getScenarios } from "../data";
 import { OnboardingProgress } from "../OnboardingProgress";
-import ScenarioButton from "../ScenarioButton";
 import VoiceCard from "../VoiceCard";
 import { useOnboardingDraft } from "../useOnboardingDraft";
 import OnboardingLoading from "./OnboardingLoading";
@@ -143,10 +142,9 @@ export default function DemoStep() {
       <div className={styles.demoPanel}>
         <div className={styles.demoPanelTitle}>1. Elige la voz de Progy<small>Selecciona el tono con el que hablará con tus clientes.</small></div>
         {voiceLoading ? <div className={styles.voiceStatus}>Cargando voces disponibles…</div> : displayedVoices.length ? <div className={styles.voiceList}>{displayedVoices.map((voice) => <VoiceCard key={voice.id} voice={voice} selected={draft.voiceId === voice.id} playing={playingVoice === voice.id} onSelect={() => updateDraft({ voiceId: voice.id })} onListen={() => { updateDraft({ voiceId: voice.id }); void previewVoice(voice); }} />)}</div> : <div className={styles.voiceStatus} role="alert">{voiceError || "No hay voces disponibles en este momento."}</div>}
-        <div className={`${styles.demoPanelTitle} ${styles.scenarioTitle}`}>2. Prueba una situación<small>Elige una pregunta de ejemplo para ver cómo respondería.</small></div>
-        <div className={styles.scenarioList}>{scenarios.map((item) => <ScenarioButton key={item.id} scenario={item} selected={item.id === scenario.id} onSelect={() => selectScenario(item.id)} />)}</div>
+        <div id="onboarding-demo-suggestions" className={styles.leftSuggestionArea} />
       </div>
-      <div className={`${styles.demoPanel} ${styles.demoConversationPanel}`}><div className={styles.demoPanelTitle}>3. Prueba a Progy<small>Escribe una pregunta o pulsa el micrófono. Esta demo usa información de ejemplo.</small></div><ConversationPreview key={draft.businessId} businessId={draft.businessId} businessName={draft.businessName} voiceId={draft.voiceId} scenario={scenario} suggestions={scenarios.map((item) => ({ id: item.id, text: item.prompt }))} onScenarioSelect={selectScenario} /></div>
+      <div className={`${styles.demoPanel} ${styles.demoConversationPanel}`}><div className={styles.demoPanelTitle}>2. Prueba la demo<small>Elige una pregunta, escribe o pulsa el micrófono. Usa información de ejemplo.</small></div><ConversationPreview key={draft.businessId} businessId={draft.businessId} businessName={draft.businessName} voiceId={draft.voiceId} scenario={scenario} suggestions={scenarios.map((item) => ({ id: item.id, text: item.prompt }))} suggestionsTargetId="onboarding-demo-suggestions" onScenarioSelect={selectScenario} /></div>
     </div>
     {voiceNotice && <p className={styles.voiceNotice} role="status">{voiceNotice}</p>}
     {voiceError && displayedVoices.length > 0 && <p className={styles.error} role="alert">{voiceError}</p>}

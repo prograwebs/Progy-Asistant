@@ -1,7 +1,9 @@
 "use client";
 
-import { Bot, Mic, Pause, Play, Send, Sparkles, Square, Volume2, VolumeX } from "lucide-react";
+import { Bot, Mic, Pause, Play, Send, Sparkles, Square, UserRound, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
+import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../lib/assistant/demo-limits";
 import type { DemoScenario } from "./types";
 import styles from "./Onboarding.module.css";
 
@@ -36,6 +38,7 @@ type ConversationPreviewProps = {
   voiceId: string;
   scenario: DemoScenario;
   suggestions: Suggestion[];
+  suggestionsTargetId: string;
   onScenarioSelect: (id: string) => void;
 };
 
@@ -61,18 +64,18 @@ function historyFromTurns(turns: Turn[]) {
     .map(({ role, text }) => ({ role, text }));
 }
 
-function statusCopy(status: Status, sessionActive: boolean) {
+function statusCopy(status: Status) {
   if (status === "recording") return "Te escucho";
   if (status === "thinking") return "Progy está preparando una respuesta";
   if (status === "speaking") return "Progy está hablando";
-  return sessionActive ? "Continúa la conversación" : "Prueba a Progy en vivo";
+  return "Elige una pregunta";
 }
 
 function timestamp() {
   return Date.now();
 }
 
-export default function ConversationPreview({ businessId, businessName, voiceId, scenario, suggestions, onScenarioSelect }: ConversationPreviewProps) {
+export default function ConversationPreview({ businessId, businessName, voiceId, scenario, suggestions, suggestionsTargetId, onScenarioSelect }: ConversationPreviewProps) {
   const [status, setStatus] = useState<Status>("idle");
   const [turns, setTurns] = useState<Turn[]>(() => [{ id: "welcome", role: "assistant", text: `Hola, gracias por comunicarte con ${businessName}. Soy Progy, ¿en qué puedo ayudarte?` }]);
   const [input, setInput] = useState("");
@@ -83,6 +86,8 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [usedSuggestionIds, setUsedSuggestionIds] = useState<string[]>([]);
+  const [freeQuestionUsed, setFreeQuestionUsed] = useState(false);
 
   const conversationRef = useRef<{ id: string; startedAt: number } | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -211,7 +216,17 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
     }
   }
 
-  async function handleResponse(response: Response, fallbackUserText: string) {
+  type QuestionSource = { suggestionId?: string };
+
+  function questionCount() {
+    return turns.reduce((count, turn) => count + (turn.role === "user" ? 1 : 0), 0);
+  }
+
+  function showQuestionLimitNotice() {
+    setNotice("Ya usaste las 3 preguntas de esta demo. Puedes volver a escuchar las respuestas.");
+  }
+
+  async function handleResponse(response: Response, fallbackUserText: string, source: QuestionSource) {
     const result = await response.json().catch(() => ({})) as AssistantResponse;
     if (!response.ok) {
       if (result.code === "voice_trial_limit_reached") void finishSession("completed");
@@ -230,6 +245,11 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
     }
 
     setTurns((current) => [...current, userTurn, assistantTurn].slice(-20));
+    if (source.suggestionId) {
+      setUsedSuggestionIds((current) => current.includes(source.suggestionId as string) ? current : [...current, source.suggestionId as string]);
+    } else {
+      setFreeQuestionUsed(true);
+    }
     if (result.audio?.base64 && !muted) {
       await playTurn(assistantTurn.id, assistantTurn.audioUrl as string);
     } else {
@@ -238,9 +258,23 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
     }
   }
 
-  async function sendText(rawText: string) {
+  async function sendText(rawText: string, source: QuestionSource = {}) {
     const text = rawText.trim().slice(0, 2000);
     if (!text || status !== "idle" || !voiceId) return;
+    if (questionCount() >= MAX_DEMO_QUESTIONS) {
+      showQuestionLimitNotice();
+      return;
+    }
+    if (source.suggestionId && usedSuggestionIds.includes(source.suggestionId)) return;
+    if (!source.suggestionId && freeQuestionUsed) {
+      setNotice("Ya usaste tu pregunta libre. Puedes elegir una de las preguntas de ejemplo.");
+      return;
+    }
+    const normalizedText = normalizeDemoQuestion(text);
+    if (normalizedText && turns.some((turn) => turn.role === "user" && normalizeDemoQuestion(turn.text) === normalizedText)) {
+      setNotice("Ya hiciste esa pregunta. Puedes volver a escuchar su respuesta.");
+      return;
+    }
     setInput("");
     setError("");
     setNotice("");
@@ -261,7 +295,7 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
           includeAudio: true,
         }),
       });
-      await handleResponse(response, text);
+      await handleResponse(response, text, source);
     } catch (cause) {
       setStatus("idle");
       setError(cause instanceof Error ? cause.message : "No pudimos completar esta respuesta.");
@@ -269,6 +303,14 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
   }
 
   async function beginRecording() {
+    if (questionCount() >= MAX_DEMO_QUESTIONS) {
+      showQuestionLimitNotice();
+      return;
+    }
+    if (freeQuestionUsed) {
+      setNotice("Ya usaste tu pregunta libre. Puedes elegir una de las preguntas de ejemplo.");
+      return;
+    }
     setError("");
     setNotice("");
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
@@ -332,7 +374,7 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
       form.set("includeAudio", "1");
       form.set("audio", new File([blob], `progy-onboarding.${extension}`, { type: blob.type || "audio/webm" }));
       const response = await fetch("/api/assistant/turn", { method: "POST", body: form });
-      await handleResponse(response, "Audio recibido");
+      await handleResponse(response, "Audio recibido", {});
     } catch (cause) {
       setStatus("idle");
       setError(cause instanceof Error ? cause.message : "No pudimos completar esta respuesta.");
@@ -362,33 +404,40 @@ export default function ConversationPreview({ businessId, businessName, voiceId,
 
   const secondsLeft = Math.max(0, maxSeconds - elapsed);
   const canRecord = typeof navigator !== "undefined" && Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== "undefined";
+  const askedQuestions = questionCount();
+  const questionsRemaining = Math.max(0, MAX_DEMO_QUESTIONS - askedQuestions);
+  const customQuestionAvailable = !freeQuestionUsed && questionsRemaining > 0;
+  const suggestionTarget = typeof document === "undefined" ? null : document.getElementById(suggestionsTargetId);
+  const suggestionArea = <div className={styles.suggestionArea}><small><Sparkles size={12} /> Preguntas de ejemplo</small><div className={styles.suggestionList}>{suggestions.map((suggestion) => {
+    const used = usedSuggestionIds.includes(suggestion.id);
+    return <button type="button" className={`${styles.suggestionChip} ${used ? styles.suggestionChipUsed : ""}`} key={suggestion.id} disabled={used || status !== "idle" || !voiceId || questionsRemaining === 0} onClick={() => { onScenarioSelect(suggestion.id); void sendText(suggestion.text, { suggestionId: suggestion.id }); }}>{used ? "Pregunta usada" : suggestion.text}</button>;
+  })}</div></div>;
 
   return <div className={styles.conversationShell}>
     <div className={styles.conversationTopbar}>
       <div className={styles.liveBadge}><i /> DEMO EN VIVO</div>
-      <div className={styles.conversationStatus}><span className={status === "recording" ? styles.statusRecording : status === "thinking" || status === "speaking" ? styles.statusActive : ""} /> {statusCopy(status, sessionActive)} <span className={`${styles.waveform} ${status !== "idle" ? styles.waveformActive : ""}`} aria-hidden="true">{[35, 62, 45, 80, 52, 70, 40].map((height, index) => <i key={index} style={{ height: `${status === "idle" ? 8 : height}%` }} />)}</span></div>
+      <div className={styles.conversationStatus} aria-live="polite">{statusCopy(status)}</div>
       <button type="button" className={styles.muteButton} onClick={() => { setMuted((current) => !current); if (!muted) stopAudio(); }} aria-pressed={muted} aria-label={muted ? "Activar audio automático" : "Silenciar audio automático"}>{muted ? <VolumeX size={14} /> : <Volume2 size={14} />} {muted ? "Audio silenciado" : "Audio activo"}</button>
     </div>
 
     <div className={styles.conversation} aria-live="polite">
-      <div className={styles.conversationHint}><Sparkles size={14} /> Progy está usando información de ejemplo de {businessName}</div>
       {turns.map((turn) => <div className={`${styles.messageRow} ${turn.role === "user" ? styles.customerRow : styles.progyRow}`} key={turn.id}>
-        <span className={`${styles.messageAvatar} ${turn.role === "assistant" ? styles.progyAvatar : ""}`}>{turn.role === "assistant" ? <Bot size={15} /> : <span>Tú</span>}</span>
+        <span className={`${styles.messageAvatar} ${turn.role === "assistant" ? styles.progyAvatar : ""}`} aria-hidden="true">{turn.role === "assistant" ? <Bot size={15} /> : <UserRound size={15} />}</span>
         <div className={styles.messageContent}><small>{turn.role === "assistant" ? `Progy · ${businessName}` : "Tú"}</small><p>{turn.text}</p>{turn.role === "assistant" && turn.audioUrl && <button type="button" className={styles.responseAudio} onClick={() => toggleAudio(turn)}>{activeAudioId === turn.id ? <><Pause size={12} fill="currentColor" /> Pausar</> : <><Play size={12} fill="currentColor" /> Escuchar respuesta</>}</button>}</div>
       </div>)}
-      {status === "thinking" && <div className={styles.thinking}><span /><span /><span /> Progy está pensando…</div>}
+      {status === "thinking" && <div className={styles.thinking}>Progy está pensando…</div>}
       {status === "recording" && <div className={styles.recordingNote}><span className={styles.recordingDot} /> Grabando tu pregunta… pulsa el botón para enviar</div>}
     </div>
 
-    <div className={styles.suggestionArea}><small><Sparkles size={12} /> Prueba preguntando:</small><div className={styles.suggestionList}>{suggestions.map((suggestion) => <button type="button" className={styles.suggestionChip} key={suggestion.id} disabled={status !== "idle" || !voiceId} onClick={() => { onScenarioSelect(suggestion.id); void sendText(suggestion.text); }}>{suggestion.text}</button>)}</div></div>
+    {suggestionTarget ? createPortal(suggestionArea, suggestionTarget) : suggestionArea}
 
     <form className={styles.composer} onSubmit={submit}>
-      <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={handleInputKeyDown} disabled={status !== "idle" || !voiceId} placeholder="Escribe una pregunta sobre tu negocio…" aria-label="Escribe una pregunta para Progy" />
-      <button type="submit" className={styles.sendButton} disabled={!input.trim() || status !== "idle" || !voiceId} aria-label="Enviar pregunta"><Send size={16} /></button>
-      <button type="button" className={`${styles.recordButton} ${status === "recording" ? styles.recordButtonActive : ""}`} disabled={status !== "idle" && status !== "recording" || !voiceId} onClick={() => status === "recording" ? void stopAndSendRecording() : void beginRecording()} aria-label={status === "recording" ? "Detener y enviar grabación" : "Hablar con Progy"}>{status === "recording" ? <Square size={16} fill="currentColor" /> : <Mic size={17} />}</button>
+      <input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={handleInputKeyDown} disabled={status !== "idle" || !voiceId || !customQuestionAvailable} placeholder={customQuestionAvailable ? "Escribe una pregunta sobre tu negocio…" : "Ya usaste tu pregunta libre"} aria-label="Escribe una pregunta para Progy" />
+      <button type="submit" className={styles.sendButton} disabled={!input.trim() || status !== "idle" || !voiceId || !customQuestionAvailable} aria-label="Enviar pregunta"><Send size={16} /></button>
+      <button type="button" className={`${styles.recordButton} ${status === "recording" ? styles.recordButtonActive : ""}`} disabled={status !== "idle" && status !== "recording" || !voiceId || !customQuestionAvailable} onClick={() => status === "recording" ? void stopAndSendRecording() : void beginRecording()} aria-label={status === "recording" ? "Detener y enviar grabación" : "Hablar con Progy"}>{status === "recording" ? <Square size={16} fill="currentColor" /> : <Mic size={17} />}</button>
     </form>
 
-    <div className={styles.conversationFooter}><span>{canRecord ? "Puedes escribir o hablar; el micrófono se activa solo cuando lo pulses." : "El chat escrito está disponible en este navegador."}</span>{sessionActive && <span>{secondsLeft}s restantes</span>}</div>
+    <div className={styles.conversationFooter}><span>{questionsRemaining === 0 ? "Puedes volver a escuchar las respuestas de esta demo." : canRecord ? `Puedes hacer ${questionsRemaining} ${questionsRemaining === 1 ? "pregunta" : "preguntas"} más por texto o audio.` : `Puedes hacer ${questionsRemaining} ${questionsRemaining === 1 ? "pregunta" : "preguntas"} más por escrito.`}</span>{sessionActive && <span>{secondsLeft}s restantes</span>}</div>
     {error && <p className={styles.conversationError} role="alert">{error}</p>}
     {notice && <p className={styles.conversationNotice} role="status">{notice}</p>}
   </div>;
