@@ -11,6 +11,10 @@ type WhatsAppConnectionRow = {
   access_token: string;
   token_expires_at: string | null;
   status: string;
+  webhook_subscribed_at?: string | null;
+  phone_registered_at?: string | null;
+  registration_status?: string;
+  last_meta_error?: string | null;
 };
 
 function config() {
@@ -240,6 +244,34 @@ export async function saveWhatsAppConnection(
   }
 }
 
+export async function updateWhatsAppConnection(
+  businessId: string,
+  data: Record<string, unknown>,
+) {
+  const response = await adminFetch(
+    `whatsapp_connections?business_id=eq.${encodeURIComponent(businessId)}`,
+    {
+      method: "PATCH",
+      headers: {
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify({
+        ...data,
+        updated_at: new Date().toISOString(),
+      }),
+    },
+  );
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    console.error("WhatsApp connection update failed", {
+      status: response.status,
+      detail: detail.slice(0, 300),
+    });
+    throw new Error("Could not update WhatsApp connection");
+  }
+}
+
 export async function getWhatsAppConnection(
   businessId: string,
 ) {
@@ -275,4 +307,13 @@ export async function getWhatsAppConnection(
     (await response.json()) as WhatsAppConnectionRow[];
 
   return rows[0] ?? null;
+}
+
+export function isWhatsAppTokenExpired(
+  tokenExpiresAt: string | null | undefined,
+) {
+  if (!tokenExpiresAt) return false;
+
+  const timestamp = Date.parse(tokenExpiresAt);
+  return Number.isFinite(timestamp) && timestamp <= Date.now();
 }

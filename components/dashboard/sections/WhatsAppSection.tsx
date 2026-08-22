@@ -7,6 +7,10 @@ import {
 
 import type { SelectedWorkspace } from "../types";
 import { launchWhatsAppSignup } from "../metaSignup";
+import {
+  TEST_TEMPLATE_BODY,
+  TEST_TEMPLATE_NAME,
+} from "@/lib/whatsapp/constants";
 import { Card, SectionHeader } from "../ui";
 import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";
@@ -19,6 +23,9 @@ type Connection = {
   verifiedName?: string | null;
   isOnBizApp?: boolean;
   platformType?: string | null;
+  webhookSubscribedAt?: string | null;
+  phoneRegisteredAt?: string | null;
+  registrationStatus?: string | null;
 };
 
 type ConnectionResponse = {
@@ -31,6 +38,14 @@ type SendMessageResponse = {
   ok?: boolean;
   error?: string;
   messageId?: string | null;
+};
+
+type RegisterResponse = {
+  ok?: boolean;
+  error?: string;
+  webhookSubscribedAt?: string | null;
+  phoneRegisteredAt?: string | null;
+  registrationStatus?: string | null;
 };
 
 type TemplateInfo = {
@@ -47,13 +62,11 @@ type TemplateResponse = {
   alreadyExists?: boolean;
   error?: string;
   template?: TemplateInfo | null;
+  templates?: TemplateInfo[];
 };
 
-const TEMPLATE_NAME =
-  "progy_prueba_mensaje";
-
-const TEMPLATE_BODY =
-  "Hola, este es un mensaje de prueba enviado desde Progy mediante WhatsApp Business.";
+const TEMPLATE_NAME = TEST_TEMPLATE_NAME;
+const TEMPLATE_BODY = TEST_TEMPLATE_BODY;
 
 export default function WhatsAppSection({
   workspace,
@@ -84,11 +97,29 @@ export default function WhatsAppSection({
   const [testResult, setTestResult] =
     useState("");
 
+  const [registrationPin, setRegistrationPin] =
+    useState("");
+
+  const [registeringPhone, setRegisteringPhone] =
+    useState(false);
+
+  const [registrationMessage, setRegistrationMessage] =
+    useState("");
+
   const [creatingTemplate, setCreatingTemplate] =
     useState(false);
 
   const [checkingTemplate, setCheckingTemplate] =
     useState(false);
+
+  const [templates, setTemplates] =
+    useState<TemplateInfo[]>([]);
+
+  const [selectedTemplateName, setSelectedTemplateName] =
+    useState(TEMPLATE_NAME);
+
+  const [selectedTemplateLanguage, setSelectedTemplateLanguage] =
+    useState("es");
 
   const [
     fetchedTemplateStatus,
@@ -99,24 +130,6 @@ export default function WhatsAppSection({
     fetchedTemplateMessage,
     setFetchedTemplateMessage,
   ] = useState("");
-
-  /*
-   * Cuando no hay conexión no queremos mostrar
-   * datos de una plantilla que quedaron
-   * guardados de un negocio/conexión anterior.
-   * En vez de "limpiar" el estado dentro de un
-   * useEffect (lo cual dispara un render en
-   * cascada y rompe la regla de lint
-   * react-hooks/set-state-in-effect), lo
-   * derivamos directamente aquí.
-   */
-  const templateStatus = connection?.wabaId
-    ? fetchedTemplateStatus
-    : "";
-
-  const templateMessage = connection?.wabaId
-    ? fetchedTemplateMessage
-    : "";
 
   const appId =
     process.env.NEXT_PUBLIC_META_APP_ID || "";
@@ -132,6 +145,28 @@ export default function WhatsAppSection({
     Boolean(appId && configId);
 
   /*
+   * Cuando no hay conexión o el canal está deshabilitado no queremos mostrar
+   * datos de una plantilla que quedaron guardados de otro negocio/conexión.
+   */
+  const templateStatus = featureEnabled && connection?.wabaId
+    ? fetchedTemplateStatus
+    : "";
+
+  const templateMessage = featureEnabled && connection?.wabaId
+    ? fetchedTemplateMessage
+    : "";
+
+  const selectedTemplate = templates.find(
+    (template) =>
+      template.name === selectedTemplateName &&
+      template.language === selectedTemplateLanguage,
+  );
+
+  const selectedTemplateStatus = (
+    selectedTemplate?.status || templateStatus
+  ).toUpperCase();
+
+  /*
    * Carga la conexión persistida en Supabase.
    */
   useEffect(() => {
@@ -142,6 +177,11 @@ export default function WhatsAppSection({
       setError("");
       setMessage("");
       setTestResult("");
+      setRegistrationMessage("");
+      setRegistrationPin("");
+      setTemplates([]);
+      setSelectedTemplateName(TEMPLATE_NAME);
+      setSelectedTemplateLanguage("es");
 
       try {
         const response = await fetch(
@@ -168,7 +208,8 @@ export default function WhatsAppSection({
 
           if (
             response.status !== 404 &&
-            response.status !== 204
+            response.status !== 204 &&
+            response.status !== 503
           ) {
             setError(
               result.error ||
@@ -256,6 +297,24 @@ export default function WhatsAppSection({
           return;
         }
 
+        const receivedTemplates = result.templates || (
+          result.template ? [result.template] : []
+        );
+        setTemplates(receivedTemplates);
+
+        const preferredTemplate =
+          receivedTemplates.find(
+            (template) =>
+              template.status?.toUpperCase() === "APPROVED",
+          ) || result.template;
+
+        if (preferredTemplate?.name) {
+          setSelectedTemplateName(preferredTemplate.name);
+          setSelectedTemplateLanguage(
+            preferredTemplate.language || "es",
+          );
+        }
+
         if (
           result.exists &&
           result.template
@@ -311,15 +370,14 @@ export default function WhatsAppSection({
   /*
    * Embedded Signup.
    *
-   * Solamente debe ejecutarse si no existe
-   * una conexión persistida.
+   * También permite reautorizar una conexión persistida. La conexión anterior
+   * solo se reemplaza después de que el servidor valida la nueva autorización.
    */
   async function connect() {
     if (
       !available ||
       connecting ||
-      loadingConnection ||
-      connection?.wabaId
+      loadingConnection
     ) {
       return;
     }
@@ -463,6 +521,12 @@ export default function WhatsAppSection({
       setFetchedTemplateStatus(
         status,
       );
+      setSelectedTemplateName(
+        result.template?.name || TEMPLATE_NAME,
+      );
+      setSelectedTemplateLanguage(
+        result.template?.language || "es",
+      );
 
       if (
         status === "APPROVED"
@@ -489,6 +553,55 @@ export default function WhatsAppSection({
       );
     } finally {
       setCreatingTemplate(false);
+    }
+  }
+
+  async function registerPhone() {
+    if (!connection?.wabaId) {
+      setError("Conecta primero el WhatsApp del negocio.");
+      return;
+    }
+
+    if (!/^\d{6}$/.test(registrationPin.trim())) {
+      setError("El PIN de registro debe tener exactamente 6 dígitos.");
+      return;
+    }
+
+    setRegisteringPhone(true);
+    setError("");
+    setRegistrationMessage("");
+
+    try {
+      const response = await fetch("/api/whatsapp/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          businessId: workspace.business.id,
+          pin: registrationPin.trim(),
+        }),
+      });
+      const result = (await response.json().catch(() => ({}))) as RegisterResponse;
+
+      if (!response.ok) {
+        throw new Error(result.error || "No pudimos registrar el número.");
+      }
+
+      setConnection((current) => current ? {
+        ...current,
+        webhookSubscribedAt: result.webhookSubscribedAt || current.webhookSubscribedAt,
+        phoneRegisteredAt: result.phoneRegisteredAt || current.phoneRegisteredAt,
+        registrationStatus: result.registrationStatus || "registered",
+      } : current);
+      setRegistrationPin("");
+      setRegistrationMessage("Número registrado y listo para Cloud API.");
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "No pudimos registrar el número de WhatsApp.",
+      );
+    } finally {
+      setRegisteringPhone(false);
     }
   }
 
@@ -540,6 +653,10 @@ export default function WhatsAppSection({
         return;
       }
 
+      if (result.templates) {
+        setTemplates(result.templates);
+      }
+
       const status =
         (
           result.template.status ||
@@ -588,8 +705,14 @@ export default function WhatsAppSection({
    * El navegador solo envía:
    * - businessId
    * - destinatario
+   * - plantilla seleccionada
    */
   async function sendTestMessage() {
+    if (!featureEnabled) {
+      setError("WhatsApp no está habilitado.");
+      return;
+    }
+
     if (!connection?.wabaId) {
       setError(
         "Conecta primero el WhatsApp del negocio.",
@@ -597,9 +720,7 @@ export default function WhatsAppSection({
       return;
     }
 
-    if (
-      templateStatus !== "APPROVED"
-    ) {
+    if (selectedTemplateStatus !== "APPROVED") {
       setError(
         "La plantilla debe estar aprobada antes de enviar el mensaje.",
       );
@@ -634,6 +755,12 @@ export default function WhatsAppSection({
 
             to:
               testPhone,
+
+            templateName:
+              selectedTemplateName,
+
+            templateLanguage:
+              selectedTemplateLanguage,
           }),
         },
       );
@@ -667,7 +794,9 @@ export default function WhatsAppSection({
   }
 
   const statusTag =
-    loadingConnection
+    !featureEnabled
+      ? "En revisión"
+      : loadingConnection
       ? "Comprobando"
       : connection?.wabaId
         ? "Autorizado"
@@ -676,7 +805,7 @@ export default function WhatsAppSection({
           : "En revisión";
 
   const templateApproved =
-    templateStatus === "APPROVED";
+    selectedTemplateStatus === "APPROVED";
 
   return (
     <>
@@ -796,6 +925,71 @@ export default function WhatsAppSection({
                   />
                 </strong>
               </div>
+
+              <div
+                style={{
+                  display: "grid",
+                  gap: 10,
+                  marginTop: 14,
+                  padding: "14px 16px",
+                  borderRadius: 10,
+                  border: "1px solid rgba(255,255,255,.16)",
+                  background: "rgba(255,255,255,.04)",
+                }}
+              >
+                <b>Activación de Cloud API</b>
+                <small>
+                  {connection.registrationStatus === "registered"
+                    ? "Número registrado y habilitado para Cloud API."
+                    : "Falta registrar el número con el PIN de seis dígitos de WhatsApp."}
+                </small>
+
+                {connection.registrationStatus !== "registered" && (
+                  <>
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      maxLength={6}
+                      value={registrationPin}
+                      onChange={(event) =>
+                        setRegistrationPin(event.target.value.replace(/\D/g, "").slice(0, 6))
+                      }
+                      placeholder="PIN de 6 dígitos"
+                      disabled={registeringPhone || !featureEnabled}
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        padding: "12px 14px",
+                        borderRadius: 10,
+                        border: "1px solid rgba(255,255,255,.16)",
+                        background: "rgba(255,255,255,.04)",
+                        color: "inherit",
+                      }}
+                    />
+                    <small>
+                      El PIN solo se envía a Meta para registrar el número; Progy no lo guarda.
+                    </small>
+                    <button
+                      className={styles.primary}
+                      disabled={
+                        registeringPhone ||
+                        !featureEnabled ||
+                        registrationPin.length !== 6
+                      }
+                      onClick={() => void registerPhone()}
+                    >
+                      {registeringPhone
+                        ? "Registrando número…"
+                        : "Registrar número en Cloud API"}
+                    </button>
+                  </>
+                )}
+
+                {registrationMessage && (
+                  <div className={styles.notice}>{registrationMessage}</div>
+                )}
+              </div>
             </div>
           ) : (
             <div
@@ -831,10 +1025,7 @@ export default function WhatsAppSection({
               disabled={
                 !available ||
                 connecting ||
-                loadingConnection ||
-                Boolean(
-                  connection?.wabaId,
-                )
+                loadingConnection
               }
               onClick={() =>
                 void connect()
@@ -845,7 +1036,7 @@ export default function WhatsAppSection({
                 : connecting
                   ? "Abriendo WhatsApp…"
                   : connection?.wabaId
-                    ? "WhatsApp conectado"
+                    ? "Reautorizar WhatsApp"
                     : available
                       ? "Conectar WhatsApp"
                       : "Disponible próximamente"}
@@ -944,8 +1135,8 @@ export default function WhatsAppSection({
           description="Crea y verifica la plantilla utilizada para la prueba de mensajería."
           tag={
             templateApproved
-              ? "APROBADA"
-              : templateStatus ||
+            ? "APROBADA"
+              : selectedTemplateStatus ||
                 "PREPARAR"
           }
         >
@@ -968,7 +1159,7 @@ export default function WhatsAppSection({
               }}
             >
               <b>
-                {TEMPLATE_NAME}
+                {selectedTemplateName}
               </b>
 
               <p
@@ -977,9 +1168,49 @@ export default function WhatsAppSection({
                     "8px 0 0",
                 }}
               >
-                {TEMPLATE_BODY}
+                {selectedTemplateName === TEMPLATE_NAME
+                  ? TEMPLATE_BODY
+                  : "Plantilla administrada en Meta. Progy validará su estado antes de enviar."}
               </p>
             </div>
+
+            {templates.length > 0 && (
+              <label
+                style={{
+                  display: "grid",
+                  gap: 6,
+                }}
+              >
+                <b>Plantilla para la prueba</b>
+                <select
+                  value={`${selectedTemplateName}::${selectedTemplateLanguage}`}
+                  onChange={(event) => {
+                    const [name, language] = event.target.value.split("::");
+                    setSelectedTemplateName(name || TEMPLATE_NAME);
+                    setSelectedTemplateLanguage(language || "es");
+                  }}
+                  disabled={loadingConnection || !featureEnabled}
+                  style={{
+                    width: "100%",
+                    boxSizing: "border-box",
+                    padding: "12px 14px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,.16)",
+                    background: "rgba(255,255,255,.04)",
+                    color: "inherit",
+                  }}
+                >
+                  {templates.map((template) => (
+                    <option
+                      key={`${template.name}-${template.language}`}
+                      value={`${template.name || ""}::${template.language || "es"}`}
+                    >
+                      {template.name || "Sin nombre"} · {template.language || "es"} · {template.status || "UNKNOWN"}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
 
             {templateMessage && (
               <div
@@ -996,7 +1227,7 @@ export default function WhatsAppSection({
                 styles.actions
               }
             >
-              {!templateStatus && (
+              {templates.length === 0 && !templateStatus && (
                 <button
                   className={
                     styles.primary
@@ -1005,6 +1236,7 @@ export default function WhatsAppSection({
                     creatingTemplate ||
                     checkingTemplate ||
                     loadingConnection ||
+                    !featureEnabled ||
                     !connection?.wabaId
                   }
                   onClick={() =>
@@ -1017,14 +1249,15 @@ export default function WhatsAppSection({
                 </button>
               )}
 
-              {templateStatus &&
+              {selectedTemplateStatus &&
                 !templateApproved && (
                   <button
                     className={
                       styles.primary
                     }
                     disabled={
-                      checkingTemplate
+                      checkingTemplate ||
+                      !featureEnabled
                     }
                     onClick={() =>
                       void refreshTemplateStatus()
@@ -1118,6 +1351,7 @@ export default function WhatsAppSection({
                 autoComplete="tel"
                 disabled={
                   loadingConnection ||
+                  !featureEnabled ||
                   !connection?.wabaId ||
                   sendingTest
                 }
@@ -1195,6 +1429,7 @@ export default function WhatsAppSection({
                 disabled={
                   sendingTest ||
                   loadingConnection ||
+                  !featureEnabled ||
                   !connection?.wabaId ||
                   !templateApproved ||
                   !testPhone.trim()

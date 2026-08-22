@@ -1,11 +1,17 @@
 import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/whatsapp/store";
+import { getWhatsAppConfig } from "@/lib/whatsapp/config";
 import { requireApiUser } from "../../../../lib/integrations";
+import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
+import {
+  listClientWhatsAppAccounts,
+  subscribeWhatsAppBusinessAccount,
+} from "@/lib/whatsapp/meta-client";
 
 
 export const dynamic = "force-dynamic";
 
 const GRAPH_VERSION =
-  process.env.META_GRAPH_VERSION?.trim() || "v25.0";
+  getWhatsAppConfig().graphVersion || DEFAULT_META_GRAPH_VERSION;
 
 const NO_STORE_HEADERS = {
   "Cache-Control": "private, no-store, max-age=0",
@@ -104,6 +110,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!getWhatsAppConfig().enabled) {
+    return Response.json(
+      { error: "La conexión de WhatsApp no está habilitada." },
+      { status: 503, headers: NO_STORE_HEADERS },
+    );
+  }
+
   let body: ConnectPayload;
 
   try {
@@ -127,7 +140,7 @@ export async function POST(request: Request) {
       ? body.code.trim()
       : "";
 
-  const wabaId =
+  let wabaId =
     cleanId(body.wabaId);
 
   let phoneNumberId =
@@ -214,7 +227,7 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!wabaId) {
+  if (!wabaId && !metaBusinessId) {
     return Response.json(
       {
         error:
@@ -227,14 +240,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const appId =
-    process.env.META_APP_ID?.trim() ||
-    process.env.NEXT_PUBLIC_META_APP_ID?.trim() ||
-    "";
-
-  const appSecret =
-    process.env.META_APP_SECRET?.trim() ||
-    "";
+  const { appId, appSecret } = getWhatsAppConfig();
 
   if (!appId || !appSecret) {
     return Response.json(
@@ -320,6 +326,62 @@ export async function POST(request: Request) {
 
     const accessToken =
       tokenPayload.access_token;
+
+    /*
+     * Embedded Signup devuelve el Business ID y la WABA seleccionada.
+     * Verificamos la relación desde Graph para no guardar una WABA que
+     * no pertenezca al negocio de Meta autorizado.
+     */
+    if (metaBusinessId) {
+      const accounts = await listClientWhatsAppAccounts({
+        graphVersion: GRAPH_VERSION,
+        businessId: metaBusinessId,
+        accessToken,
+      });
+
+      if (!accounts.response.ok) {
+        console.error("Progy Meta WABA account list error", {
+          status: accounts.response.status,
+          error: accounts.result.error,
+        });
+
+        return Response.json(
+          {
+            error:
+              accounts.result.error?.message ||
+              "Meta autorizó la conexión, pero no pudimos verificar la cuenta de WhatsApp.",
+          },
+          { status: 502, headers: NO_STORE_HEADERS },
+        );
+      }
+
+      const availableAccounts = accounts.result.data || [];
+      const selectedAccount = wabaId
+        ? availableAccounts.find((account) => account.id === wabaId)
+        : availableAccounts[0];
+
+      wabaId = selectedAccount?.id?.trim() || "";
+
+      if (!wabaId) {
+        return Response.json(
+          {
+            error:
+              "La cuenta de WhatsApp seleccionada no pertenece al negocio autorizado en Meta.",
+          },
+          { status: 403, headers: NO_STORE_HEADERS },
+        );
+      }
+    }
+
+    if (!wabaId) {
+      return Response.json(
+        {
+          error:
+            "Meta no devolvió la cuenta de WhatsApp Business.",
+        },
+        { status: 400, headers: NO_STORE_HEADERS },
+      );
+    }
 
     /*
      * ========================================================
@@ -539,8 +601,37 @@ export async function POST(request: Request) {
        *
        * El nombre de la WABA es informativo;
        * ya tenemos WABA ID, teléfono y token.
-       */
+      */
     }
+
+    /*
+     * Suscribir la app es lo que habilita los webhooks de esta WABA.
+     * La operación es idempotente y debe completarse antes de guardar la
+     * conexión como utilizable.
+     */
+    const subscription = await subscribeWhatsAppBusinessAccount({
+      graphVersion: GRAPH_VERSION,
+      wabaId,
+      accessToken,
+    });
+
+    if (!subscription.response.ok) {
+      console.error("Progy Meta WABA subscription error", {
+        status: subscription.response.status,
+        error: subscription.result.error,
+      });
+
+      return Response.json(
+        {
+          error:
+            subscription.result.error?.message ||
+            "La cuenta fue autorizada, pero Meta no permitió activar los webhooks.",
+        },
+        { status: 502, headers: NO_STORE_HEADERS },
+      );
+    }
+
+    const webhookSubscribedAt = new Date().toISOString();
 
     /*
      * ========================================================
@@ -608,6 +699,18 @@ export async function POST(request: Request) {
 
         connected_by:
           user.id,
+
+        webhook_subscribed_at:
+          webhookSubscribedAt,
+
+        registration_status:
+          "pending",
+
+        phone_registered_at:
+          null,
+
+        last_meta_error:
+          null,
       });
     } catch (error) {
       console.error(
@@ -672,6 +775,12 @@ export async function POST(request: Request) {
           platformType:
             phone.platform_type ||
             null,
+
+          webhookSubscribedAt,
+
+          phoneRegisteredAt: null,
+
+          registrationStatus: "pending",
         },
 
         token: {
@@ -739,6 +848,13 @@ export async function GET(
         headers:
           NO_STORE_HEADERS,
       },
+    );
+  }
+
+  if (!getWhatsAppConfig().enabled) {
+    return Response.json(
+      { error: "WhatsApp no está habilitado." },
+      { status: 503, headers: NO_STORE_HEADERS },
     );
   }
 
@@ -861,6 +977,15 @@ export async function GET(
 
           platformType:
             connection.platform_type,
+
+          webhookSubscribedAt:
+            connection.webhook_subscribed_at || null,
+
+          phoneRegisteredAt:
+            connection.phone_registered_at || null,
+
+          registrationStatus:
+            connection.registration_status || "pending",
         },
       },
       {

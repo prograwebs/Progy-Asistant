@@ -1,24 +1,30 @@
 import { requireApiUser } from "../../../../lib/integrations";
+import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import {
+  DEFAULT_META_GRAPH_VERSION,
+  TEST_TEMPLATE_LANGUAGE,
+  TEST_TEMPLATE_NAME,
+  TEST_TEMPLATE_BODY,
+} from "@/lib/whatsapp/constants";
+import { sendWhatsAppTemplate } from "@/lib/whatsapp/meta-client";
 import {
   canManageBusiness,
   getWhatsAppConnection,
+  isWhatsAppTokenExpired,
 } from "../../../../lib/whatsapp/store";
 
 export const dynamic = "force-dynamic";
 
 const GRAPH_VERSION =
-  process.env.META_GRAPH_VERSION?.trim() || "v26.0";
+  getWhatsAppConfig().graphVersion || DEFAULT_META_GRAPH_VERSION;
 
 /*
- * Deben coincidir EXACTO con lo que se usó
- * al crear la plantilla en
- * /api/whatsapp/templates (route.ts).
+ * Valores por defecto para mantener compatible la prueba existente.
+ * El servidor valida la plantilla seleccionada contra la WABA antes de enviar.
  */
-const TEMPLATE_NAME = "progy_prueba_mensaje";
-const TEMPLATE_LANGUAGE = "es";
-
-const TEST_MESSAGE =
-  "Hola, este es un mensaje de prueba enviado desde Progy mediante WhatsApp Business.";
+const TEMPLATE_NAME = TEST_TEMPLATE_NAME;
+const TEMPLATE_LANGUAGE = TEST_TEMPLATE_LANGUAGE;
+const TEST_MESSAGE = TEST_TEMPLATE_BODY;
 
 type MetaError = {
   message?: string;
@@ -28,24 +34,16 @@ type MetaError = {
   fbtrace_id?: string;
 };
 
-type MetaSendResponse = {
-  messaging_product?: string;
-
-  contacts?: Array<{
-    input?: string;
-    wa_id?: string;
-  }>;
-
-  messages?: Array<{
-    id?: string;
-    message_status?: string;
-  }>;
-
-  error?: MetaError;
+type MetaTemplate = {
+  id?: string;
+  name?: string;
+  status?: string;
+  language?: string;
+  category?: string;
 };
 
-type MetaRegisterResponse = {
-  success?: boolean;
+type MetaTemplateListResponse = {
+  data?: MetaTemplate[];
   error?: MetaError;
 };
 
@@ -55,129 +53,40 @@ function normalizePhone(value: unknown) {
     .replace(/[^\d]/g, "");
 }
 
-async function sendTemplateMessage(
-  phoneNumberId: string,
+async function findApprovedTemplate(
+  wabaId: string,
   accessToken: string,
-  to: string,
+  name: string,
+  language: string,
 ) {
-  /*
-   * IMPORTANTE:
-   * Un negocio real casi siempre le escribe
-   * PRIMERO a un cliente que nunca abrió
-   * una ventana de servicio de 24h con él.
-   * Meta solo permite iniciar esa conversación
-   * con un mensaje de plantilla aprobado,
-   * nunca con texto libre (type: "text").
-   * Por eso este mensaje de prueba también
-   * debe salir como plantilla: así se
-   * comporta igual que el envío real que
-   * hará Progy para cada negocio.
-   */
-  const response = await fetch(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/messages`,
-    {
-      method: "POST",
-
-      headers: {
-        Authorization:
-          `Bearer ${accessToken}`,
-
-        "Content-Type":
-          "application/json",
-
-        Accept:
-          "application/json",
-      },
-
-      body: JSON.stringify({
-        messaging_product:
-          "whatsapp",
-
-        recipient_type:
-          "individual",
-
-        to,
-
-        type:
-          "template",
-
-        template: {
-          name:
-            TEMPLATE_NAME,
-
-          language: {
-            code:
-              TEMPLATE_LANGUAGE,
-          },
-        },
-      }),
-
-      cache:
-        "no-store",
-    },
+  const url = new URL(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/message_templates`,
   );
+  url.searchParams.set("name", name);
+  url.searchParams.set("fields", "id,name,status,language,category");
 
-  const result =
-    (await response
-      .json()
-      .catch(() => ({}))) as MetaSendResponse;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
 
-  return {
-    response,
-    result,
-  };
-}
+  const result = (await response.json().catch(() => ({}))) as MetaTemplateListResponse;
 
-async function registerPhoneNumber(
-  phoneNumberId: string,
-  accessToken: string,
-) {
-  const pin =
-    process.env.META_WHATSAPP_REG_PIN?.trim() || "";
-
-  if (!/^\d{6}$/.test(pin)) {
-    throw new Error(
-      "META_WHATSAPP_REG_PIN no está configurado correctamente.",
-    );
+  if (!response.ok) {
+    throw new Error("No pudimos validar la plantilla de WhatsApp.");
   }
 
-  const response = await fetch(
-    `https://graph.facebook.com/${GRAPH_VERSION}/${phoneNumberId}/register`,
-    {
-      method: "POST",
-
-      headers: {
-        Authorization:
-          `Bearer ${accessToken}`,
-
-        "Content-Type":
-          "application/json",
-
-        Accept:
-          "application/json",
-      },
-
-      body: JSON.stringify({
-        messaging_product:
-          "whatsapp",
-
-        pin,
-      }),
-
-      cache:
-        "no-store",
-    },
+  return (
+    result.data?.find(
+      (template) =>
+        template.name === name &&
+        template.language === language &&
+        template.status?.toUpperCase() === "APPROVED",
+    ) || null
   );
-
-  const result =
-    (await response
-      .json()
-      .catch(() => ({}))) as MetaRegisterResponse;
-
-  return {
-    response,
-    result,
-  };
 }
 
 export async function POST(request: Request) {
@@ -200,6 +109,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (!getWhatsAppConfig().enabled) {
+      return Response.json(
+        { error: "WhatsApp no está habilitado." },
+        { status: 503 },
+      );
+    }
+
     /*
      * 2. Leer solicitud.
      */
@@ -207,9 +123,11 @@ export async function POST(request: Request) {
       (await request
         .json()
         .catch(() => null)) as
-        | {
+          | {
             businessId?: string;
             to?: string;
+            templateName?: string;
+            templateLanguage?: string;
           }
         | null;
 
@@ -234,6 +152,12 @@ export async function POST(request: Request) {
       normalizePhone(
         body.to,
       );
+
+    const templateName =
+      String(body.templateName || TEST_TEMPLATE_NAME).trim();
+
+    const templateLanguage =
+      String(body.templateLanguage || TEST_TEMPLATE_LANGUAGE).trim();
 
     if (!businessId) {
       return Response.json(
@@ -305,18 +229,40 @@ export async function POST(request: Request) {
       );
     }
 
-    if (
-      !connection.phone_number_id ||
-      !connection.access_token
-    ) {
+    if (isWhatsAppTokenExpired(connection.token_expires_at)) {
       return Response.json(
-        {
-          error:
-            "La conexión de WhatsApp está incompleta.",
-        },
-        {
-          status: 409,
-        },
+        { error: "La conexión de WhatsApp expiró. Vuelve a conectarla." },
+        { status: 409 },
+      );
+    }
+
+    if (!connection.phone_number_id || !connection.access_token) {
+      return Response.json(
+        { error: "La conexión de WhatsApp está incompleta." },
+        { status: 409 },
+      );
+    }
+
+    let approvedTemplate: MetaTemplate | null;
+    try {
+      approvedTemplate = await findApprovedTemplate(
+        connection.waba_id,
+        connection.access_token,
+        templateName,
+        templateLanguage,
+      );
+    } catch (error) {
+      console.error("Progy WhatsApp template validation failed", error);
+      return Response.json(
+        { error: "No pudimos validar la plantilla de WhatsApp." },
+        { status: 502 },
+      );
+    }
+
+    if (!approvedTemplate) {
+      return Response.json(
+        { error: "La plantilla seleccionada no está aprobada para este negocio." },
+        { status: 409 },
       );
     }
 
@@ -326,89 +272,22 @@ export async function POST(request: Request) {
      * puede no haberle escrito nunca antes
      * al negocio).
      */
-    let {
+    const {
       response: metaResponse,
       result,
     } =
-      await sendTemplateMessage(
-        connection.phone_number_id,
-        connection.access_token,
+      await sendWhatsAppTemplate({
+        graphVersion: GRAPH_VERSION,
+        phoneNumberId: connection.phone_number_id,
+        accessToken: connection.access_token,
         to,
-      );
+        templateName,
+        templateLanguage,
+      });
 
-    /*
-     * 6. Si Meta indica que el número
-     * todavía no está registrado,
-     * lo registramos y reintentamos
-     * solamente una vez.
-     */
-    if (
-      !metaResponse.ok &&
-      result.error?.code === 133010
-    ) {
-      const {
-        response:
-          registerResponse,
-
-        result:
-          registerResult,
-      } =
-        await registerPhoneNumber(
-          connection.phone_number_id,
-          connection.access_token,
-        );
-
-      if (!registerResponse.ok) {
-        console.error(
-          "Progy WhatsApp registration failed",
-          {
-            status:
-              registerResponse.status,
-
-            code:
-              registerResult.error?.code,
-
-            subcode:
-              registerResult.error?.error_subcode,
-
-            message:
-              registerResult.error?.message,
-          },
-        );
-
-        return Response.json(
-          {
-            error:
-              registerResult.error?.message
-                ? `Meta al registrar el número: ${registerResult.error.message}`
-                : "Meta no pudo registrar el número de WhatsApp.",
-          },
-          {
-            status: 502,
-          },
-        );
-      }
-
-      /*
-       * Número registrado:
-       * segundo y último intento.
-       */
-      const retry =
-        await sendTemplateMessage(
-          connection.phone_number_id,
-          connection.access_token,
-          to,
-        );
-
-      metaResponse =
-        retry.response;
-
-      result =
-        retry.result;
-    }
-
-    /*
-     * 7. Error devuelto por Meta.
+    /* Error devuelto por Meta. El registro del número es una acción
+     * explícita de configuración y no se ejecuta como efecto secundario
+     * de enviar un mensaje.
      */
     if (!metaResponse.ok) {
       console.error(
@@ -436,18 +315,7 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          error:
-            result.error?.message
-              ? `Meta: ${result.error.message}`
-              : `Meta rechazó el mensaje (HTTP ${metaResponse.status}).`,
-
-          metaCode:
-            result.error?.code ??
-            null,
-
-          metaSubcode:
-            result.error?.error_subcode ??
-            null,
+          error: "Meta rechazó el mensaje. Comprueba la conexión y la plantilla aprobada.",
         },
         {
           status: 502,
@@ -455,9 +323,7 @@ export async function POST(request: Request) {
       );
     }
 
-    /*
-     * 8. Meta aceptó el mensaje.
-     */
+    /* Meta aceptó el mensaje. */
     const messageId =
       result.messages?.[0]?.id ||
       null;
@@ -484,7 +350,9 @@ export async function POST(request: Request) {
         to,
 
       message:
-        TEST_MESSAGE,
+        templateName === TEMPLATE_NAME && templateLanguage === TEMPLATE_LANGUAGE
+          ? TEST_MESSAGE
+          : null,
     });
   } catch (error) {
     console.error(
@@ -494,10 +362,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        error:
-          error instanceof Error
-            ? `Error del servidor: ${error.message}`
-            : "No pudimos completar la prueba de WhatsApp.",
+        error: "No pudimos completar la prueba de WhatsApp.",
       },
       {
         status: 500,

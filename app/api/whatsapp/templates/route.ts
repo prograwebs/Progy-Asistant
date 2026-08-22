@@ -1,19 +1,22 @@
 import { requireApiUser } from "../../../../lib/integrations";
+import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import {
+  DEFAULT_META_GRAPH_VERSION,
+  TEST_TEMPLATE_BODY as TEMPLATE_BODY,
+  TEST_TEMPLATE_CATEGORY as TEMPLATE_CATEGORY,
+  TEST_TEMPLATE_LANGUAGE as TEMPLATE_LANGUAGE,
+  TEST_TEMPLATE_NAME as TEMPLATE_NAME,
+} from "@/lib/whatsapp/constants";
 import {
   canManageBusiness,
   getWhatsAppConnection,
+  isWhatsAppTokenExpired,
 } from "../../../../lib/whatsapp/store";
 
 export const dynamic = "force-dynamic";
 
 const GRAPH_VERSION =
-  process.env.META_GRAPH_VERSION?.trim() || "v25.0";
-
-const TEMPLATE_NAME = "progy_prueba_mensaje";
-const TEMPLATE_LANGUAGE = "es";
-
-const TEMPLATE_BODY =
-  "Hola, este es un mensaje de prueba enviado desde Progy mediante WhatsApp Business.";
+  getWhatsAppConfig().graphVersion || DEFAULT_META_GRAPH_VERSION;
 
 type MetaError = {
   message?: string;
@@ -96,10 +99,39 @@ async function findTemplate(
   );
 }
 
+async function listTemplates(
+  wabaId: string,
+  accessToken: string,
+) {
+  const url = new URL(
+    `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/message_templates`,
+  );
+
+  url.searchParams.set(
+    "fields",
+    "id,name,status,language,category",
+  );
+
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+    cache: "no-store",
+  });
+
+  const result = (await response.json().catch(() => ({}))) as MetaTemplateListResponse;
+
+  if (!response.ok) {
+    throw new Error("No pudimos consultar las plantillas de WhatsApp.");
+  }
+
+  return result.data ?? [];
+}
+
 export async function GET(request: Request) {
   try {
-    const user =
-      await requireApiUser();
+    const user = await requireApiUser();
 
     if (!user) {
       return Response.json(
@@ -108,6 +140,13 @@ export async function GET(request: Request) {
             "Inicia sesión.",
         },
         { status: 401 },
+      );
+    }
+
+    if (!getWhatsAppConfig().enabled) {
+      return Response.json(
+        { error: "WhatsApp no está habilitado." },
+        { status: 503 },
       );
     }
 
@@ -160,11 +199,16 @@ export async function GET(request: Request) {
       );
     }
 
-    const template =
-      await findTemplate(
-        connection.waba_id,
-        connection.access_token,
-      );
+    const templates = await listTemplates(
+      connection.waba_id,
+      connection.access_token,
+    );
+
+    const template = templates.find(
+      (item) =>
+        item.name === TEMPLATE_NAME &&
+        item.language === TEMPLATE_LANGUAGE,
+    ) || null;
 
     return Response.json({
       exists:
@@ -172,6 +216,8 @@ export async function GET(request: Request) {
 
       template:
         template || null,
+
+      templates,
     });
   } catch (error) {
     console.error(
@@ -180,12 +226,7 @@ export async function GET(request: Request) {
     );
 
     return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "No pudimos comprobar la plantilla.",
-      },
+      { error: "No pudimos comprobar la plantilla." },
       { status: 500 },
     );
   }
@@ -203,6 +244,13 @@ export async function POST(request: Request) {
             "Inicia sesión.",
         },
         { status: 401 },
+      );
+    }
+
+    if (!getWhatsAppConfig().enabled) {
+      return Response.json(
+        { error: "WhatsApp no está habilitado." },
+        { status: 503 },
       );
     }
 
@@ -261,6 +309,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (isWhatsAppTokenExpired(connection.token_expires_at)) {
+      return Response.json(
+        { error: "La conexión de WhatsApp expiró. Vuelve a conectarla." },
+        { status: 409 },
+      );
+    }
+
     /*
      * Evitamos crearla varias veces.
      */
@@ -303,7 +358,7 @@ export async function POST(request: Request) {
               TEMPLATE_LANGUAGE,
 
             category:
-              "UTILITY",
+              TEMPLATE_CATEGORY,
 
             components: [
               {
@@ -345,10 +400,7 @@ export async function POST(request: Request) {
 
       return Response.json(
         {
-          error:
-            result.error?.message
-              ? `Meta: ${result.error.message}`
-              : "Meta no pudo crear la plantilla.",
+          error: "Meta no pudo crear la plantilla.",
         },
         { status: 502 },
       );
@@ -374,7 +426,7 @@ export async function POST(request: Request) {
           result.status || "PENDING",
 
         category:
-          result.category || "UTILITY",
+          result.category || TEMPLATE_CATEGORY,
       },
     });
   } catch (error) {
@@ -384,12 +436,7 @@ export async function POST(request: Request) {
     );
 
     return Response.json(
-      {
-        error:
-          error instanceof Error
-            ? error.message
-            : "No pudimos crear la plantilla.",
-      },
+      { error: "No pudimos crear la plantilla." },
       { status: 500 },
     );
   }

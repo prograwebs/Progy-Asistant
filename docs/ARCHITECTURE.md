@@ -41,7 +41,7 @@ app/
       import/           documento -> vista previa -> confirmación
     elevenlabs/         voces y muestras
     health/             comprobación segura del entorno
-    whatsapp/           Embedded Signup, detrás de feature flag
+    whatsapp/           Embedded Signup + webhook firmado, detrás de feature flag
     workspace/          CRUD del negocio y snapshot del panel
   acceso/               autenticación
   panel/                panel privado
@@ -152,7 +152,10 @@ Mientras Meta termina su revisión externa:
 NEXT_PUBLIC_WHATSAPP_ENABLED=false
 ```
 
-La UI muestra el canal como `En revisión` y no permite iniciar una incorporación que sabemos que no puede completarse. El código de Embedded Signup se conserva para activarse posteriormente, pero WhatsApp no es requisito para desplegar el núcleo de Progy.
+La UI muestra el canal como `En revisión` y no permite iniciar una incorporación
+mientras la bandera está apagada. El código de Embedded Signup, suscripción,
+registro explícito y webhook se mantiene preparado para la validación externa;
+WhatsApp no es requisito para desplegar el núcleo de Progy.
 
 No se debe volver a acoplar WhatsApp a ElevenLabs. Meta es el proveedor del canal; ElevenLabs es el proveedor de voz.
 

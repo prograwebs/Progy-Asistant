@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FocusEvent, type MouseEvent } from "react";
+import { useRouter } from "next/navigation";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
 import BusinessOnboarding from "./BusinessOnboarding";
@@ -51,6 +52,7 @@ function planLabel(code?: string | null) {
 
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
+  const router = useRouter();
   const [section, setSection] = useState<SectionId>("inicio");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
@@ -58,7 +60,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    window.location.href = "/acceso?mode=login";
+    router.replace("/acceso?mode=login");
   }
 
   function go(next: string) {

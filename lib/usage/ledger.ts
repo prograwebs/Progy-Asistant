@@ -1,4 +1,4 @@
-import { supabaseDataRequest } from "../supabase-data";
+import { type DataRequest, supabaseDataRequest } from "../supabase-data";
 import type { OpenAIUsage } from "../ai/openai";
 
 export type UsageKind =
@@ -18,7 +18,10 @@ function estimatedOpenAICost(usage: OpenAIUsage) {
   const cachedRate = envNumber("OPENAI_CACHED_INPUT_USD_PER_MILLION");
   const outputRate = envNumber("OPENAI_OUTPUT_USD_PER_MILLION");
   const audioInputRate = envNumber("OPENAI_AUDIO_INPUT_USD_PER_MILLION");
-  const uncachedInput = Math.max(0, usage.inputTokens - usage.cachedInputTokens);
+  const uncachedInput = Math.max(
+    0,
+    usage.inputTokens - usage.cachedInputTokens,
+  );
 
   return (
     (uncachedInput / 1_000_000) * inputRate +
@@ -28,10 +31,16 @@ function estimatedOpenAICost(usage: OpenAIUsage) {
   );
 }
 
-async function insertUsage(businessId: string, kind: UsageKind, quantity: number, estimatedCostUsd: number) {
+async function insertUsage(
+  businessId: string,
+  kind: UsageKind,
+  quantity: number,
+  estimatedCostUsd: number,
+  request: DataRequest,
+) {
   if (!quantity || quantity < 0) return;
   try {
-    await supabaseDataRequest("usage_ledger", {
+    await request("usage_ledger", {
       method: "POST",
       body: JSON.stringify({
         business_id: businessId,
@@ -44,29 +53,70 @@ async function insertUsage(businessId: string, kind: UsageKind, quantity: number
   } catch (error) {
     // Usage metering must never break a customer interaction. Keep the error
     // visible to developers while allowing the primary request to complete.
-    console.error("Progy usage ledger write failed", { businessId, kind, error });
+    console.error("Progy usage ledger write failed", {
+      businessId,
+      kind,
+      error,
+    });
   }
 }
 
-export async function recordOpenAIUsage(businessId: string, usage: OpenAIUsage) {
+export async function recordOpenAIUsage(
+  businessId: string,
+  usage: OpenAIUsage,
+  request: DataRequest = supabaseDataRequest,
+) {
   const estimatedCost = estimatedOpenAICost(usage);
   await Promise.all([
-    insertUsage(businessId, "openai_input_tokens", usage.inputTokens, estimatedCost),
-    insertUsage(businessId, "openai_output_tokens", usage.outputTokens, 0),
-    insertUsage(businessId, "openai_audio_input_tokens", usage.audioInputTokens, 0),
+    insertUsage(
+      businessId,
+      "openai_input_tokens",
+      usage.inputTokens,
+      estimatedCost,
+      request,
+    ),
+    insertUsage(
+      businessId,
+      "openai_output_tokens",
+      usage.outputTokens,
+      0,
+      request,
+    ),
+    insertUsage(
+      businessId,
+      "openai_audio_input_tokens",
+      usage.audioInputTokens,
+      0,
+      request,
+    ),
   ]);
 }
 
-export async function recordElevenLabsUsage(businessId: string, characters: number) {
+export async function recordElevenLabsUsage(
+  businessId: string,
+  characters: number,
+  request: DataRequest = supabaseDataRequest,
+) {
   const rate = envNumber("ELEVENLABS_USD_PER_1000_CHARS");
   await insertUsage(
     businessId,
     "elevenlabs_characters",
     Math.max(0, Math.round(characters)),
     (Math.max(0, characters) / 1000) * rate,
+    request,
   );
 }
 
-export async function recordCatalogImport(businessId: string, extractedItems: number) {
-  await insertUsage(businessId, "catalog_import", Math.max(1, extractedItems), 0);
+export async function recordCatalogImport(
+  businessId: string,
+  extractedItems: number,
+  request: DataRequest = supabaseDataRequest,
+) {
+  await insertUsage(
+    businessId,
+    "catalog_import",
+    Math.max(1, extractedItems),
+    0,
+    request,
+  );
 }

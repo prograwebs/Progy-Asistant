@@ -94,6 +94,52 @@ test("production template keeps secrets server-side and WhatsApp gated", () => {
   assert.doesNotMatch(env, /OPENAI_REALTIME_/);
 });
 
+test("keeps WhatsApp configuration consistent across client and server", () => {
+  const config = read("lib/whatsapp/config.ts");
+  const constants = read("lib/whatsapp/constants.ts");
+  const signup = read("components/dashboard/metaSignup.ts");
+  const connect = read("app/api/whatsapp/connect/route.ts");
+  const register = read("app/api/whatsapp/register/route.ts");
+  const metaClient = read("lib/whatsapp/meta-client.ts");
+  const templates = read("app/api/whatsapp/templates/route.ts");
+  const send = read("app/api/whatsapp/send-text/route.ts");
+
+  assert.match(config, /NEXT_PUBLIC_WHATSAPP_ENABLED === "true"/);
+  assert.match(constants, /DEFAULT_META_GRAPH_VERSION = "v25\.0"/);
+  assert.match(signup, /NEXT_PUBLIC_META_GRAPH_VERSION/);
+  for (const source of [connect, register, templates, send]) {
+    assert.match(source, /getWhatsAppConfig\(\)\.enabled/);
+    assert.doesNotMatch(source, /v26\.0/);
+  }
+  assert.doesNotMatch(send, /registerPhoneNumber|META_WHATSAPP_REG_PIN/);
+  assert.match(signup, /allowedOrigins\.has\(event\.origin\)/);
+  assert.match(signup, /whatsapp_business_app_onboarding/);
+  assert.match(metaClient, /subscribed_apps/);
+  assert.match(metaClient, /phoneNumberId}\/register/);
+  assert.match(register, /\^\\d\{6\}\$/);
+  assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
+});
+
+test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
+  const webhook = read("app/api/whatsapp/webhook/route.ts");
+  const inbound = read("lib/whatsapp/inbound.ts");
+  const store = read("lib/whatsapp/webhook-store.ts");
+  const migration = read("supabase/migrations/20260820_whatsapp_messages.sql");
+  const connectionsMigration = read("supabase/migrations/20260821_whatsapp_connections.sql");
+
+  assert.match(webhook, /createHmac\("sha256"/);
+  assert.match(webhook, /x-hub-signature-256/);
+  assert.match(webhook, /hub\.verify_token/);
+  assert.match(inbound, /phone_number_id/);
+  assert.match(inbound, /executeAssistantDecision/);
+  assert.match(inbound, /sendWhatsAppText/);
+  assert.match(store, /resolution=ignore-duplicates/);
+  assert.match(migration, /provider_message_id text not null unique/);
+  assert.match(migration, /enable row level security/);
+  assert.match(connectionsMigration, /whatsapp_subscribed_at|webhook_subscribed_at/);
+  assert.match(connectionsMigration, /access_token text not null/);
+});
+
 test("pins the patched Next.js stack and uses pnpm exclusively", () => {
   const pkg = JSON.parse(read("package.json"));
   const ci = read(".github/workflows/progy-ci.yml");

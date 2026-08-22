@@ -79,11 +79,43 @@ Si el proveedor despliega la salida standalone directamente, conserva también l
 
 Actualiza las URLs permitidas de autenticación para el dominio estable y confirma que el callback de Progy sea accesible por HTTPS.
 
+#### Aplicar las migraciones
+
+Las tablas nuevas de WhatsApp no se crean automáticamente al desplegar Next.js.
+En el proyecto Supabase de producción abre **SQL Editor** y ejecuta, en este
+orden, el contenido completo de:
+
+1. `supabase/migrations/20260820_whatsapp_messages.sql`
+2. `supabase/migrations/20260821_whatsapp_connections.sql`
+
+Después verifica que ambas tablas existan y tengan RLS activo:
+
+```sql
+select
+  n.nspname as schema_name,
+  c.relname as table_name,
+  c.relrowsecurity as rls_enabled
+from pg_class c
+join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public'
+  and c.relname in ('whatsapp_messages', 'whatsapp_connections');
+```
+
+El resultado esperado es una fila por tabla con `rls_enabled = true`. No
+continúes con WhatsApp si alguna migración devuelve error. Las migraciones usan
+`if not exists` y son repetibles, pero debes corregir cualquier error de
+dependencias o permisos antes de probar el signup.
+
 Antes de clientes reales completa `docs/SUPABASE_SECURITY_CHECKLIST.md`.
 
 ### Meta
 
 Usa el mismo dominio estable en la plataforma web, dominios permitidos, políticas legales y URLs OAuth correspondientes. No habilites `NEXT_PUBLIC_WHATSAPP_ENABLED=true` hasta que el flujo externo esté autorizado y probado end-to-end.
+
+Si WhatsApp está habilitado, agrega también `SUPABASE_SECRET_KEY` (o la clave
+legacy `SUPABASE_SERVICE_ROLE_KEY`) y `META_WHATSAPP_VERIFY_TOKEN` en el entorno
+server-side. El health check marcará `messaging: false` si falta cualquiera de
+estos valores; ninguna de esas claves debe usar el prefijo `NEXT_PUBLIC_`.
 
 ## 7. Health check
 

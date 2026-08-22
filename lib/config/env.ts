@@ -16,6 +16,7 @@ export function serverConfig() {
     metaAppId: clean(process.env.META_APP_ID || process.env.NEXT_PUBLIC_META_APP_ID),
     metaAppSecret: clean(process.env.META_APP_SECRET),
     metaConfigId: clean(process.env.NEXT_PUBLIC_META_CONFIG_ID),
+    metaWhatsappVerifyToken: clean(process.env.META_WHATSAPP_VERIFY_TOKEN),
   };
 }
 
@@ -60,7 +61,17 @@ export function releaseEnvironmentStatus() {
   const config = serverConfig();
   const coreReady = Boolean(config.supabaseUrl && config.supabaseAnonKey && config.openAiKey);
   const voiceReady = Boolean(config.elevenLabsKey);
-  const messagingReady = Boolean(config.whatsappEnabled && config.metaAppId && config.metaAppSecret && config.metaConfigId);
+  const supabaseServerKey = clean(
+    process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY,
+  );
+  const messagingReady = Boolean(
+    config.whatsappEnabled &&
+      config.metaAppId &&
+      config.metaAppSecret &&
+      config.metaConfigId &&
+      config.metaWhatsappVerifyToken &&
+      supabaseServerKey,
+  );
   return {
     coreReady,
     voiceReady,

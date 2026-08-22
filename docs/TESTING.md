@@ -158,6 +158,20 @@ Mientras la revisión externa esté pendiente:
 
 Cuando la revisión termine, el canal deberá probarse en un entorno controlado antes de activar la bandera en producción.
 
+Con la fase 2 habilitada, agrega:
+
+- conexión Embedded Signup → intercambio de `code`, validación de WABA y
+  suscripción a `/{WABA_ID}/subscribed_apps`;
+- registro explícito de `/{PHONE_NUMBER_ID}/register` con PIN válido, PIN
+  inválido y confirmación de que el PIN no se persiste;
+- GET de verificación del webhook con `META_WHATSAPP_VERIFY_TOKEN`;
+- POST con firma `X-Hub-Signature-256` válida e inválida;
+- mensaje duplicado con el mismo `provider_message_id` → una sola conversación/acción;
+- mensaje de negocio A no resuelto por el teléfono de negocio B;
+- mensaje entrante de texto → conversación, respuesta y dos registros en `whatsapp_messages`;
+- pedido/reserva propuestos por IA → validación de `lib/assistant/actions.ts` antes de persistir;
+- error de Meta/OpenAI → mensaje marcado como `failed` y sin secretos en la respuesta HTTP.
+
 ### 13. Release/hosting
 
 - `pnpm run test` termina con `next build` exitoso;

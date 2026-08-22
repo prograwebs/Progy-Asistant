@@ -19,6 +19,8 @@ conversations
 orders
 bookings
 usage_ledger
+whatsapp_connections
+whatsapp_messages
 ```
 
 Incluye cualquier tabla nueva con `business_id`, datos personales, credenciales o resultados transaccionales.

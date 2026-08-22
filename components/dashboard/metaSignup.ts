@@ -1,3 +1,5 @@
+import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
+
 type MetaLoginResponse = {
   authResponse?: { code?: string };
 };
@@ -40,7 +42,14 @@ function loadSdk(appId: string) {
 
     const initialize = () => {
       if (!metaWindow.FB) return false;
-      metaWindow.FB.init({ appId, cookie: true, xfbml: false, version: "v25.0" });
+      metaWindow.FB.init({
+        appId,
+        cookie: true,
+        xfbml: false,
+        version:
+          process.env.NEXT_PUBLIC_META_GRAPH_VERSION?.trim() ||
+          DEFAULT_META_GRAPH_VERSION,
+      });
       resolve();
       return true;
     };
@@ -98,7 +107,12 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
     };
 
     function onMessage(event: MessageEvent) {
-      if (!event.origin.endsWith("facebook.com")) return;
+      const allowedOrigins = new Set([
+        "https://www.facebook.com",
+        "https://facebook.com",
+        "https://business.facebook.com",
+      ]);
+      if (!allowedOrigins.has(event.origin)) return;
       let payload: { type?: string; event?: string; data?: { waba_id?: string; phone_number_id?: string; business_id?: string; error_message?: string } } | null = null;
       try {
         payload = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
@@ -137,6 +151,7 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
       override_default_response_type: true,
       extras: {
         setup: {},
+        featureType: "whatsapp_business_app_onboarding",
         sessionInfoVersion: "3",
       },
     });

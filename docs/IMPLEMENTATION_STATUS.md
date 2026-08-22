@@ -22,6 +22,8 @@
 - [x] Medición de tokens/voz/coste por negocio
 - [x] Inicio con checklist de Preparación para publicar e indicador de incidencias
 - [x] WhatsApp aislado detrás de `NEXT_PUBLIC_WHATSAPP_ENABLED=false`
+- [x] WhatsApp Embedded Signup, validación de WABA, suscripción de webhooks,
+      registro explícito de teléfono y webhook firmado
 - [x] Health check seguro `/api/health`
 - [x] Headers básicos de seguridad
 - [x] CI: lint, typecheck, tests y `next build`
@@ -40,6 +42,9 @@ El repositorio no contiene secretos ni acceso al proyecto Supabase real, por lo 
 - [ ] pedido y reserva persistidos en Supabase;
 - [ ] Conversaciones/Consumo actualizados después de la prueba;
 - [ ] `/api/health` HTTP 200 en el hosting final.
+- [ ] Aplicar las migraciones de `whatsapp_connections` y `whatsapp_messages`
+      en el Supabase real.
+- [ ] Completar Meta App Review y prueba end-to-end con un negocio no tester.
 
 ## Externos no bloqueantes para el primer despliegue
 
