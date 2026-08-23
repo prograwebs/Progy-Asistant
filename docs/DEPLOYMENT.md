@@ -82,14 +82,14 @@ Actualiza las URLs permitidas de autenticación para el dominio estable y confir
 #### Aplicar las migraciones
 
 Las tablas nuevas de WhatsApp no se crean automáticamente al desplegar Next.js.
-En el proyecto Supabase de producción abre **SQL Editor** y ejecuta, en este
-orden, el contenido completo de:
+Para un proyecto Supabase nuevo, abre **SQL Editor** y ejecuta, en este orden,
+el contenido completo de:
 
 1. `supabase/migrations/20260820_whatsapp_messages.sql`
 2. `supabase/migrations/20260821_whatsapp_connection.sql`
 3. `supabase/migrations/20260823120000_whatsapp_coexistence.sql`
 
-Después verifica que ambas tablas existan y tengan RLS activo:
+Si ya aplicaste estas migraciones, solo verifica que las tablas existan y tengan RLS activo:
 
 ```sql
 select
@@ -99,7 +99,7 @@ select
 from pg_class c
 join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = 'public'
-  and c.relname in ('whatsapp_messages', 'whatsapp_connections');
+  and c.relname in ('whatsapp_messages', 'whatsapp_connections', 'whatsapp_contacts');
 ```
 
 El resultado esperado es una fila por tabla con `rls_enabled = true`. No

@@ -104,11 +104,13 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
   const templates = read("app/api/whatsapp/templates/route.ts");
   const send = read("app/api/whatsapp/send-text/route.ts");
+  const messages = read("app/api/whatsapp/messages/route.ts");
+  const conversations = read("components/dashboard/sections/RecordsSections.tsx");
 
   assert.match(config, /NEXT_PUBLIC_WHATSAPP_ENABLED === "true"/);
   assert.match(constants, /DEFAULT_META_GRAPH_VERSION = "v25\.0"/);
   assert.match(signup, /NEXT_PUBLIC_META_GRAPH_VERSION/);
-  for (const source of [connect, register, templates, send]) {
+  for (const source of [connect, register, templates, send, messages]) {
     assert.match(source, /getWhatsAppConfig\(\)\.enabled/);
     assert.doesNotMatch(source, /v26\.0/);
   }
@@ -123,6 +125,14 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(connect, /flow/);
   assert.match(connect, /is_on_biz_app/);
   assert.match(coexistenceMigration, /whatsapp_contacts/);
+  assert.match(messages, /export async function GET/);
+  assert.match(messages, /export async function POST/);
+  assert.match(messages, /canManageBusiness/);
+  assert.match(messages, /saveOutboundMessage/);
+  assert.doesNotMatch(messages, /access_token\s*:/);
+  assert.match(conversations, /\/api\/whatsapp\/messages/);
+  assert.match(conversations, /Actualizar conversaciones/);
+  assert.match(conversations, /Enviar respuesta manual/);
   assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
 });
 

@@ -13,8 +13,48 @@ export type WhatsAppConnectionForWebhook = {
 
 export type WhatsAppConversation = {
   id: string;
+  customer_phone?: string | null;
+  customer_name?: string | null;
   metadata?: Record<string, unknown> | null;
 };
+
+export type WhatsAppStoredMessage = {
+  id: string;
+  provider_message_id: string;
+  direction: "inbound" | "outbound";
+  message_type: string;
+  text_body: string | null;
+  status: string;
+  created_at: string;
+  provider_payload?: unknown;
+};
+
+export async function getWhatsAppConversation(
+  businessId: string,
+  conversationId: string,
+) {
+  const rows = await supabaseAdminRequest<WhatsAppConversation[]>(
+    `conversations?select=id,customer_phone,customer_name,metadata&id=eq.${encodeURIComponent(
+      conversationId,
+    )}&business_id=eq.${encodeURIComponent(
+      businessId,
+    )}&channel=eq.whatsapp_chat&limit=1`,
+  );
+  return rows[0] || null;
+}
+
+export async function listWhatsAppMessages(
+  businessId: string,
+  conversationId: string,
+) {
+  return supabaseAdminRequest<WhatsAppStoredMessage[]>(
+    `whatsapp_messages?select=id,provider_message_id,direction,message_type,text_body,status,created_at&business_id=eq.${encodeURIComponent(
+      businessId,
+    )}&conversation_id=eq.${encodeURIComponent(
+      conversationId,
+    )}&order=created_at.asc&limit=200`,
+  );
+}
 
 export async function getConnectionForPhoneNumber(phoneNumberId: string) {
   const rows = await supabaseAdminRequest<WhatsAppConnectionForWebhook[]>(
@@ -259,6 +299,53 @@ export async function appendConversationTurn(input: {
           turns: nextTurns,
           last_action: input.action || current.last_action,
           last_message_at: now,
+        },
+      }),
+      prefer: "return=minimal",
+    },
+  );
+}
+
+export async function appendManualConversationTurn(input: {
+  conversationId: string;
+  businessId: string;
+  text: string;
+}) {
+  const rows = await supabaseAdminRequest<Row[]>(
+    `conversations?id=eq.${encodeURIComponent(
+      input.conversationId,
+    )}&business_id=eq.${encodeURIComponent(
+      input.businessId,
+    )}&channel=eq.whatsapp_chat&select=id,metadata`,
+  );
+  if (!rows[0]) return;
+
+  const current = rows[0].metadata && typeof rows[0].metadata === "object" &&
+      !Array.isArray(rows[0].metadata)
+    ? rows[0].metadata as Record<string, unknown>
+    : {};
+  const turns = Array.isArray(current.turns) ? current.turns : [];
+  const now = new Date().toISOString();
+  const nextTurns = [
+    ...turns,
+    { role: "human_agent", text: input.text.slice(0, 1500), at: now },
+  ].slice(-20);
+
+  await supabaseAdminRequest(
+    `conversations?id=eq.${encodeURIComponent(
+      input.conversationId,
+    )}&business_id=eq.${encodeURIComponent(
+      input.businessId,
+    )}&channel=eq.whatsapp_chat`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        summary: input.text.slice(0, 500),
+        metadata: {
+          ...current,
+          turns: nextTurns,
+          last_message_at: now,
+          last_message_source: "human_agent",
         },
       }),
       prefer: "return=minimal",

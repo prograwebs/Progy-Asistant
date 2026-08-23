@@ -173,6 +173,9 @@ Con la fase 2 habilitada, agrega:
 - mensaje duplicado con el mismo `provider_message_id` → una sola conversación/acción;
 - mensaje de negocio A no resuelto por el teléfono de negocio B;
 - mensaje entrante de texto → conversación, respuesta y dos registros en `whatsapp_messages`;
+- abrir la conversación WhatsApp en el panel → cargar sus mensajes con “Actualizar conversaciones”;
+- respuesta manual desde el panel → mensaje `outbound` visible en Progy y recibido en el teléfono externo;
+- respuesta manual con otro `businessId` o `conversationId` → rechazo sin enviar desde otra cuenta;
 - pedido/reserva propuestos por IA → validación de `lib/assistant/actions.ts` antes de persistir;
 - error de Meta/OpenAI → mensaje marcado como `failed` y sin secretos en la respuesta HTTP.
 

@@ -39,6 +39,9 @@ Coexistence
 
 WhatsAppSection
   ├─ GET /api/whatsapp/connect
+  ├─ GET/POST /api/whatsapp/messages
+  │    ├─ carga el historial de la conversación seleccionada
+  │    └─ permite una respuesta manual de respaldo
   ├─ GET/POST /api/whatsapp/templates
   └─ POST /api/whatsapp/send-text
        └─ servidor obtiene token y phone_number_id desde Supabase
@@ -70,6 +73,11 @@ Meta webhook
   está registrado y el servidor rechaza cualquier intento de repetirlo.
 - El cliente puede seleccionar una plantilla, pero el servidor vuelve a
   comprobar nombre, idioma y estado `APPROVED` antes de enviarla.
+- La vista Conversaciones permite actualizar manualmente el historial y enviar
+  texto libre como agente humano. El servidor valida el negocio, la conversación,
+  el teléfono y la conexión antes de llamar a Graph API; nunca devuelve el token.
+- Las respuestas manuales se guardan como `outbound` y como turno de agente para
+  que el historial posterior de la IA conserve el contexto sin responder dos veces.
 - El envío no registra automáticamente un número. El registro, si fuera
   necesario para una configuración concreta de Meta, debe ser una acción
   explícita de administración.
@@ -82,16 +90,15 @@ Meta webhook
 `lib/whatsapp/store.ts` persiste y recupera la conexión; `webhook-store.ts`
 persiste mensajes y conversaciones desde el proceso server-side. Ambos deben
 usar las tablas del proyecto Supabase real y mantener
-el token fuera del cliente. Hay que aplicar las migraciones
+el token fuera del cliente. En un proyecto Supabase nuevo deben aplicarse las migraciones
 `20260820_whatsapp_messages.sql`,
 `20260821_whatsapp_connection.sql` y
 `20260823120000_whatsapp_coexistence.sql` en el proyecto Supabase real y confirmar que
 la tabla, su índice único por `business_id` y sus políticas de seguridad existen
 en ese proyecto.
 
-Los mensajes del webhook requieren aplicar
-`supabase/migrations/20260820_whatsapp_messages.sql` en el proyecto Supabase
-real antes de activar el POST del webhook. Coexistence solicita las
+Los mensajes del webhook requieren que la migración correspondiente ya esté
+aplicada en el proyecto Supabase antes de activar el POST del webhook. Coexistence solicita las
 sincronizaciones `history` y `smb_app_state_sync`, procesa sus webhooks y
 registra `smb_message_echoes` sin enviarlos al agente de IA. El proceso también necesita
 `SUPABASE_SECRET_KEY` (o la clave legacy `SUPABASE_SERVICE_ROLE_KEY`) únicamente
@@ -99,8 +106,8 @@ en variables server-side; nunca debe llegar al navegador.
 
 ## Siguiente fase
 
-Antes de producción hay que aplicar la migración en Supabase y probar con Meta
-real el challenge, la firma, mensajes duplicados, respuestas, estados,
+Con las migraciones aplicadas, queda probar con Meta real el challenge, la firma,
+mensajes duplicados, respuestas, estados,
 expiración de tokens y aislamiento entre dos negocios. Después se puede añadir
 soporte para multimedia, plantillas de respuesta fuera de la ventana de
 servicio y controles operativos de reintento/reprocesamiento.

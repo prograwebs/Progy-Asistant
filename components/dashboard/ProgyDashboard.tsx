@@ -157,7 +157,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
         {section === "voz" && <VoiceSection key={`voice-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "whatsapp" && <WhatsAppSection key={`whatsapp-${workspaceKey}`} workspace={workspace} />}
         {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Prueba el conocimiento y la voz del negocio. Cada turno registra su consumo para que podamos medir el costo real durante esta etapa de validación." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} onRefresh={() => load(workspace.business.id)} />}</>}
-        {section === "conversaciones" && <ConversationsSection workspace={workspace} onGo={go} />}
+        {section === "conversaciones" && <ConversationsSection workspace={workspace} onGo={go} onRefresh={() => load(workspace.business.id)} />}
         {section === "pedidos" && <OrdersSection workspace={workspace} />}
         {section === "consumo" && <UsageSection workspace={workspace} />}
         {section === "ajustes" && <SettingsSection user={user} workspace={workspace} integrations={integrations} />}

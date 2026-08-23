@@ -108,11 +108,11 @@ function historyFromConversation(metadata: unknown): HistoryEntry[] {
   return turns
     .map((turn) => turn as Record<string, unknown>)
     .filter((turn) =>
-      (turn.role === "user" || turn.role === "assistant") &&
+      (turn.role === "user" || turn.role === "assistant" || turn.role === "human_agent") &&
       typeof turn.text === "string"
     )
-    .map((turn) => ({
-      role: turn.role as "user" | "assistant",
+    .map((turn): HistoryEntry => ({
+      role: turn.role === "user" ? "user" : "assistant",
       text: String(turn.text).slice(0, 1200),
     }))
     .slice(-8);
