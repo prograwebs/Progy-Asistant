@@ -13,7 +13,7 @@ export default function BusinessOnboarding({
   categories: Category[];
   action: WorkspaceAction;
 }) {
-  const [categoryCode, setCategoryCode] = useState(categories[0]?.code || "other");
+  const [categoryCode, setCategoryCode] = useState(categories[0]?.code || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -21,6 +21,11 @@ export default function BusinessOnboarding({
     event.preventDefault();
     setBusy(true);
     setError("");
+    if (!categoryCode) {
+      setError("No pudimos cargar las categorías del negocio. Recarga la página e inténtalo nuevamente.");
+      setBusy(false);
+      return;
+    }
     const form = new FormData(event.currentTarget);
     try {
       await action({
@@ -50,7 +55,7 @@ export default function BusinessOnboarding({
         <p>Hola {user.name}. Elige la actividad que más se parece a tu negocio. Progy adaptará la configuración, el catálogo y las acciones que puede realizar.</p>
 
         <div className={styles.categories}>
-          {categories.map((category) => (
+          {categories.length ? categories.map((category) => (
             <button
               type="button"
               key={category.code}
@@ -60,7 +65,11 @@ export default function BusinessOnboarding({
               <b>{category.name}</b>
               <small>{category.description || "Configura la atención según tu negocio."}</small>
             </button>
-          ))}
+          )) : (
+            <div className={styles.errorBanner} role="alert">
+              No pudimos cargar las categorías del negocio. Recarga la página e inténtalo nuevamente.
+            </div>
+          )}
         </div>
 
         <div className={styles.formGrid}>
@@ -75,7 +84,7 @@ export default function BusinessOnboarding({
         </div>
         {error && <div className={styles.errorBanner}>{error}</div>}
         <div className={styles.actions}>
-          <button className={styles.primary} disabled={busy}>{busy ? "Creando negocio…" : "Crear mi Progy"}</button>
+          <button className={styles.primary} disabled={busy || !categoryCode}>{busy ? "Creando negocio…" : "Crear mi Progy"}</button>
         </div>
       </form>
     </main>

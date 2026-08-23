@@ -86,7 +86,8 @@ En el proyecto Supabase de producción abre **SQL Editor** y ejecuta, en este
 orden, el contenido completo de:
 
 1. `supabase/migrations/20260820_whatsapp_messages.sql`
-2. `supabase/migrations/20260821_whatsapp_connections.sql`
+2. `supabase/migrations/20260821_whatsapp_connection.sql`
+3. `supabase/migrations/20260823120000_whatsapp_coexistence.sql`
 
 Después verifica que ambas tablas existan y tengan RLS activo:
 

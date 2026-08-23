@@ -8,10 +8,13 @@ import { sendWhatsAppText } from "./meta-client";
 import {
   appendConversationTurn,
   claimIncomingMessage,
+  claimSynchronizedMessage,
   getConnectionForPhoneNumber,
   getOrCreateConversation,
   saveOutboundMessage,
+  updateCoexistenceSyncStatus,
   updateMessage,
+  upsertWhatsAppContact,
   type WhatsAppConnectionForWebhook,
 } from "./webhook-store";
 import { isWhatsAppTokenExpired } from "./store";
@@ -20,9 +23,26 @@ import { supabaseAdminRequest } from "../supabase-admin";
 type WebhookMessage = {
   id?: string;
   from?: string;
+  to?: string;
   timestamp?: string;
   type?: string;
   text?: { body?: string };
+  history_context?: { status?: string };
+};
+
+type HistoryChunk = {
+  metadata?: { progress?: number };
+  threads?: Array<{ id?: string; messages?: WebhookMessage[] }>;
+  errors?: Array<{ code?: number; message?: string }>;
+};
+
+type StateSyncEntry = {
+  action?: string;
+  contact?: {
+    full_name?: string;
+    first_name?: string;
+    phone_number?: string;
+  };
 };
 
 type WebhookStatus = {
@@ -43,6 +63,9 @@ type WebhookValue = {
   }>;
   messages?: WebhookMessage[];
   statuses?: WebhookStatus[];
+  history?: HistoryChunk[];
+  state_sync?: StateSyncEntry[];
+  message_echoes?: WebhookMessage[];
 };
 
 type WebhookPayload = {
@@ -64,6 +87,16 @@ function asPayload(value: unknown) {
 
 function text(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function phone(value: unknown) {
+  return text(value).replace(/\D/g, "");
+}
+
+function messageText(message: WebhookMessage) {
+  return message.type === "text"
+    ? text(message.text?.body).slice(0, 2000)
+    : "";
 }
 
 function historyFromConversation(metadata: unknown): HistoryEntry[] {
@@ -100,15 +133,13 @@ async function processInboundMessage(
   message: WebhookMessage,
 ) {
   const providerMessageId = text(message.id);
-  const fromPhone = text(message.from).replace(/\D/g, "");
+  const fromPhone = phone(message.from);
   if (!providerMessageId || !fromPhone) return "ignored" as const;
 
   const contact = value.contacts?.find((item) => item.wa_id === message.from) ||
     value.contacts?.[0];
   const customerName = text(contact?.profile?.name) || null;
-  const messageText = message.type === "text"
-    ? text(message.text?.body).slice(0, 2000)
-    : "";
+  const bodyText = messageText(message);
 
   const claimed = await claimIncomingMessage({
     providerMessageId,
@@ -117,14 +148,14 @@ async function processInboundMessage(
     fromPhone,
     toPhone: value.metadata?.display_phone_number || connection.phone_number_id,
     messageType: text(message.type) || "unknown",
-    textBody: messageText || null,
+    textBody: bodyText || null,
     providerPayload: message,
   });
 
   if (!claimed) return "duplicate" as const;
 
   try {
-    if (!messageText) {
+    if (!bodyText) {
       await updateMessage(providerMessageId, { status: "ignored" });
       return "ignored" as const;
     }
@@ -150,8 +181,8 @@ async function processInboundMessage(
     );
     const generated = await generateAssistantDecision({
       businessId: connection.business_id,
-      instructions: buildCompactAgentInstructions(context, messageText),
-      userText: messageText,
+      instructions: buildCompactAgentInstructions(context, bodyText),
+      userText: bodyText,
       history: historyFromConversation(conversation.metadata),
       safetyIdentifier: `progy-whatsapp-${connection.business_id}`,
     });
@@ -172,7 +203,7 @@ async function processInboundMessage(
     await appendConversationTurn({
       conversationId: conversation.id,
       businessId: connection.business_id,
-      userText: messageText,
+      userText: bodyText,
       reply,
       action,
     });
@@ -218,6 +249,135 @@ async function processInboundMessage(
   }
 }
 
+async function processHistoryEvent(
+  connection: WhatsAppConnectionForWebhook,
+  value: WebhookValue,
+) {
+  const businessPhone = phone(value.metadata?.display_phone_number) ||
+    phone(connection.phone_number);
+  let processed = 0;
+  let completed = false;
+  let failed = false;
+
+  for (const chunk of value.history || []) {
+    if (chunk.errors?.length) failed = true;
+    if ((chunk.metadata?.progress || 0) >= 100) completed = true;
+
+    for (const thread of chunk.threads || []) {
+      const threadPhone = phone(thread.id);
+      if (!threadPhone) continue;
+
+      for (const message of thread.messages || []) {
+        const providerMessageId = text(message.id);
+        const fromPhone = phone(message.from) || businessPhone;
+        const toPhone = phone(message.to) || threadPhone;
+        if (!providerMessageId || !fromPhone) continue;
+
+        const outbound = Boolean(businessPhone && fromPhone === businessPhone);
+        const claimed = await claimSynchronizedMessage({
+          providerMessageId,
+          businessId: connection.business_id,
+          phoneNumberId: connection.phone_number_id,
+          fromPhone,
+          toPhone,
+          direction: outbound ? "outbound" : "inbound",
+          messageType: text(message.type) || "unknown",
+          textBody: messageText(message) || null,
+          status: "history",
+          providerPayload: message,
+        });
+        if (!claimed) continue;
+
+        const conversation = await getOrCreateConversation({
+          businessId: connection.business_id,
+          customerPhone: outbound ? threadPhone : fromPhone,
+          phoneNumberId: connection.phone_number_id,
+        });
+        await updateMessage(providerMessageId, {
+          conversation_id: conversation.id,
+        });
+        processed += 1;
+      }
+    }
+  }
+
+  await updateCoexistenceSyncStatus({
+    phoneNumberId: connection.phone_number_id,
+    syncType: "history",
+    status: failed ? "failed" : completed ? "completed" : "received",
+  });
+  return processed;
+}
+
+async function processContactSyncEvent(
+  connection: WhatsAppConnectionForWebhook,
+  value: WebhookValue,
+) {
+  let processed = 0;
+  for (const entry of value.state_sync || []) {
+    const contactPhone = phone(entry.contact?.phone_number);
+    if (!contactPhone) continue;
+    const action = text(entry.action).toLowerCase();
+    await upsertWhatsAppContact({
+      businessId: connection.business_id,
+      phoneNumber: contactPhone,
+      fullName: text(entry.contact?.full_name) || null,
+      firstName: text(entry.contact?.first_name) || null,
+      active: action !== "delete" && action !== "deleted" && action !== "remove",
+    });
+    processed += 1;
+  }
+
+  await updateCoexistenceSyncStatus({
+    phoneNumberId: connection.phone_number_id,
+    syncType: "contacts",
+    status: "completed",
+  });
+  return processed;
+}
+
+async function processMessageEchoes(
+  connection: WhatsAppConnectionForWebhook,
+  value: WebhookValue,
+) {
+  const businessPhone = phone(value.metadata?.display_phone_number) ||
+    phone(connection.phone_number);
+  let processed = 0;
+
+  for (const message of value.message_echoes || []) {
+    const providerMessageId = text(message.id);
+    const fromPhone = phone(message.from) || businessPhone;
+    const toPhone = phone(message.to);
+    if (!providerMessageId || !fromPhone || !toPhone) continue;
+
+    const claimed = await claimSynchronizedMessage({
+      providerMessageId,
+      businessId: connection.business_id,
+      phoneNumberId: connection.phone_number_id,
+      fromPhone,
+      toPhone,
+      direction: "outbound",
+      messageType: text(message.type) || "unknown",
+      textBody: messageText(message) || null,
+      status: "echo",
+      providerPayload: message,
+    });
+    if (!claimed) continue;
+
+    const conversation = await getOrCreateConversation({
+      businessId: connection.business_id,
+      customerPhone: toPhone,
+      phoneNumberId: connection.phone_number_id,
+    });
+    await updateMessage(providerMessageId, {
+      conversation_id: conversation.id,
+    });
+    processed += 1;
+  }
+
+  return processed;
+}
+
 export async function processWhatsAppWebhook(input: unknown) {
   const payload = asPayload(input);
   if (
@@ -230,12 +390,42 @@ export async function processWhatsAppWebhook(input: unknown) {
   let processed = 0;
   let ignored = 0;
   let duplicates = 0;
+  let synchronized = 0;
 
   for (const entry of payload.entry) {
     for (const change of entry.changes || []) {
-      if (change.field !== "messages" || !change.value) continue;
+      if (!change.value) continue;
       const value = change.value;
       const phoneNumberId = text(value.metadata?.phone_number_id);
+
+      if (!phoneNumberId) continue;
+
+      const connection = await getConnectionForPhoneNumber(phoneNumberId);
+      if (!connection || (entry.id && connection.waba_id !== entry.id)) {
+        console.error("Progy WhatsApp webhook connection not found", {
+          phoneNumberId,
+          wabaId: entry.id,
+          field: change.field,
+        });
+        continue;
+      }
+
+      if (change.field === "history") {
+        synchronized += await processHistoryEvent(connection, value);
+        continue;
+      }
+
+      if (change.field === "smb_app_state_sync") {
+        synchronized += await processContactSyncEvent(connection, value);
+        continue;
+      }
+
+      if (change.field === "smb_message_echoes") {
+        synchronized += await processMessageEchoes(connection, value);
+        continue;
+      }
+
+      if (change.field !== "messages") continue;
 
       for (const status of value.statuses || []) {
         const id = text(status.id);
@@ -249,17 +439,6 @@ export async function processWhatsAppWebhook(input: unknown) {
         }
       }
 
-      if (!phoneNumberId) continue;
-      const connection = await getConnectionForPhoneNumber(phoneNumberId);
-      if (!connection || (entry.id && connection.waba_id !== entry.id)) {
-        console.error("Progy WhatsApp webhook connection not found", {
-          phoneNumberId,
-          wabaId: entry.id,
-        });
-        ignored += (value.messages || []).length;
-        continue;
-      }
-
       for (const message of value.messages || []) {
         const result = await processInboundMessage(connection, value, message);
         if (result === "processed") processed += 1;
@@ -269,5 +448,5 @@ export async function processWhatsAppWebhook(input: unknown) {
     }
   }
 
-  return { processed, ignored, duplicates };
+  return { processed, ignored, duplicates, synchronized };
 }

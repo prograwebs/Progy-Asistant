@@ -4,6 +4,7 @@ import { requireApiUser } from "../../../../lib/integrations";
 import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
 import {
   listClientWhatsAppAccounts,
+  requestWhatsAppAppDataSync,
   subscribeWhatsAppBusinessAccount,
 } from "@/lib/whatsapp/meta-client";
 
@@ -22,6 +23,7 @@ type ConnectPayload = {
   wabaId?: string;
   phoneNumberId?: string;
   businessId?: string;
+  flow?: "standard" | "business_app";
 
   /*
    * ID interno del negocio dentro de Progy.
@@ -151,6 +153,10 @@ export async function POST(request: Request) {
    */
   const metaBusinessId =
     cleanId(body.businessId);
+
+  const onboardingFlow = body.flow === "business_app"
+    ? "business_app"
+    : "standard";
 
   /*
    * Este es el UUID de public.businesses en Progy.
@@ -450,7 +456,10 @@ export async function POST(request: Request) {
      * o la consulta anterior no funcionó,
      * obtenemos los números desde la WABA.
      */
-    if (!phone?.id) {
+    if (!phone?.id || (
+      onboardingFlow === "business_app" &&
+      phone.is_on_biz_app !== true
+    )) {
       const phonesUrl = new URL(
         `https://graph.facebook.com/${GRAPH_VERSION}/${wabaId}/phone_numbers`,
       );
@@ -518,14 +527,11 @@ export async function POST(request: Request) {
        *
        * Si no, utilizamos el primer número.
        */
-      phone =
-        phones.find(
-          (item) =>
-            item.is_on_biz_app ===
-            true,
-        ) ??
-        phones[0] ??
-        null;
+      phone = onboardingFlow === "business_app"
+        ? phones.find((item) =>
+            item.id === phoneNumberId && item.is_on_biz_app === true
+          ) ?? phones.find((item) => item.is_on_biz_app === true) ?? null
+        : phones[0] ?? null;
 
       phoneNumberId =
         phone?.id?.trim() || "";
@@ -544,6 +550,16 @@ export async function POST(request: Request) {
           status: 502,
           headers: NO_STORE_HEADERS,
         },
+      );
+    }
+
+    if (onboardingFlow === "business_app" && phone.is_on_biz_app !== true) {
+      return Response.json(
+        {
+          error:
+            "Meta terminó el flujo de Coexistence, pero el número no aparece activo en WhatsApp Business App.",
+        },
+        { status: 409, headers: NO_STORE_HEADERS },
       );
     }
 
@@ -653,6 +669,44 @@ export async function POST(request: Request) {
           ).toISOString()
         : null;
 
+    let historySyncStatus = "not_requested";
+    let contactsSyncStatus = "not_requested";
+    const syncErrors: string[] = [];
+
+    if (onboardingFlow === "business_app") {
+      const syncResults = await Promise.allSettled([
+        requestWhatsAppAppDataSync({
+          graphVersion: GRAPH_VERSION,
+          phoneNumberId,
+          accessToken,
+          syncType: "history",
+        }),
+        requestWhatsAppAppDataSync({
+          graphVersion: GRAPH_VERSION,
+          phoneNumberId,
+          accessToken,
+          syncType: "smb_app_state_sync",
+        }),
+      ]);
+      const [historyResult, contactsResult] = syncResults;
+      historySyncStatus = historyResult.status === "fulfilled" && historyResult.value.response.ok
+        ? "requested"
+        : "failed";
+      contactsSyncStatus = contactsResult.status === "fulfilled" && contactsResult.value.response.ok
+        ? "requested"
+        : "failed";
+      for (const result of syncResults) {
+        if (result.status === "rejected") {
+          syncErrors.push("No se pudo solicitar la sincronización de Coexistence.");
+        } else if (!result.value.response.ok) {
+          syncErrors.push(
+            result.value.result.error?.message ||
+              "Meta rechazó una sincronización de Coexistence.",
+          );
+        }
+      }
+    }
+
     try {
       await saveWhatsAppConnection({
         business_id:
@@ -704,13 +758,22 @@ export async function POST(request: Request) {
           webhookSubscribedAt,
 
         registration_status:
-          "pending",
+          onboardingFlow === "business_app" ? "coexistence" : "pending",
 
         phone_registered_at:
           null,
 
         last_meta_error:
-          null,
+          syncErrors.join(" | ").slice(0, 500) || null,
+
+        onboarding_flow:
+          onboardingFlow,
+
+        history_sync_status:
+          historySyncStatus,
+
+        contacts_sync_status:
+          contactsSyncStatus,
       });
     } catch (error) {
       console.error(
@@ -780,7 +843,10 @@ export async function POST(request: Request) {
 
           phoneRegisteredAt: null,
 
-          registrationStatus: "pending",
+          registrationStatus: onboardingFlow === "business_app" ? "coexistence" : "pending",
+          onboardingFlow,
+          historySyncStatus,
+          contactsSyncStatus,
         },
 
         token: {
@@ -986,6 +1052,15 @@ export async function GET(
 
           registrationStatus:
             connection.registration_status || "pending",
+
+          onboardingFlow:
+            connection.onboarding_flow || "standard",
+
+          historySyncStatus:
+            connection.history_sync_status || "not_requested",
+
+          contactsSyncStatus:
+            connection.contacts_sync_status || "not_requested",
         },
       },
       {

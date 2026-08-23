@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { getSupabaseAccessToken, integrationConfig } from "./integrations";
-import { providerErrorCode, publicDataError } from "./http/errors";
+import { businessCreateErrorCode, providerErrorCode, publicDataError, type SupabasePublicErrorCode } from "./http/errors";
 import { retryTransientPostgrestJwt } from "./http/postgrest-retry";
 
 type DataRequestOptions = RequestInit & { prefer?: string };
@@ -8,8 +8,6 @@ export type DataRequest = <T = unknown>(
   path: string,
   options?: DataRequestOptions,
 ) => Promise<T>;
-export type SupabasePublicErrorCode = "session_refresh_required";
-
 export class SupabaseDataError extends Error {
   status: number;
   publicCode?: SupabasePublicErrorCode;
@@ -80,16 +78,21 @@ export async function supabaseDataRequest<T>(
   const { response, payload } = result;
   if (!response.ok) {
     const method = (options.method ?? "GET").toUpperCase();
+    const providerCode = providerErrorCode(payload);
     console.error("Progy data request failed", {
       operation: dataOperation(path),
       status: response.status,
-      code: providerErrorCode(payload),
+      code: providerCode,
       correlationId,
     });
     throw new SupabaseDataError(
-      publicDataError(response.status, method),
+      publicDataError(response.status, method, providerCode),
       response.status,
-      response.status === 401 ? "session_refresh_required" : undefined,
+      response.status === 401
+        ? "session_refresh_required"
+        : dataOperation(path) === "rpc:create_business_for_current_user"
+          ? businessCreateErrorCode(providerCode)
+          : undefined,
     );
   }
   return payload as T;

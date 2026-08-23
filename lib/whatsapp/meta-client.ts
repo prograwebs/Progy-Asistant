@@ -81,6 +81,28 @@ export async function registerWhatsAppPhone(input: {
   return { response, result };
 }
 
+export async function requestWhatsAppAppDataSync(input: {
+  graphVersion: string;
+  phoneNumberId: string;
+  accessToken: string;
+  syncType: "history" | "smb_app_state_sync";
+}) {
+  const response = await fetch(
+    `https://graph.facebook.com/${input.graphVersion}/${input.phoneNumberId}/smb_app_data`,
+    {
+      method: "POST",
+      headers: metaHeaders(input.accessToken, true),
+      body: JSON.stringify({
+        messaging_product: "whatsapp",
+        sync_type: input.syncType,
+      }),
+      cache: "no-store",
+    },
+  );
+  const result = (await response.json().catch(() => ({}))) as MetaApiResult;
+  return { response, result };
+}
+
 export type MetaSendResponse = {
   messaging_product?: string;
   contacts?: Array<{

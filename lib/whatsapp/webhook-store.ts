@@ -6,6 +6,7 @@ export type WhatsAppConnectionForWebhook = {
   business_id: string;
   waba_id: string;
   phone_number_id: string;
+  phone_number?: string | null;
   access_token: string;
   token_expires_at: string | null;
 };
@@ -17,11 +18,89 @@ export type WhatsAppConversation = {
 
 export async function getConnectionForPhoneNumber(phoneNumberId: string) {
   const rows = await supabaseAdminRequest<WhatsAppConnectionForWebhook[]>(
-    `whatsapp_connections?select=business_id,waba_id,phone_number_id,access_token,token_expires_at&phone_number_id=eq.${
+    `whatsapp_connections?select=business_id,waba_id,phone_number_id,phone_number,access_token,token_expires_at&phone_number_id=eq.${
       encodeURIComponent(phoneNumberId)
     }&status=eq.connected&limit=1`,
   );
   return rows[0] || null;
+}
+
+export async function claimSynchronizedMessage(input: {
+  providerMessageId: string;
+  businessId: string;
+  phoneNumberId: string;
+  fromPhone: string;
+  toPhone?: string | null;
+  direction: "inbound" | "outbound";
+  messageType: string;
+  textBody?: string | null;
+  status: "history" | "echo";
+  providerPayload: unknown;
+}) {
+  const rows = await supabaseAdminRequest<Row[]>("whatsapp_messages", {
+    method: "POST",
+    body: JSON.stringify({
+      provider_message_id: input.providerMessageId,
+      business_id: input.businessId,
+      phone_number_id: input.phoneNumberId,
+      from_phone: input.fromPhone,
+      to_phone: input.toPhone || null,
+      direction: input.direction,
+      message_type: input.messageType,
+      text_body: input.textBody || null,
+      status: input.status,
+      provider_payload: input.providerPayload,
+    }),
+    prefer: "resolution=ignore-duplicates,return=representation",
+  });
+
+  return rows[0] || null;
+}
+
+export async function upsertWhatsAppContact(input: {
+  businessId: string;
+  phoneNumber: string;
+  fullName?: string | null;
+  firstName?: string | null;
+  active: boolean;
+}) {
+  await supabaseAdminRequest(
+    "whatsapp_contacts?on_conflict=business_id,phone_number",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        business_id: input.businessId,
+        phone_number: input.phoneNumber,
+        full_name: input.fullName || null,
+        first_name: input.firstName || null,
+        status: input.active ? "active" : "inactive",
+        last_synced_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }),
+      prefer: "resolution=merge-duplicates,return=minimal",
+    },
+  );
+}
+
+export async function updateCoexistenceSyncStatus(input: {
+  phoneNumberId: string;
+  syncType: "history" | "contacts";
+  status: string;
+}) {
+  const field = input.syncType === "history"
+    ? "history_sync_status"
+    : "contacts_sync_status";
+  await supabaseAdminRequest(
+    `whatsapp_connections?phone_number_id=eq.${encodeURIComponent(input.phoneNumberId)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        [field]: input.status,
+        updated_at: new Date().toISOString(),
+      }),
+      prefer: "return=minimal",
+    },
+  );
 }
 
 export async function claimIncomingMessage(input: {
@@ -107,7 +186,7 @@ export async function getOrCreateConversation(input: {
 }) {
   const filter = [
     `business_id=eq.${encodeURIComponent(input.businessId)}`,
-    "channel=eq.whatsapp",
+    "channel=eq.whatsapp_chat",
     "status=eq.active",
     `customer_phone=eq.${encodeURIComponent(input.customerPhone)}`,
   ].join("&");
@@ -122,7 +201,7 @@ export async function getOrCreateConversation(input: {
       business_id: input.businessId,
       customer_name: input.customerName || "Cliente",
       customer_phone: input.customerPhone,
-      channel: "whatsapp",
+      channel: "whatsapp_chat",
       status: "active",
       is_trial: false,
       metadata: {
@@ -149,7 +228,7 @@ export async function appendConversationTurn(input: {
       encodeURIComponent(input.conversationId)
     }&business_id=eq.${
       encodeURIComponent(input.businessId)
-    }&channel=eq.whatsapp&select=id,metadata`,
+    }&channel=eq.whatsapp_chat&select=id,metadata`,
   );
   if (!rows[0]) return;
 
@@ -170,7 +249,7 @@ export async function appendConversationTurn(input: {
       encodeURIComponent(input.conversationId)
     }&business_id=eq.${
       encodeURIComponent(input.businessId)
-    }&channel=eq.whatsapp`,
+    }&channel=eq.whatsapp_chat`,
     {
       method: "PATCH",
       body: JSON.stringify({

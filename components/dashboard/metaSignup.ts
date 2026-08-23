@@ -110,6 +110,7 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
       const allowedOrigins = new Set([
         "https://www.facebook.com",
         "https://facebook.com",
+        "https://web.facebook.com",
         "https://business.facebook.com",
       ]);
       if (!allowedOrigins.has(event.origin)) return;

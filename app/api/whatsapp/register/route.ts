@@ -84,6 +84,16 @@ export async function POST(request: Request) {
       );
     }
 
+    if (connection.is_on_biz_app || connection.onboarding_flow === "business_app") {
+      return Response.json(
+        {
+          error: "Este número ya está registrado mediante Coexistence; no necesita PIN.",
+          registrationStatus: "coexistence",
+        },
+        { status: 409, headers: NO_STORE_HEADERS },
+      );
+    }
+
     if (isWhatsAppTokenExpired(connection.token_expires_at)) {
       return Response.json(
         { error: "La conexión de WhatsApp expiró. Vuelve a conectarla." },

@@ -14,6 +14,9 @@ type WhatsAppConnectionRow = {
   webhook_subscribed_at?: string | null;
   phone_registered_at?: string | null;
   registration_status?: string;
+  onboarding_flow?: "standard" | "business_app";
+  history_sync_status?: string;
+  contacts_sync_status?: string;
   last_meta_error?: string | null;
 };
 

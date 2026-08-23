@@ -4,7 +4,8 @@
 
 La integración permite conectar una WABA mediante Embedded Signup, validar la
 WABA autorizada, suscribir la app a sus webhooks, guardar la conexión server-side,
-registrar explícitamente el número en Cloud API, listar/seleccionar plantillas y
+usar registro explícito solo para el flujo estándar, y en Coexistence omitirlo,
+listar/seleccionar plantillas y
 enviar un mensaje de prueba usando una plantilla aprobada. El procesamiento de
 mensajes entrantes, webhook, conversaciones y respuestas automáticas también está
 implementado, pero continúa protegido por la bandera y requiere una prueba
@@ -26,9 +27,15 @@ WhatsAppSection
 
 WhatsAppSection
   └─ POST /api/whatsapp/register
+       ├─ solo aplica al flujo estándar
        ├─ vuelve a suscribir la app a la WABA
        ├─ registra el teléfono con el PIN de seis dígitos
        └─ guarda el estado de activación sin guardar el PIN
+
+Coexistence
+  ├─ omite /register porque Meta ya registró el teléfono
+  ├─ solicita history y smb_app_state_sync
+  └─ procesa history, contactos y smb_message_echoes sin activar la IA
 
 WhatsAppSection
   ├─ GET /api/whatsapp/connect
@@ -57,10 +64,10 @@ Meta webhook
   `NEXT_PUBLIC_WHATSAPP_ENABLED=true` solo debe usarse después de App Review y
   una prueba end-to-end.
 - El envío de prueba utiliza una plantilla, no texto libre.
-- La suscripción a la WABA se realiza al completar la conexión y también al
-  registrar el teléfono; ambas operaciones son idempotentes.
-- El registro del teléfono es explícito porque requiere el PIN de dos pasos del
-  negocio. El PIN nunca se persiste ni se devuelve al navegador.
+- La suscripción a la WABA se realiza al completar la conexión y, para el flujo
+  estándar, también al registrar el teléfono; ambas operaciones son idempotentes.
+- El registro con PIN solo aplica al flujo estándar. En Coexistence el número ya
+  está registrado y el servidor rechaza cualquier intento de repetirlo.
 - El cliente puede seleccionar una plantilla, pero el servidor vuelve a
   comprobar nombre, idioma y estado `APPROVED` antes de enviarla.
 - El envío no registra automáticamente un número. El registro, si fuera
@@ -76,14 +83,17 @@ Meta webhook
 persiste mensajes y conversaciones desde el proceso server-side. Ambos deben
 usar las tablas del proyecto Supabase real y mantener
 el token fuera del cliente. Hay que aplicar las migraciones
-`20260821_whatsapp_connections.sql` y
-`20260820_whatsapp_messages.sql` en el proyecto Supabase real y confirmar que
+`20260820_whatsapp_messages.sql`,
+`20260821_whatsapp_connection.sql` y
+`20260823120000_whatsapp_coexistence.sql` en el proyecto Supabase real y confirmar que
 la tabla, su índice único por `business_id` y sus políticas de seguridad existen
 en ese proyecto.
 
 Los mensajes del webhook requieren aplicar
 `supabase/migrations/20260820_whatsapp_messages.sql` en el proyecto Supabase
-real antes de activar el POST del webhook. El proceso también necesita
+real antes de activar el POST del webhook. Coexistence solicita las
+sincronizaciones `history` y `smb_app_state_sync`, procesa sus webhooks y
+registra `smb_message_echoes` sin enviarlos al agente de IA. El proceso también necesita
 `SUPABASE_SECRET_KEY` (o la clave legacy `SUPABASE_SERVICE_ROLE_KEY`) únicamente
 en variables server-side; nunca debe llegar al navegador.
 

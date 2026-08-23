@@ -26,6 +26,9 @@ type Connection = {
   webhookSubscribedAt?: string | null;
   phoneRegisteredAt?: string | null;
   registrationStatus?: string | null;
+  onboardingFlow?: "standard" | "business_app" | null;
+  historySyncStatus?: string | null;
+  contactsSyncStatus?: string | null;
 };
 
 type ConnectionResponse = {
@@ -420,6 +423,9 @@ export default function WhatsAppSection({
 
             businessId:
               signup.businessId,
+
+            flow:
+              signup.flow,
 
             progyBusinessId:
               workspace.business.id,
@@ -937,14 +943,18 @@ export default function WhatsAppSection({
                   background: "rgba(255,255,255,.04)",
                 }}
               >
-                <b>Activación de Cloud API</b>
+                <b>
+                  {connection.onboardingFlow === "business_app" || connection.isOnBizApp
+                    ? "Coexistence activado"
+                    : "Activación de Cloud API"}
+                </b>
                 <small>
-                  {connection.registrationStatus === "registered"
-                    ? "Número registrado y habilitado para Cloud API."
+                  {connection.registrationStatus === "registered" || connection.onboardingFlow === "business_app" || connection.isOnBizApp
+                    ? "Este número ya está registrado y habilitado para Cloud API. No necesita PIN."
                     : "Falta registrar el número con el PIN de seis dígitos de WhatsApp."}
                 </small>
 
-                {connection.registrationStatus !== "registered" && (
+                {connection.registrationStatus !== "registered" && connection.onboardingFlow !== "business_app" && !connection.isOnBizApp && (
                   <>
                     <input
                       type="password"

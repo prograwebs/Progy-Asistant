@@ -22,8 +22,9 @@
 - [x] Medición de tokens/voz/coste por negocio
 - [x] Inicio con checklist de Preparación para publicar e indicador de incidencias
 - [x] WhatsApp aislado detrás de `NEXT_PUBLIC_WHATSAPP_ENABLED=false`
-- [x] WhatsApp Embedded Signup, validación de WABA, suscripción de webhooks,
-      registro explícito de teléfono y webhook firmado
+- [x] WhatsApp Embedded Signup, Coexistence, validación de WABA, suscripción de
+      webhooks, registro estándar explícito, sincronización de contactos/historial,
+      ecos de la app y webhook firmado
 - [x] Health check seguro `/api/health`
 - [x] Headers básicos de seguridad
 - [x] CI: lint, typecheck, tests y `next build`

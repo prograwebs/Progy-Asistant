@@ -101,6 +101,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const connect = read("app/api/whatsapp/connect/route.ts");
   const register = read("app/api/whatsapp/register/route.ts");
   const metaClient = read("lib/whatsapp/meta-client.ts");
+  const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
   const templates = read("app/api/whatsapp/templates/route.ts");
   const send = read("app/api/whatsapp/send-text/route.ts");
 
@@ -116,7 +117,12 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(signup, /whatsapp_business_app_onboarding/);
   assert.match(metaClient, /subscribed_apps/);
   assert.match(metaClient, /phoneNumberId}\/register/);
+  assert.match(metaClient, /smb_app_data/);
   assert.match(register, /\^\\d\{6\}\$/);
+  assert.match(register, /onboarding_flow === "business_app"/);
+  assert.match(connect, /flow/);
+  assert.match(connect, /is_on_biz_app/);
+  assert.match(coexistenceMigration, /whatsapp_contacts/);
   assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
 });
 
@@ -125,7 +131,8 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   const inbound = read("lib/whatsapp/inbound.ts");
   const store = read("lib/whatsapp/webhook-store.ts");
   const migration = read("supabase/migrations/20260820_whatsapp_messages.sql");
-  const connectionsMigration = read("supabase/migrations/20260821_whatsapp_connections.sql");
+  const connectionsMigration = read("supabase/migrations/20260821_whatsapp_connection.sql");
+  const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
 
   assert.match(webhook, /createHmac\("sha256"/);
   assert.match(webhook, /x-hub-signature-256/);
@@ -138,6 +145,11 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(migration, /enable row level security/);
   assert.match(connectionsMigration, /whatsapp_subscribed_at|webhook_subscribed_at/);
   assert.match(connectionsMigration, /access_token text not null/);
+  assert.match(coexistenceMigration, /history_sync_status/);
+  assert.match(coexistenceMigration, /contacts_sync_status/);
+  assert.match(inbound, /smb_message_echoes/);
+  assert.match(inbound, /smb_app_state_sync/);
+  assert.match(inbound, /history/);
 });
 
 test("pins the patched Next.js stack and uses pnpm exclusively", () => {
@@ -190,6 +202,35 @@ test("does not expose Supabase or PostgREST error details", async () => {
   assert.doesNotMatch(dataClient, /safeErrorMessage/);
   assert.doesNotMatch(workspace, /error instanceof Error \? error\.message/);
   assert.match(dataClient, /operation:[\s\S]*status:[\s\S]*code:[\s\S]*correlationId[,:]/);
+});
+
+test("seeds onboarding reference data and refuses an empty category configuration", () => {
+  const migration = read("supabase/migrations/20260822070000_seed_workspace_reference_data.sql");
+  const onboarding = read("components/dashboard/BusinessOnboarding.tsx");
+  const errors = read("lib/http/errors.ts");
+  for (const code of [
+    "restaurant",
+    "clinic",
+    "hotel",
+    "hardware_store",
+    "beauty_salon",
+    "retail_store",
+    "professional_services",
+    "other",
+    "answer_questions",
+    "take_orders",
+    "schedule_appointments",
+    "create_reservations",
+    "create_quotes",
+    "capture_leads",
+    "transfer_human",
+  ]) {
+    assert.match(migration, new RegExp(`['\\"]${code}['\\"]`));
+  }
+  assert.match(migration, /on conflict \(code\) do update/);
+  assert.match(onboarding, /categories\[0\]\?\.code \|\| ""/);
+  assert.match(onboarding, /disabled=\{busy \|\| !categoryCode\}/);
+  assert.match(errors, /business_create_schema/);
 });
 
 test("recovers transient PostgREST JWT failures without exposing provider text", async () => {

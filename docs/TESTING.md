@@ -162,6 +162,10 @@ Con la fase 2 habilitada, agrega:
 
 - conexión Embedded Signup → intercambio de `code`, validación de WABA y
   suscripción a `/{WABA_ID}/subscribed_apps`;
+- Coexistence → evento `FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING`, selección de
+  un teléfono con `is_on_biz_app=true` y ausencia de llamada a `/register`;
+- sincronización Coexistence → solicitudes `history` y `smb_app_state_sync`,
+  persistencia de contactos/historial y `smb_message_echoes` sin ejecutar la IA;
 - registro explícito de `/{PHONE_NUMBER_ID}/register` con PIN válido, PIN
   inválido y confirmación de que el PIN no se persiste;
 - GET de verificación del webhook con `META_WHATSAPP_VERIFY_TOKEN`;
