@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { SelectedWorkspace } from "../types";
 import { dateTime, money } from "../utils";
 import { Card, EmptyState, SectionHeader } from "../ui";
@@ -59,14 +59,23 @@ export function ConversationsSection({
   const [sending, setSending] = useState(false);
   const [manualText, setManualText] = useState("");
   const [messageError, setMessageError] = useState("");
+  const [streamStatus, setStreamStatus] = useState<
+    "connecting" | "connected" | "reconnecting" | "disabled"
+  >(process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true" ? "connecting" : "disabled");
+  const liveRefreshRef = useRef<(() => Promise<void>) | null>(null);
+  const liveRefreshInFlightRef = useRef(false);
+  const liveRefreshPendingRef = useRef(false);
 
   const effectiveSelectedId = selectedId || whatsappConversations[0]?.id || null;
   const selectedConversation = workspace.conversations.find(
     (conversation) => conversation.id === effectiveSelectedId,
   );
 
-  async function loadMessages(conversationId = selectedId) {
-    if (!conversationId || selectedConversation?.channel !== "whatsapp_chat") {
+  const loadMessages = useCallback(async (conversationId = selectedId) => {
+    const conversation = workspace.conversations.find(
+      (item) => item.id === conversationId,
+    );
+    if (!conversationId || conversation?.channel !== "whatsapp_chat") {
       setMessages([]);
       return;
     }
@@ -89,7 +98,7 @@ export function ConversationsSection({
     } finally {
       setLoadingMessages(false);
     }
-  }
+  }, [selectedId, workspace.business.id, workspace.conversations]);
 
   useEffect(() => {
     if (effectiveSelectedId && workspace.conversations.some((conversation) => conversation.id === effectiveSelectedId)) {
@@ -97,7 +106,7 @@ export function ConversationsSection({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       void loadMessages(effectiveSelectedId);
     }
-    // Conversation updates are intentionally driven by the refresh button.
+    // Conversation updates are driven by the refresh button and the SSE stream.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveSelectedId, workspace.business.id, workspace.conversations.length]);
 
@@ -113,6 +122,69 @@ export function ConversationsSection({
       setRefreshing(false);
     }
   }
+
+  useEffect(() => {
+    liveRefreshRef.current = async () => {
+      if (liveRefreshInFlightRef.current) {
+        liveRefreshPendingRef.current = true;
+        return;
+      }
+
+      liveRefreshInFlightRef.current = true;
+      try {
+        do {
+          liveRefreshPendingRef.current = false;
+          await onRefresh();
+          await loadMessages(effectiveSelectedId);
+        } while (liveRefreshPendingRef.current);
+      } finally {
+        liveRefreshInFlightRef.current = false;
+      }
+    };
+  }, [effectiveSelectedId, loadMessages, onRefresh, workspace.business.id]);
+
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_WHATSAPP_ENABLED !== "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setStreamStatus("disabled");
+      return;
+    }
+
+    const source = new EventSource(
+      `/api/whatsapp/stream?businessId=${encodeURIComponent(workspace.business.id)}`,
+    );
+    let refreshTimer: number | null = null;
+
+    const scheduleRefresh = () => {
+      if (refreshTimer !== null) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void liveRefreshRef.current?.();
+      }, 200);
+    };
+
+    source.addEventListener("whatsapp-stream", (event) => {
+      try {
+        const payload = JSON.parse((event as MessageEvent).data) as {
+          status?: "connected" | "reconnecting";
+        };
+        if (payload.status) setStreamStatus(payload.status);
+      } catch {
+        setStreamStatus("reconnecting");
+      }
+    });
+    source.addEventListener("whatsapp-update", () => {
+      setStreamStatus("connected");
+      scheduleRefresh();
+    });
+    source.onerror = () => setStreamStatus("reconnecting");
+
+    return () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
+      source.close();
+    };
+    // The stream must be recreated only when the active business changes.
+  }, [workspace.business.id]);
 
   async function sendManualMessage(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -150,6 +222,15 @@ export function ConversationsSection({
           <button className={styles.secondary} type="button" onClick={() => void refresh()} disabled={refreshing}>
             {refreshing ? "Actualizando…" : "Actualizar conversaciones"}
           </button>
+          <small aria-live="polite">
+            {streamStatus === "connected"
+              ? "Actualización en tiempo real activa"
+              : streamStatus === "reconnecting"
+                ? "Reconectando actualización en tiempo real…"
+                : streamStatus === "connecting"
+                  ? "Conectando actualización en tiempo real…"
+                  : "Actualización automática deshabilitada"}
+          </small>
         </div>
         {workspace.conversations.length ? <div className={styles.records}>{workspace.conversations.map((row) => <button
           type="button"

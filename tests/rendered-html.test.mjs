@@ -134,6 +134,12 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(conversations, /\/api\/whatsapp\/messages/);
   assert.match(conversations, /Actualizar conversaciones/);
   assert.match(conversations, /Enviar respuesta manual/);
+  assert.match(read("app/api/whatsapp/stream/route.ts"), /postgres_changes/);
+  assert.match(read("app/api/whatsapp/stream/route.ts"), /whatsapp_messages/);
+  assert.match(read("app/api/whatsapp/stream/route.ts"), /conversations/);
+  assert.match(conversations, /EventSource/);
+  assert.match(conversations, /whatsapp-update/);
+  assert.match(read("supabase/migrations/20260823150000_whatsapp_realtime.sql"), /supabase_realtime/);
   assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
 });
 

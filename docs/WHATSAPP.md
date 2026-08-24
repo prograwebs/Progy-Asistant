@@ -47,6 +47,12 @@ WhatsAppSection
        └─ servidor obtiene token y phone_number_id desde Supabase
             └─ Graph API de Meta
 
+ConversacionesSection
+  └─ GET /api/whatsapp/stream?businessId=...
+       ├─ valida sesión y permisos del negocio server-side
+       ├─ escucha cambios Realtime de conversaciones y mensajes
+       └─ envía solo una señal SSE; el panel recarga los datos por API autenticada
+
 Meta webhook
   ├─ GET /api/whatsapp/webhook (verify_token + challenge)
   └─ POST /api/whatsapp/webhook (HMAC SHA-256)
@@ -76,6 +82,9 @@ Meta webhook
 - La vista Conversaciones permite actualizar manualmente el historial y enviar
   texto libre como agente humano. El servidor valida el negocio, la conversación,
   el teléfono y la conexión antes de llamar a Graph API; nunca devuelve el token.
+- La vista Conversaciones mantiene un canal SSE protegido para refrescar mensajes
+  entrantes, respuestas automáticas, estados y respuestas manuales sin exponer
+  contenido ni credenciales en el stream. El botón manual permanece como respaldo.
 - Las respuestas manuales se guardan como `outbound` y como turno de agente para
   que el historial posterior de la IA conserve el contexto sin responder dos veces.
 - El envío no registra automáticamente un número. El registro, si fuera
