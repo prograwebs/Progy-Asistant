@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  ArrowLeft,
   BarChart3,
   BookOpen,
   Bot,
@@ -7,10 +8,14 @@ import {
   CheckCircle2,
   Circle,
   ClipboardList,
+  Filter,
   Home,
   MessageCircle,
   Mic2,
   Play,
+  RefreshCw,
+  Search,
+  Send,
   Settings,
   ShoppingBasket,
 } from "lucide-react";
@@ -32,7 +37,12 @@ type DashboardIconName =
   | "check"
   | "pending"
   | "arrowRight"
-  | "play";
+  | "play"
+  | "search"
+  | "filter"
+  | "refresh"
+  | "send"
+  | "back";
 
 const icons: Record<DashboardIconName, LucideIcon> = {
   home: Home,
@@ -51,6 +61,11 @@ const icons: Record<DashboardIconName, LucideIcon> = {
   pending: Circle,
   arrowRight: ArrowRight,
   play: Play,
+  search: Search,
+  filter: Filter,
+  refresh: RefreshCw,
+  send: Send,
+  back: ArrowLeft,
 };
 
 export function DashboardIcon({ name, size = 19, className }: { name: DashboardIconName; size?: number; className?: string }) {

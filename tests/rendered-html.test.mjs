@@ -105,7 +105,9 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const templates = read("app/api/whatsapp/templates/route.ts");
   const send = read("app/api/whatsapp/send-text/route.ts");
   const messages = read("app/api/whatsapp/messages/route.ts");
-  const conversations = read("components/dashboard/sections/RecordsSections.tsx");
+  const inbox = read("components/dashboard/conversations/ConversationInbox.tsx");
+  const inboxHook = read("components/dashboard/conversations/useConversationInbox.ts");
+  const composer = read("components/dashboard/conversations/ConversationComposer.tsx");
 
   assert.match(config, /NEXT_PUBLIC_WHATSAPP_ENABLED === "true"/);
   assert.match(constants, /DEFAULT_META_GRAPH_VERSION = "v25\.0"/);
@@ -131,14 +133,14 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(messages, /canManageBusiness/);
   assert.match(messages, /saveOutboundMessage/);
   assert.doesNotMatch(messages, /access_token\s*:/);
-  assert.match(conversations, /\/api\/whatsapp\/messages/);
-  assert.match(conversations, /Actualizar conversaciones/);
-  assert.match(conversations, /Enviar respuesta manual/);
+  assert.match(inboxHook, /\/api\/whatsapp\/messages/);
+  assert.match(inbox, /Actualizar conversaciones/);
+  assert.match(composer, /Enviar respuesta manual/);
   assert.match(read("app/api/whatsapp/stream/route.ts"), /postgres_changes/);
   assert.match(read("app/api/whatsapp/stream/route.ts"), /whatsapp_messages/);
   assert.match(read("app/api/whatsapp/stream/route.ts"), /conversations/);
-  assert.match(conversations, /EventSource/);
-  assert.match(conversations, /whatsapp-update/);
+  assert.match(inboxHook, /EventSource/);
+  assert.match(inboxHook, /whatsapp-update/);
   assert.match(read("supabase/migrations/20260823150000_whatsapp_realtime.sql"), /supabase_realtime/);
   assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
 });
