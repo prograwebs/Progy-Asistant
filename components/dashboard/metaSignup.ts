@@ -124,14 +124,20 @@ export async function launchWhatsAppSignup(appId: string, configId: string): Pro
       if (payload.event === "CANCEL") return fail("La conexión fue cancelada antes de terminar.");
       if (payload.event === "ERROR") return fail(payload.data?.error_message || "WhatsApp no pudo completar la autorización.");
 
-      if (payload.event === "FINISH" || payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING") {
+      if (
+        payload.event === "FINISH" ||
+        payload.event === "FINISH_ONLY_WABA" ||
+        payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+      ) {
         const wabaId = payload.data?.waba_id || "";
         if (!wabaId) return fail("WhatsApp terminó la autorización sin devolver la cuenta seleccionada.");
         assets = {
           wabaId,
           phoneNumberId: payload.data?.phone_number_id,
           businessId: payload.data?.business_id,
-          flow: payload.event === "FINISH" ? "standard" : "business_app",
+          flow: payload.event === "FINISH_WHATSAPP_BUSINESS_APP_ONBOARDING"
+            ? "business_app"
+            : "standard",
         };
         complete();
       }

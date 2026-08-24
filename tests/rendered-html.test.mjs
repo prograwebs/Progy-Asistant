@@ -117,6 +117,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.doesNotMatch(send, /registerPhoneNumber|META_WHATSAPP_REG_PIN/);
   assert.match(signup, /allowedOrigins\.has\(event\.origin\)/);
   assert.match(signup, /whatsapp_business_app_onboarding/);
+  assert.match(signup, /FINISH_ONLY_WABA/);
   assert.match(metaClient, /subscribed_apps/);
   assert.match(metaClient, /phoneNumberId}\/register/);
   assert.match(metaClient, /smb_app_data/);

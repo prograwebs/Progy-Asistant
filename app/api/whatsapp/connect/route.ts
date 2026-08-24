@@ -97,6 +97,7 @@ function cleanId(value: unknown) {
  * 7. Devuelve solamente información segura al navegador.
  */
 export async function POST(request: Request) {
+  const requestId = crypto.randomUUID();
   const user = await requireApiUser();
 
   if (!user) {
@@ -157,6 +158,15 @@ export async function POST(request: Request) {
   const onboardingFlow = body.flow === "business_app"
     ? "business_app"
     : "standard";
+
+  console.info("Progy WhatsApp connect started", {
+    requestId,
+    hasCode: Boolean(code),
+    hasWabaId: Boolean(wabaId),
+    hasPhoneNumberId: Boolean(phoneNumberId),
+    hasMetaBusinessId: Boolean(metaBusinessId),
+    onboardingFlow,
+  });
 
   /*
    * Este es el UUID de public.businesses en Progy.
@@ -312,6 +322,7 @@ export async function POST(request: Request) {
       console.error(
         "Progy Meta token exchange error",
         {
+          requestId,
           status: tokenResponse.status,
           error: tokenPayload.error,
         },
@@ -338,7 +349,7 @@ export async function POST(request: Request) {
      * Verificamos la relación desde Graph para no guardar una WABA que
      * no pertenezca al negocio de Meta autorizado.
      */
-    if (metaBusinessId) {
+    if (metaBusinessId && !wabaId) {
       const accounts = await listClientWhatsAppAccounts({
         graphVersion: GRAPH_VERSION,
         businessId: metaBusinessId,
@@ -347,6 +358,7 @@ export async function POST(request: Request) {
 
       if (!accounts.response.ok) {
         console.error("Progy Meta WABA account list error", {
+          requestId,
           status: accounts.response.status,
           error: accounts.result.error,
         });
@@ -377,6 +389,13 @@ export async function POST(request: Request) {
           { status: 403, headers: NO_STORE_HEADERS },
         );
       }
+    } else if (metaBusinessId && wabaId) {
+      /* Meta ya devolvió el WABA seleccionado; no enumeramos WABAs con el token OAuth del cliente. */
+      console.info("Progy WhatsApp using WABA returned by Embedded Signup", {
+        requestId,
+        metaBusinessId,
+        wabaId,
+      });
     }
 
     if (!wabaId) {
@@ -438,6 +457,7 @@ export async function POST(request: Request) {
         console.error(
           "Progy Meta phone verification error",
           {
+            requestId,
             status:
               phoneResponse.status,
 
@@ -495,6 +515,7 @@ export async function POST(request: Request) {
         console.error(
           "Progy Meta WABA phone list error",
           {
+            requestId,
             status:
               phonesResponse.status,
 
@@ -604,6 +625,7 @@ export async function POST(request: Request) {
       console.error(
         "Progy Meta WABA details error",
         {
+          requestId,
           status:
             wabaResponse.status,
 
@@ -633,6 +655,7 @@ export async function POST(request: Request) {
 
     if (!subscription.response.ok) {
       console.error("Progy Meta WABA subscription error", {
+        requestId,
         status: subscription.response.status,
         error: subscription.result.error,
       });
@@ -708,6 +731,14 @@ export async function POST(request: Request) {
     }
 
     try {
+      console.info("Progy WhatsApp connection persistence started", {
+        requestId,
+        progyBusinessId,
+        metaBusinessId: metaBusinessId || null,
+        wabaId,
+        phoneNumberId,
+        onboardingFlow,
+      });
       await saveWhatsAppConnection({
         business_id:
           progyBusinessId,
@@ -778,7 +809,7 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error(
         "Progy WhatsApp connection save error",
-        error,
+        { requestId, error },
       );
 
       return Response.json(
@@ -865,7 +896,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error(
       "Progy Meta connect exception",
-      error,
+      { requestId, error },
     );
 
     return Response.json(
