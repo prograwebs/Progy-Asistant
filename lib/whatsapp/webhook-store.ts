@@ -1,4 +1,7 @@
-import { supabaseAdminRequest } from "../supabase-admin";
+import {
+  SupabaseAdminRequestError,
+  supabaseAdminRequest,
+} from "../supabase-admin";
 
 type Row = Record<string, unknown>;
 
@@ -156,23 +159,32 @@ export async function claimIncomingMessage(input: {
   providerPayload: unknown;
 }) {
   const now = new Date().toISOString();
-  const rows = await supabaseAdminRequest<Row[]>("whatsapp_messages", {
-    method: "POST",
-    body: JSON.stringify({
-      provider_message_id: input.providerMessageId,
-      business_id: input.businessId,
-      phone_number_id: input.phoneNumberId,
-      from_phone: input.fromPhone,
-      to_phone: input.toPhone || null,
-      direction: "inbound",
-      message_type: input.messageType,
-      text_body: input.textBody || null,
-      status: "processing",
-      provider_payload: input.providerPayload,
-      updated_at: now,
-    }),
-    prefer: "resolution=ignore-duplicates,return=representation",
-  });
+  let rows: Row[] = [];
+  let insertError: unknown;
+  try {
+    rows = await supabaseAdminRequest<Row[]>("whatsapp_messages", {
+      method: "POST",
+      body: JSON.stringify({
+        provider_message_id: input.providerMessageId,
+        business_id: input.businessId,
+        phone_number_id: input.phoneNumberId,
+        from_phone: input.fromPhone,
+        to_phone: input.toPhone || null,
+        direction: "inbound",
+        message_type: input.messageType,
+        text_body: input.textBody || null,
+        status: "processing",
+        provider_payload: input.providerPayload,
+        updated_at: now,
+      }),
+      prefer: "resolution=ignore-duplicates,return=representation",
+    });
+  } catch (error) {
+    if (!(error instanceof SupabaseAdminRequestError) || error.status !== 409) {
+      throw error;
+    }
+    insertError = error;
+  }
 
   if (rows[0]) return rows[0];
 
@@ -182,7 +194,10 @@ export async function claimIncomingMessage(input: {
     )}&business_id=eq.${encodeURIComponent(input.businessId)}&limit=1`,
   );
   const existing = existingRows[0];
-  if (!existing?.id) return null;
+  if (!existing?.id) {
+    if (insertError) throw insertError;
+    return null;
+  }
 
   const status = typeof existing.status === "string" ? existing.status : "";
   const updatedAt = typeof existing.updated_at === "string"

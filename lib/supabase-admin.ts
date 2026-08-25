@@ -1,5 +1,17 @@
 type AdminRequestOptions = RequestInit & { prefer?: string };
 
+export class SupabaseAdminRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(status: number, code?: string) {
+    super("Supabase server data request failed");
+    this.name = "SupabaseAdminRequestError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
 function adminConfig() {
   const url = process.env.SUPABASE_URL?.trim() || "";
   const key = process.env.SUPABASE_SECRET_KEY?.trim() ||
@@ -40,11 +52,17 @@ export async function supabaseAdminRequest<T = unknown>(
   }
 
   if (!response.ok) {
-    console.error("Progy admin data request failed", {
+    const providerCode = payload && typeof payload === "object" && !Array.isArray(payload) &&
+      typeof (payload as Record<string, unknown>).code === "string"
+      ? String((payload as Record<string, unknown>).code).slice(0, 80)
+      : undefined;
+    const log = response.status === 409 ? console.warn : console.error;
+    log("Progy admin data request failed", {
       resource: path.split("?", 1)[0],
       status: response.status,
+      code: providerCode,
     });
-    throw new Error("Supabase server data request failed");
+    throw new SupabaseAdminRequestError(response.status, providerCode);
   }
 
   return payload as T;

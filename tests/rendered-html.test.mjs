@@ -161,6 +161,8 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
 
   assert.match(admin, /headers\.set\("Prefer", prefer\)/);
+  assert.match(admin, /SupabaseAdminRequestError/);
+  assert.match(admin, /response\.status === 409/);
   assert.doesNotMatch(admin, /\.\.\.options,\s*headers/);
   assert.match(webhook, /createHmac\("sha256"/);
   assert.match(webhook, /x-hub-signature-256/);
