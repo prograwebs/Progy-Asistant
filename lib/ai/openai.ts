@@ -275,7 +275,10 @@ export async function generateAssistantDecision(options: {
 }) {
   const history = (options.history || []).slice(-8).map((entry) => ({
     role: entry.role,
-    content: [{ type: "input_text", text: entry.text.slice(0, 1200) }],
+    content: [{
+      type: entry.role === "assistant" ? "output_text" : "input_text",
+      text: entry.text.slice(0, 1200),
+    }],
   }));
 
   const now = new Intl.DateTimeFormat("es-EC", {

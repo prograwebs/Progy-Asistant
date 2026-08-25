@@ -186,6 +186,7 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(openai, /OPENAI_CATALOG_MODEL \|\| "gpt-4o-mini"/);
   assert.match(openai, /reasoningForModel/);
   assert.match(openai, /startsWith\("gpt-5"\)/);
+  assert.match(openai, /entry\.role === "assistant" \? "output_text" : "input_text"/);
   assert.match(migration, /provider_message_id text not null unique/);
   assert.match(migration, /enable row level security/);
   assert.match(connectionsMigration, /whatsapp_subscribed_at|webhook_subscribed_at/);
