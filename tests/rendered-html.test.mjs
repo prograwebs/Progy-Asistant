@@ -174,6 +174,8 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(inbound, /phone_number_id/);
   assert.match(inbound, /executeAssistantDecision/);
   assert.match(inbound, /sendWhatsAppText/);
+  assert.match(inbound, /Progy WhatsApp Meta response rejected/);
+  assert.match(inbound, /replyLength/);
   assert.match(inbound, /failed/);
   assert.match(inbound, /failureStage/);
   assert.match(store, /resolution=ignore-duplicates/);
@@ -193,6 +195,7 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(connectionsMigration, /access_token text not null/);
   assert.match(coexistenceMigration, /history_sync_status/);
   assert.match(coexistenceMigration, /contacts_sync_status/);
+  assert.match(read("supabase/migrations/20260824120000_expand_usage_kinds.sql"), /openai_input_tokens/);
   assert.match(inbound, /smb_message_echoes/);
   assert.match(inbound, /smb_app_state_sync/);
   assert.match(inbound, /history/);

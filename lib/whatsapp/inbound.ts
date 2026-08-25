@@ -200,9 +200,11 @@ async function processInboundMessage(
       generated.decision,
       adminRequest,
     );
-    const reply = action.type !== "none" && !action.executed && action.message
+    const reply = (action.type !== "none" && !action.executed && action.message
       ? action.message
-      : generated.decision.reply.trim();
+      : generated.decision.reply.trim()) ||
+      text(context.agent.fallback_message) ||
+      "No tengo esa información confirmada. Puedo comunicarte con una persona del negocio.";
 
     failureStage = "usage";
     await recordOpenAIUsage(
@@ -229,6 +231,14 @@ async function processInboundMessage(
     });
     const outboundId = sent.result.messages?.[0]?.id || "";
     if (!sent.response.ok || !outboundId) {
+      console.error("Progy WhatsApp Meta response rejected", {
+        status: sent.response.status,
+        code: sent.result.error?.code,
+        subcode: sent.result.error?.error_subcode,
+        type: sent.result.error?.type,
+        message: "Meta rechazó el mensaje o no devolvió un identificador.",
+        replyLength: reply.length,
+      });
       throw new Error("Meta did not accept the WhatsApp response");
     }
 
