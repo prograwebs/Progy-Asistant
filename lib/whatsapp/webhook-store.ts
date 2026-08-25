@@ -2,6 +2,8 @@ import { supabaseAdminRequest } from "../supabase-admin";
 
 type Row = Record<string, unknown>;
 
+const INBOUND_PROCESSING_STALE_MS = 2 * 60 * 1000;
+
 export type WhatsAppConnectionForWebhook = {
   business_id: string;
   waba_id: string;
@@ -153,6 +155,7 @@ export async function claimIncomingMessage(input: {
   textBody?: string | null;
   providerPayload: unknown;
 }) {
+  const now = new Date().toISOString();
   const rows = await supabaseAdminRequest<Row[]>("whatsapp_messages", {
     method: "POST",
     body: JSON.stringify({
@@ -166,11 +169,46 @@ export async function claimIncomingMessage(input: {
       text_body: input.textBody || null,
       status: "processing",
       provider_payload: input.providerPayload,
+      updated_at: now,
     }),
     prefer: "resolution=ignore-duplicates,return=representation",
   });
 
-  return rows[0] || null;
+  if (rows[0]) return rows[0];
+
+  const existingRows = await supabaseAdminRequest<Row[]>(
+    `whatsapp_messages?select=id,status,updated_at&provider_message_id=eq.${encodeURIComponent(
+      input.providerMessageId,
+    )}&business_id=eq.${encodeURIComponent(input.businessId)}&limit=1`,
+  );
+  const existing = existingRows[0];
+  if (!existing?.id) return null;
+
+  const status = typeof existing.status === "string" ? existing.status : "";
+  const updatedAt = typeof existing.updated_at === "string"
+    ? Date.parse(existing.updated_at)
+    : Number.NaN;
+  const staleProcessing = status === "processing" &&
+    Number.isFinite(updatedAt) &&
+    Date.now() - updatedAt > INBOUND_PROCESSING_STALE_MS;
+  if (status !== "failed" && !staleProcessing) return null;
+
+  const retried = await supabaseAdminRequest<Row[]>(
+    `whatsapp_messages?id=eq.${encodeURIComponent(String(existing.id))}&business_id=eq.${encodeURIComponent(
+      input.businessId,
+    )}&status=eq.${encodeURIComponent(status)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({
+        status: "processing",
+        updated_at: now,
+        provider_payload: input.providerPayload,
+      }),
+      prefer: "return=representation",
+    },
+  );
+
+  return retried[0] || null;
 }
 
 export async function updateMessage(
@@ -183,7 +221,10 @@ export async function updateMessage(
     }`,
     {
       method: "PATCH",
-      body: JSON.stringify(data),
+      body: JSON.stringify({
+        ...data,
+        updated_at: new Date().toISOString(),
+      }),
       prefer: "return=minimal",
     },
   );

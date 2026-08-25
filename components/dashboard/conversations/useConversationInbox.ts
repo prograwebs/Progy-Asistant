@@ -12,6 +12,21 @@ import type {
 } from "./conversation-types";
 import { filterConversations, isWhatsAppConversation } from "./conversation-utils";
 
+type LoadMessagesOptions = {
+  showLoading?: boolean;
+};
+
+type ManualMessageResponse = {
+  error?: string;
+  message?: {
+    providerMessageId?: string;
+    direction?: "inbound" | "outbound";
+    text?: string | null;
+    status?: string;
+    createdAt?: string;
+  };
+};
+
 export function useConversationInbox({
   businessId,
   conversations,
@@ -41,6 +56,8 @@ export function useConversationInbox({
     status: "all",
   });
   const selectedIdRef = useRef(selectedId);
+  const conversationsRef = useRef(conversations);
+  const messagesRequestIdRef = useRef(0);
   const liveRefreshRef = useRef<((conversationId?: string) => Promise<void>) | null>(null);
   const liveRefreshInFlightRef = useRef(false);
   const liveRefreshQueueRef = useRef(new Set<string>());
@@ -55,17 +72,32 @@ export function useConversationInbox({
   const selectedConversation = conversations.find((conversation) => conversation.id === effectiveSelectedId) || null;
 
   useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
     selectedIdRef.current = selectedId;
   }, [selectedId]);
 
-  const loadMessages = useCallback(async (conversationId = selectedIdRef.current) => {
-    const conversation = conversations.find((item) => item.id === conversationId);
+  const loadMessages = useCallback(async (
+    conversationId = selectedIdRef.current,
+    options: LoadMessagesOptions = {},
+  ) => {
+    const showLoading = options.showLoading === true;
+    const requestId = ++messagesRequestIdRef.current;
+    const conversation = conversationsRef.current.find((item) => item.id === conversationId);
     if (!conversationId || !isWhatsAppConversation(conversation)) {
-      setMessages([]);
+      if (selectedIdRef.current === conversationId || !conversationId) {
+        setMessages([]);
+        setLoadingMessages(false);
+      }
       return;
     }
 
-    setLoadingMessages(true);
+    if (showLoading) {
+      setMessages([]);
+      setLoadingMessages(true);
+    }
     setError("");
     try {
       const response = await fetch(
@@ -74,36 +106,42 @@ export function useConversationInbox({
       );
       const result = await response.json().catch(() => ({})) as WhatsAppMessagesResponse;
       if (!response.ok) throw new Error(result.error || "No pudimos cargar los mensajes.");
-      if (selectedIdRef.current === conversationId) setMessages(result.messages || []);
+      if (selectedIdRef.current === conversationId && requestId === messagesRequestIdRef.current) {
+        setMessages(result.messages || []);
+      }
     } catch (cause) {
-      if (selectedIdRef.current === conversationId) {
+      if (selectedIdRef.current === conversationId && requestId === messagesRequestIdRef.current) {
         setError(cause instanceof Error ? cause.message : "No pudimos cargar los mensajes.");
-        setMessages([]);
       }
     } finally {
-      if (selectedIdRef.current === conversationId) setLoadingMessages(false);
+      if (selectedIdRef.current === conversationId && requestId === messagesRequestIdRef.current) {
+        setLoadingMessages(false);
+      }
     }
-  }, [businessId, conversations]);
+  }, [businessId]);
 
   useEffect(() => {
     selectedIdRef.current = effectiveSelectedId;
-    void loadMessages(effectiveSelectedId);
+    // The initial/detail selection load is intentionally triggered from an async effect callback.
+    // Background realtime refreshes use showLoading=false and never replace the visible thread.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadMessages(effectiveSelectedId, { showLoading: true });
   }, [effectiveSelectedId, loadMessages]);
 
   const selectConversation = useCallback((conversationId: string) => {
     selectedIdRef.current = conversationId;
     setSelectedId(conversationId);
+    setMessages([]);
     setManualText("");
     setError("");
-    void loadMessages(conversationId);
-  }, [loadMessages]);
+  }, []);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     setError("");
     try {
       await onRefresh();
-      await loadMessages();
+      await loadMessages(undefined, { showLoading: false });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No pudimos actualizar las conversaciones.");
     } finally {
@@ -123,7 +161,9 @@ export function useConversationInbox({
           liveRefreshQueueRef.current.clear();
           await onRefresh();
           const selected = selectedIdRef.current;
-          if (selected && (affected.size === 0 || affected.has(selected))) await loadMessages(selected);
+          if (selected && (affected.size === 0 || affected.has(selected))) {
+            await loadMessages(selected, { showLoading: false });
+          }
         } while (liveRefreshQueueRef.current.size);
       } catch (cause) {
         setError(cause instanceof Error ? cause.message : "No pudimos sincronizar las conversaciones.");
@@ -196,10 +236,20 @@ export function useConversationInbox({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ businessId, conversationId: selectedConversation.id, text }),
       });
-      const result = await response.json().catch(() => ({})) as { error?: string };
+      const result = await response.json().catch(() => ({})) as ManualMessageResponse;
       if (!response.ok) throw new Error(result.error || "No pudimos enviar la respuesta.");
       setManualText("");
-      await loadMessages(selectedConversation.id);
+      const optimisticMessage: WhatsAppMessage = {
+        id: result.message?.providerMessageId || `optimistic-${Date.now()}`,
+        providerMessageId: result.message?.providerMessageId || `optimistic-${Date.now()}`,
+        direction: result.message?.direction || "outbound",
+        messageType: "text",
+        text: result.message?.text || text,
+        status: result.message?.status || "sent",
+        createdAt: result.message?.createdAt || new Date().toISOString(),
+      };
+      setMessages((current) => [...current, optimisticMessage]);
+      await loadMessages(selectedConversation.id, { showLoading: false });
       await onRefresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "No pudimos enviar la respuesta.");

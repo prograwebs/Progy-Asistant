@@ -133,6 +133,15 @@ function extractOutputText(payload: ResponsesPayload) {
     .trim();
 }
 
+function reasoningForModel(model: string) {
+  const normalizedModel = model.toLowerCase();
+  if (!normalizedModel.startsWith("gpt-5") && !normalizedModel.startsWith("o")) {
+    return undefined;
+  }
+
+  return { effort: process.env.OPENAI_REASONING_EFFORT || "low" };
+}
+
 async function openAiJson(path: string, init: RequestInit, safetyIdentifier: string) {
   const { openAiKey } = integrationConfig();
   if (!openAiKey) throw new OpenAIServiceError("La inteligencia de Progy todavía no está disponible.", 503);
@@ -274,15 +283,17 @@ export async function generateAssistantDecision(options: {
     timeStyle: "short",
     timeZone: "America/Guayaquil",
   }).format(new Date());
+  const assistantModel = process.env.OPENAI_ASSISTANT_MODEL || "gpt-4o-mini";
+  const reasoning = reasoningForModel(assistantModel);
 
   const payload = await openAiJson("responses", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: process.env.OPENAI_ASSISTANT_MODEL || "gpt-5-mini",
+      model: assistantModel,
       store: false,
       prompt_cache_key: `progy:${options.businessId}`,
-      reasoning: { effort: process.env.OPENAI_REASONING_EFFORT || "low" },
+      ...(reasoning ? { reasoning } : {}),
       max_output_tokens: 450,
       instructions: [
         options.instructions,
@@ -370,13 +381,16 @@ export async function extractCatalogFromFile(options: {
     required: ["items", "warnings"],
   } as const;
 
+  const catalogModel = process.env.OPENAI_CATALOG_MODEL || "gpt-4o-mini";
+  const reasoning = reasoningForModel(catalogModel);
+
   const payload = await openAiJson("responses", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: process.env.OPENAI_CATALOG_MODEL || "gpt-5-mini",
+      model: catalogModel,
       store: false,
-      reasoning: { effort: "low" },
+      ...(reasoning ? { reasoning } : {}),
       max_output_tokens: 4000,
       instructions: [
         "Extrae un catálogo comercial del archivo proporcionado.",

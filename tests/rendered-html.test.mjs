@@ -108,6 +108,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const inbox = read("components/dashboard/conversations/ConversationInbox.tsx");
   const inboxHook = read("components/dashboard/conversations/useConversationInbox.ts");
   const composer = read("components/dashboard/conversations/ConversationComposer.tsx");
+  const thread = read("components/dashboard/conversations/ConversationThread.tsx");
 
   assert.match(config, /NEXT_PUBLIC_WHATSAPP_ENABLED === "true"/);
   assert.match(constants, /DEFAULT_META_GRAPH_VERSION = "v25\.0"/);
@@ -141,6 +142,9 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(read("app/api/whatsapp/stream/route.ts"), /conversations/);
   assert.match(inboxHook, /EventSource/);
   assert.match(inboxHook, /whatsapp-update/);
+  assert.match(inboxHook, /showLoading: false/);
+  assert.match(inboxHook, /optimistic-/);
+  assert.match(thread, /loading && !messages\.length/);
   assert.match(read("supabase/migrations/20260823150000_whatsapp_realtime.sql"), /supabase_realtime/);
   assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
 });
@@ -149,6 +153,8 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   const webhook = read("app/api/whatsapp/webhook/route.ts");
   const inbound = read("lib/whatsapp/inbound.ts");
   const store = read("lib/whatsapp/webhook-store.ts");
+  const openai = read("lib/ai/openai.ts");
+  const env = read(".env.example");
   const migration = read("supabase/migrations/20260820_whatsapp_messages.sql");
   const connectionsMigration = read("supabase/migrations/20260821_whatsapp_connection.sql");
   const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
@@ -156,10 +162,25 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(webhook, /createHmac\("sha256"/);
   assert.match(webhook, /x-hub-signature-256/);
   assert.match(webhook, /hub\.verify_token/);
+  assert.doesNotMatch(webhook, /\bafter\s*\(/);
+  assert.match(webhook, /await processWhatsAppWebhook\(payload\)/);
+  assert.match(webhook, /result\.failed > 0/);
+  assert.match(webhook, /status: 500/);
   assert.match(inbound, /phone_number_id/);
   assert.match(inbound, /executeAssistantDecision/);
   assert.match(inbound, /sendWhatsAppText/);
+  assert.match(inbound, /failed/);
+  assert.match(inbound, /failureStage/);
   assert.match(store, /resolution=ignore-duplicates/);
+  assert.match(store, /INBOUND_PROCESSING_STALE_MS/);
+  assert.match(store, /status=eq\./);
+  assert.match(store, /updated_at/);
+  assert.match(env, /^OPENAI_ASSISTANT_MODEL=gpt-4o-mini$/m);
+  assert.match(env, /^OPENAI_CATALOG_MODEL=gpt-4o-mini$/m);
+  assert.match(openai, /OPENAI_ASSISTANT_MODEL \|\| "gpt-4o-mini"/);
+  assert.match(openai, /OPENAI_CATALOG_MODEL \|\| "gpt-4o-mini"/);
+  assert.match(openai, /reasoningForModel/);
+  assert.match(openai, /startsWith\("gpt-5"\)/);
   assert.match(migration, /provider_message_id text not null unique/);
   assert.match(migration, /enable row level security/);
   assert.match(connectionsMigration, /whatsapp_subscribed_at|webhook_subscribed_at/);

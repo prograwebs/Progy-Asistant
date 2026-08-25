@@ -140,30 +140,35 @@ async function processInboundMessage(
     value.contacts?.[0];
   const customerName = text(contact?.profile?.name) || null;
   const bodyText = messageText(message);
-
-  const claimed = await claimIncomingMessage({
-    providerMessageId,
-    businessId: connection.business_id,
-    phoneNumberId: connection.phone_number_id,
-    fromPhone,
-    toPhone: value.metadata?.display_phone_number || connection.phone_number_id,
-    messageType: text(message.type) || "unknown",
-    textBody: bodyText || null,
-    providerPayload: message,
-  });
-
-  if (!claimed) return "duplicate" as const;
-
+  let failureStage = "claim";
+  let hasClaim = false;
   try {
+    const claimed = await claimIncomingMessage({
+      providerMessageId,
+      businessId: connection.business_id,
+      phoneNumberId: connection.phone_number_id,
+      fromPhone,
+      toPhone: value.metadata?.display_phone_number || connection.phone_number_id,
+      messageType: text(message.type) || "unknown",
+      textBody: bodyText || null,
+      providerPayload: message,
+    });
+
+    if (!claimed) return "duplicate" as const;
+    hasClaim = true;
+
     if (!bodyText) {
+      failureStage = "validation";
       await updateMessage(providerMessageId, { status: "ignored" });
       return "ignored" as const;
     }
 
+    failureStage = "validation";
     if (isWhatsAppTokenExpired(connection.token_expires_at)) {
       throw new Error("WhatsApp connection token expired");
     }
 
+    failureStage = "context";
     const conversation = await getOrCreateConversation({
       businessId: connection.business_id,
       customerPhone: fromPhone,
@@ -171,14 +176,17 @@ async function processInboundMessage(
       phoneNumberId: connection.phone_number_id,
     });
 
+    failureStage = "persist_inbound";
     await updateMessage(providerMessageId, {
       conversation_id: conversation.id,
     });
 
+    failureStage = "context";
     const context = await loadAgentContextWith(
       adminRequest,
       connection.business_id,
     );
+    failureStage = "openai";
     const generated = await generateAssistantDecision({
       businessId: connection.business_id,
       instructions: buildCompactAgentInstructions(context, bodyText),
@@ -186,6 +194,7 @@ async function processInboundMessage(
       history: historyFromConversation(conversation.metadata),
       safetyIdentifier: `progy-whatsapp-${connection.business_id}`,
     });
+    failureStage = "action";
     const action = await executeAssistantDecision(
       context,
       generated.decision,
@@ -195,11 +204,13 @@ async function processInboundMessage(
       ? action.message
       : generated.decision.reply.trim();
 
+    failureStage = "usage";
     await recordOpenAIUsage(
       connection.business_id,
       generated.usage,
       adminRequest,
     );
+    failureStage = "persist_conversation";
     await appendConversationTurn({
       conversationId: conversation.id,
       businessId: connection.business_id,
@@ -208,6 +219,7 @@ async function processInboundMessage(
       action,
     });
 
+    failureStage = "send_meta";
     const sent = await sendWhatsAppText({
       graphVersion: getWhatsAppConfig().graphVersion,
       phoneNumberId: connection.phone_number_id,
@@ -220,6 +232,7 @@ async function processInboundMessage(
       throw new Error("Meta did not accept the WhatsApp response");
     }
 
+    failureStage = "persist_outbound";
     await saveOutboundMessage({
       providerMessageId: outboundId,
       businessId: connection.business_id,
@@ -231,6 +244,7 @@ async function processInboundMessage(
       conversationId: conversation.id,
       providerPayload: sent.result,
     });
+    failureStage = "mark_processed";
     await updateMessage(providerMessageId, {
       status: "processed",
       response_message_id: outboundId,
@@ -240,11 +254,14 @@ async function processInboundMessage(
     console.error("Progy WhatsApp inbound processing failed", {
       businessId: connection.business_id,
       providerMessageId,
-      error,
+      stage: failureStage,
+      error: error instanceof Error ? error.message : "unknown",
     });
-    await updateMessage(providerMessageId, { status: "failed" }).catch(() =>
-      undefined
-    );
+    if (hasClaim) {
+      await updateMessage(providerMessageId, { status: "failed" }).catch(() =>
+        undefined
+      );
+    }
     return "failed" as const;
   }
 }
@@ -384,12 +401,13 @@ export async function processWhatsAppWebhook(input: unknown) {
     payload.object !== "whatsapp_business_account" ||
     !Array.isArray(payload.entry)
   ) {
-    return { processed: 0, ignored: 0, duplicates: 0 };
+    return { processed: 0, ignored: 0, duplicates: 0, failed: 0 };
   }
 
   let processed = 0;
   let ignored = 0;
   let duplicates = 0;
+  let failed = 0;
   let synchronized = 0;
 
   for (const entry of payload.entry) {
@@ -434,7 +452,9 @@ export async function processWhatsAppWebhook(input: unknown) {
             status: text(status.status) || "unknown",
             provider_payload: status,
           }).catch((error) =>
-            console.error("Progy WhatsApp status update failed", error)
+            console.error("Progy WhatsApp status update failed", {
+              error: error instanceof Error ? error.message : "unknown",
+            })
           );
         }
       }
@@ -442,11 +462,12 @@ export async function processWhatsAppWebhook(input: unknown) {
       for (const message of value.messages || []) {
         const result = await processInboundMessage(connection, value, message);
         if (result === "processed") processed += 1;
-        if (result === "ignored" || result === "failed") ignored += 1;
+        if (result === "ignored") ignored += 1;
+        if (result === "failed") failed += 1;
         if (result === "duplicate") duplicates += 1;
       }
     }
   }
 
-  return { processed, ignored, duplicates, synchronized };
+  return { processed, ignored, duplicates, failed, synchronized };
 }

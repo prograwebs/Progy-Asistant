@@ -1,5 +1,4 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { after } from "next/server";
 import { getWhatsAppConfig } from "@/lib/whatsapp/config";
 import { processWhatsAppWebhook } from "@/lib/whatsapp/inbound";
 
@@ -71,15 +70,25 @@ export async function POST(request: Request) {
     });
   }
 
-  after(async () => {
-    try {
-      await processWhatsAppWebhook(payload);
-    } catch (error) {
-      console.error("Progy WhatsApp webhook failed", error);
+  try {
+    const result = await processWhatsAppWebhook(payload);
+    if (result.failed > 0) {
+      return Response.json({ received: false, ...result }, {
+        status: 500,
+        headers: NO_STORE_HEADERS,
+      });
     }
-  });
 
-  return Response.json({ received: true }, {
-    headers: NO_STORE_HEADERS,
-  });
+    return Response.json({ received: true, ...result }, {
+      headers: NO_STORE_HEADERS,
+    });
+  } catch (error) {
+    console.error("Progy WhatsApp webhook failed", {
+      error: error instanceof Error ? error.message : "unknown",
+    });
+    return Response.json({ error: "No pudimos procesar el webhook." }, {
+      status: 500,
+      headers: NO_STORE_HEADERS,
+    });
+  }
 }

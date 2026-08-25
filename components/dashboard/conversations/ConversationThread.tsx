@@ -31,7 +31,7 @@ export function ConversationThread({
   messages: WhatsAppMessage[];
   loading: boolean;
 }) {
-  if (loading) return <div className={styles.threadLoading}><span className={styles.loadingPulse} /><span className={styles.loadingPulse} /><span className={styles.loadingPulse} /></div>;
+  if (loading && !messages.length) return <div className={styles.threadLoading}><span className={styles.loadingPulse} /><span className={styles.loadingPulse} /><span className={styles.loadingPulse} /></div>;
 
   if (conversation.channel === "web_voice") {
     const turns = conversationTurns(conversation);
