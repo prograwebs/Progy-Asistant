@@ -46,6 +46,36 @@ type MetaCreateTemplateResponse = {
   error?: MetaError;
 };
 
+class MetaTemplateRequestError extends Error {
+  readonly providerStatus: number;
+  readonly code?: number;
+  readonly subcode?: number;
+
+  constructor(response: Response, error?: MetaError) {
+    super("Meta template request failed");
+    this.name = "MetaTemplateRequestError";
+    this.providerStatus = response.status;
+    this.code = error?.code;
+    this.subcode = error?.error_subcode;
+  }
+}
+
+function logTemplateError(label: string, error: unknown) {
+  if (error instanceof MetaTemplateRequestError) {
+    console.error(label, {
+      status: error.providerStatus,
+      code: error.code,
+      subcode: error.subcode,
+      message: "Meta rechazó la operación de plantilla.",
+    });
+    return;
+  }
+
+  console.error(label, {
+    message: error instanceof Error ? error.message : "unknown",
+  });
+}
+
 async function findTemplate(
   wabaId: string,
   accessToken: string,
@@ -84,10 +114,7 @@ async function findTemplate(
       .catch(() => ({}))) as MetaTemplateListResponse;
 
   if (!response.ok) {
-    throw new Error(
-      result.error?.message ||
-        "No pudimos consultar las plantillas de WhatsApp.",
-    );
+    throw new MetaTemplateRequestError(response, result.error);
   }
 
   return (
@@ -123,7 +150,7 @@ async function listTemplates(
   const result = (await response.json().catch(() => ({}))) as MetaTemplateListResponse;
 
   if (!response.ok) {
-    throw new Error("No pudimos consultar las plantillas de WhatsApp.");
+    throw new MetaTemplateRequestError(response, result.error);
   }
 
   return result.data ?? [];
@@ -199,10 +226,32 @@ export async function GET(request: Request) {
       );
     }
 
-    const templates = await listTemplates(
-      connection.waba_id,
-      connection.access_token,
-    );
+    if (isWhatsAppTokenExpired(connection.token_expires_at)) {
+      return Response.json(
+        { error: "La conexión de WhatsApp expiró. Vuelve a conectarla." },
+        { status: 409 },
+      );
+    }
+
+    let templates: MetaTemplate[];
+    try {
+      templates = await listTemplates(
+        connection.waba_id,
+        connection.access_token,
+      );
+    } catch (error) {
+      logTemplateError("Progy WhatsApp template GET error", error);
+      if (error instanceof MetaTemplateRequestError) {
+        return Response.json(
+          { error: "Meta rechazó la consulta de plantillas. Verifica la conexión y los permisos de la WABA." },
+          { status: 502 },
+        );
+      }
+      return Response.json(
+        { error: "No pudimos comprobar la plantilla." },
+        { status: 500 },
+      );
+    }
 
     const template = templates.find(
       (item) =>
@@ -220,10 +269,7 @@ export async function GET(request: Request) {
       templates,
     });
   } catch (error) {
-    console.error(
-      "Progy WhatsApp template GET error",
-      error,
-    );
+    logTemplateError("Progy WhatsApp template GET error", error);
 
     return Response.json(
       { error: "No pudimos comprobar la plantilla." },
@@ -394,7 +440,7 @@ export async function POST(request: Request) {
             result.error?.error_subcode,
 
           message:
-            result.error?.message,
+            "Meta rechazó la creación de la plantilla.",
         },
       );
 
@@ -430,10 +476,14 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    console.error(
-      "Progy WhatsApp template POST error",
-      error,
-    );
+    logTemplateError("Progy WhatsApp template POST error", error);
+
+    if (error instanceof MetaTemplateRequestError) {
+      return Response.json(
+        { error: "Meta rechazó la consulta de plantillas. Verifica la conexión y los permisos de la WABA." },
+        { status: 502 },
+      );
+    }
 
     return Response.json(
       { error: "No pudimos crear la plantilla." },

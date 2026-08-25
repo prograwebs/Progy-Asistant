@@ -150,6 +150,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
 });
 
 test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
+  const admin = read("lib/supabase-admin.ts");
   const webhook = read("app/api/whatsapp/webhook/route.ts");
   const inbound = read("lib/whatsapp/inbound.ts");
   const store = read("lib/whatsapp/webhook-store.ts");
@@ -159,6 +160,8 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   const connectionsMigration = read("supabase/migrations/20260821_whatsapp_connection.sql");
   const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
 
+  assert.match(admin, /headers\.set\("Prefer", prefer\)/);
+  assert.doesNotMatch(admin, /\.\.\.options,\s*headers/);
   assert.match(webhook, /createHmac\("sha256"/);
   assert.match(webhook, /x-hub-signature-256/);
   assert.match(webhook, /hub\.verify_token/);
@@ -190,6 +193,39 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(inbound, /smb_message_echoes/);
   assert.match(inbound, /smb_app_state_sync/);
   assert.match(inbound, /history/);
+});
+
+test("forwards PostgREST Prefer headers used by WhatsApp claims", async () => {
+  const admin = await importTypeScript("lib/supabase-admin.ts");
+  const previousFetch = globalThis.fetch;
+  const previousUrl = process.env.SUPABASE_URL;
+  const previousKey = process.env.SUPABASE_SECRET_KEY;
+  let capturedHeaders;
+
+  process.env.SUPABASE_URL = "https://supabase.test";
+  process.env.SUPABASE_SECRET_KEY = "sb_secret_test";
+  globalThis.fetch = async (_input, init) => {
+    capturedHeaders = new Headers(init?.headers);
+    return new Response("[]", { status: 200 });
+  };
+
+  try {
+    await admin.supabaseAdminRequest("whatsapp_messages", {
+      method: "POST",
+      body: "{}",
+      prefer: "resolution=ignore-duplicates,return=representation",
+    });
+    assert.equal(
+      capturedHeaders.get("Prefer"),
+      "resolution=ignore-duplicates,return=representation",
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousUrl === undefined) delete process.env.SUPABASE_URL;
+    else process.env.SUPABASE_URL = previousUrl;
+    if (previousKey === undefined) delete process.env.SUPABASE_SECRET_KEY;
+    else process.env.SUPABASE_SECRET_KEY = previousKey;
+  }
 });
 
 test("pins the patched Next.js stack and uses pnpm exclusively", () => {

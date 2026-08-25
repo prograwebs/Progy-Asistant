@@ -18,15 +18,16 @@ export async function supabaseAdminRequest<T = unknown>(
   options: AdminRequestOptions = {},
 ) {
   const { url, key, isSecretKey } = adminConfig();
-  const headers = new Headers(options.headers);
+  const { prefer, ...requestInit } = options;
+  const headers = new Headers(requestInit.headers);
   headers.set("apikey", key);
   headers.set("Accept", "application/json");
-  if (options.body) headers.set("Content-Type", "application/json");
-  if (options.prefer) headers.set("Prefer", options.prefer);
+  if (requestInit.body) headers.set("Content-Type", "application/json");
+  if (prefer) headers.set("Prefer", prefer);
   if (!isSecretKey) headers.set("Authorization", `Bearer ${key}`);
 
   const response = await fetch(`${url}/rest/v1/${path}`, {
-    ...options,
+    ...requestInit,
     headers,
     cache: "no-store",
   });
