@@ -8,7 +8,7 @@ import { Brand } from "@/components/public/Brand";
 
 export default function AccessClient() {
   const params = useSearchParams();
-  const [mode, setMode] = useState<"signup" | "login">(params.get("mode") === "login" ? "login" : "signup");
+  const [mode, setMode] = useState<"signup" | "login">(params.get("mode") === "signup" ? "signup" : "login");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [message, setMessage] = useState(() => params.get("error") || "");
@@ -16,14 +16,32 @@ export default function AccessClient() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setLoading(true);
     setMessage("");
     setIsError(false);
     const form = new FormData(event.currentTarget);
+    const name = String(form.get("name") || "").trim();
+    const email = String(form.get("email") || "").trim().toLowerCase();
+    const password = String(form.get("password") || "");
+    if (mode === "signup" && !name) {
+      setIsError(true);
+      setMessage("Escribe tu nombre completo.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setIsError(true);
+      setMessage("Escribe un correo electrónico válido.");
+      return;
+    }
+    if (!password.trim() || (mode === "signup" && password.trim().length < 8)) {
+      setIsError(true);
+      setMessage(mode === "signup" ? "La contraseña debe tener al menos 8 caracteres." : "Escribe tu contraseña.");
+      return;
+    }
+    setLoading(true);
     const payload = {
-      name: String(form.get("name") || ""),
-      email: String(form.get("email") || ""),
-      password: String(form.get("password") || ""),
+      name,
+      email,
+      password,
     };
     try {
       const response = await fetch(`/api/auth/${mode === "signup" ? "signup" : "login"}`, {
@@ -69,19 +87,19 @@ export default function AccessClient() {
       </section>
       <section className="access-card">
         <div className="access-tabs" role="tablist" aria-label="Tipo de acceso">
-          <button className={mode === "signup" ? "active" : ""} onClick={() => changeMode("signup")} type="button">Crear cuenta</button>
           <button className={mode === "login" ? "active" : ""} onClick={() => changeMode("login")} type="button">Iniciar sesión</button>
+          <button className={mode === "signup" ? "active" : ""} onClick={() => changeMode("signup")} type="button">Crear cuenta</button>
         </div>
         <div className="access-card-head">
           <h3>{mode === "signup" ? "Crea tu cuenta" : "Bienvenido de nuevo"}</h3>
         </div>
         <form onSubmit={submit}>
-          {mode === "signup" && <label>Nombre completo<input name="name" type="text" autoComplete="name" placeholder="¿Cómo te llamas?" required /></label>}
-          <label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="tu@negocio.com" required /></label>
+          {mode === "signup" && <label>Nombre completo<input name="name" type="text" autoComplete="name" placeholder="¿Cómo te llamas?" maxLength={120} required /></label>}
+          <label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="tu@negocio.com" maxLength={254} required /></label>
           <label className="password-field">
             Contraseña
             <span className="password-input-wrap">
-              <input name="password" placeholder="Ingresa tu contraseña" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} required />
+              <input name="password" placeholder="Ingresa tu contraseña" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} maxLength={128} required />
               <button
                 className="password-toggle"
                 type="button"

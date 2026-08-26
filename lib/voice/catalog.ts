@@ -7,6 +7,11 @@ type ElevenLabsVoice = {
   labels?: Record<string, string>;
   description?: string;
   preview_url?: string;
+  available_for_tiers?: string[];
+  sharing?: {
+    public_owner_id?: string;
+    public_voice_id?: string;
+  };
   verified_languages?: Array<{
     language?: string;
     locale?: string;
@@ -22,6 +27,9 @@ export type ProgyVoice = {
   previewUrl: string | null;
   labels: Record<string, string>;
   recommended: boolean;
+  providerCategory?: string;
+  availableForTiers?: string[];
+  sharedVoice?: boolean;
 };
 
 const localPreviewVoices: ProgyVoice[] = [
@@ -74,7 +82,17 @@ function toProgyVoice(voice: ElevenLabsVoice): ProgyVoice | null {
     previewUrl: spanishPreview || voice.preview_url || null,
     labels: voice.labels ?? {},
     recommended: voiceScore(voice) >= 6,
+    providerCategory: voice.category?.trim().toLowerCase(),
+    availableForTiers: voice.available_for_tiers,
+    sharedVoice: Boolean(voice.sharing?.public_owner_id || voice.sharing?.public_voice_id),
   };
+}
+
+export function isLibraryVoice(voice: ProgyVoice) {
+  const categoryIsLibrary = /library/.test(voice.providerCategory ?? "");
+  const freeTierAvailable = voice.availableForTiers?.some((tier) => /free|trial/i.test(tier));
+  const tierRestricted = Array.isArray(voice.availableForTiers) && voice.availableForTiers.length > 0 && !freeTierAvailable;
+  return Boolean(voice.sharedVoice) || (categoryIsLibrary && !freeTierAvailable) || tierRestricted;
 }
 
 async function requestVoices(key: string, endpoint: string) {

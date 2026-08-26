@@ -1,4 +1,6 @@
 import { ElevenLabsVoiceError, listElevenLabsVoices, requireApiUser } from "../../../../lib/integrations";
+import { serverConfig } from "../../../../lib/config/env";
+import { isLibraryVoice } from "../../../../lib/voice/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -7,10 +9,15 @@ export async function GET(request: Request) {
   if (!user) return Response.json({ error: "Inicia sesión para elegir una voz." }, { status: 401 });
 
   try {
-    const refresh = new URL(request.url).searchParams.get("refresh") === "1";
-    const voices = await listElevenLabsVoices(refresh);
+    const params = new URL(request.url).searchParams;
+    const refresh = params.get("refresh") === "1";
+    if (params.get("onboarding") === "1" && !serverConfig().elevenLabsKey) {
+      return Response.json({ error: "ElevenLabs no está configurado en este entorno. La selección de voz estará disponible cuando se habilite el proveedor." }, { status: 503 });
+    }
+    const allVoices = await listElevenLabsVoices(refresh);
+    const voices = params.get("onboarding") === "1" ? allVoices.filter((voice) => !isLibraryVoice(voice)) : allVoices;
     if (!voices.length) {
-      return Response.json({ error: "Tu cuenta de ElevenLabs no devolvió voces disponibles para este plan." }, { status: 503 });
+      return Response.json({ error: "Tu cuenta de ElevenLabs no tiene voces propias disponibles para generar audio con este plan." }, { status: 503 });
     }
     return Response.json({ voices }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
