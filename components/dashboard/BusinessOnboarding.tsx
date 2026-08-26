@@ -15,7 +15,7 @@ export default function BusinessOnboarding({
   categories,
   action,
 }: BusinessOnboardingProps) {
-  const [categoryCode, setCategoryCode] = useState(categories[0]?.code || "other");
+  const [categoryCode, setCategoryCode] = useState(categories[0]?.code || "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
