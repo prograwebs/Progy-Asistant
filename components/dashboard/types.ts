@@ -1,6 +1,7 @@
 export type PanelUser = { id: string; email: string; name: string };
 export type IntegrationStatus = { supabase: boolean; openai: boolean; elevenlabs: boolean; elevenlabsVoice: boolean };
 export type Category = { code: string; name: string; description?: string; icon?: string };
+export type { OnboardingReadiness, OnboardingRecord } from "../../lib/onboarding/types";
 
 export type Business = {
   id: string;
@@ -64,6 +65,8 @@ export type CatalogItem = {
   stock_quantity?: number;
   track_stock?: boolean;
   is_available: boolean;
+  is_demo?: boolean;
+  template_key?: string | null;
 };
 
 export type KnowledgeItem = {
@@ -73,6 +76,8 @@ export type KnowledgeItem = {
   question?: string | null;
   answer: string;
   is_active: boolean;
+  is_demo?: boolean;
+  template_key?: string | null;
 };
 
 export type Conversation = {
@@ -147,6 +152,8 @@ export type SelectedWorkspace = {
   orders: Order[];
   bookings: Booking[];
   usage: Usage[];
+  onboarding?: import("../../lib/onboarding/types").OnboardingRecord | null;
+  readiness?: import("../../lib/onboarding/types").OnboardingReadiness | null;
 };
 
 export type Snapshot = {

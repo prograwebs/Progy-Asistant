@@ -124,10 +124,5 @@ export async function getSupabaseUser(): Promise<ProgyUser | null> {
 }
 
 export async function requireApiUser() {
-  const user = await getSupabaseUser();
-  if (user) return user;
-  if (process.env.NODE_ENV !== "production") {
-    return { id: "preview-user", email: "preview@progy.local", name: "Harold" };
-  }
-  return null;
+  return getSupabaseUser();
 }

@@ -84,6 +84,103 @@ test("keeps required public and legal routes for deployment", () => {
   }
 });
 
+test("activates the standalone onboarding flow for new businesses", () => {
+  const dashboard = read("components/dashboard/ProgyDashboard.tsx");
+  assert.doesNotMatch(dashboard, /BusinessOnboarding/);
+  assert.match(dashboard, /OnboardingRedirect/);
+  assert.match(dashboard, /\/onboarding\/business/);
+  for (const route of [
+    "app/onboarding/page.tsx",
+    "app/onboarding/layout.tsx",
+    "app/onboarding/business/page.tsx",
+    "app/onboarding/demo/page.tsx",
+    "app/onboarding/connect/page.tsx",
+  ]) {
+    assert.equal(existsSync(path.join(root, route)), true, `${route} is required for onboarding`);
+  }
+});
+
+test("onboarding production flow has durable state, versioned templates, and a server gate", async () => {
+  const migration = read("supabase/migrations/20260818000000_onboarding_flow.sql");
+  const categories = read("supabase/migrations/20260818000001_seed_business_categories.sql");
+  const features = read("supabase/migrations/20260818000002_seed_feature_definitions.sql");
+  const api = read("app/api/onboarding/route.ts");
+  const service = read("lib/onboarding/service.ts");
+  const workspace = read("app/api/workspace/route.ts");
+
+  assert.match(migration, /CREATE TABLE public\.business_onboarding/);
+  assert.match(migration, /can_view_business\(business_onboarding\.business_id\)/);
+  assert.match(migration, /can_manage_business\(business_onboarding\.business_id\)/);
+  assert.match(migration, /template_key text/);
+  assert.match(migration, /is_demo boolean DEFAULT false NOT NULL/);
+  assert.match(categories, /INSERT INTO public\.business_categories/);
+  assert.match(categories, /ON CONFLICT \(code\) DO UPDATE/);
+  assert.match(features, /INSERT INTO public\.feature_definitions/);
+  assert.match(features, /answer_questions/);
+  assert.match(features, /ON CONFLICT \(code\) DO UPDATE/);
+  for (const action of ["createBusiness", "saveDemo", "channelSkipped", "channelConnected", "activate"]) {
+    assert.match(api, new RegExp(action));
+  }
+  assert.match(service, /listElevenLabsVoices/);
+  assert.match(service, /activation_status: "active"/);
+  assert.match(service, /readiness\.ready/);
+  assert.match(workspace, /calculateReadiness/);
+
+  const templates = await importTypeScript("lib/onboarding/templates.ts");
+  const values = templates.listOnboardingTemplates();
+  assert.equal(values.length, 6);
+  for (const template of values) {
+    assert.equal(template.version, "v1");
+    assert.ok(template.features.length > 0);
+    assert.equal(template.scenarios.length, 2);
+    assert.ok(template.catalog.every((item) => item.key));
+    assert.ok(template.knowledge.every((item) => item.answer.length > 0));
+  }
+});
+
+test("onboarding records WhatsApp only after server-side verification", () => {
+  const api = read("app/api/onboarding/route.ts");
+  const connect = read("components/onboarding/steps/ConnectStep.tsx");
+  assert.match(api, /markChannelConnected/);
+  assert.match(connect, /action: "channelConnected"/);
+  assert.match(connect, /NEXT_PUBLIC_WHATSAPP_ENABLED/);
+  assert.match(connect, /action: "channelSkipped"/);
+});
+
+test("onboarding resumes from durable state and protects authenticated routes", () => {
+  const paths = read("lib/onboarding/paths.ts");
+  const routing = read("lib/onboarding/routing.ts");
+  const access = read("app/acceso/page.tsx");
+  const panel = read("app/panel/page.tsx");
+  const draft = read("components/onboarding/useOnboardingDraft.ts");
+  const auth = read("lib/auth/supabase.ts");
+  const onboardingLayout = read("app/onboarding/layout.tsx");
+
+  assert.match(paths, /business_created/);
+  assert.match(paths, /demo_completed/);
+  assert.match(paths, /channel_skipped/);
+  assert.match(paths, /channel_connected/);
+  assert.match(routing, /business_onboarding\?business_id/);
+  assert.match(routing, /order=created_at\.desc/);
+  assert.match(routing, /\?\? candidates\[0\]/);
+  assert.match(access, /if \(await getSupabaseUser\(\)\) redirect\("\/panel"\)/);
+  assert.match(panel, /resolveUserRoute/);
+  assert.match(draft, /initialDraft\?\.businessId/);
+  assert.match(draft, /businessId: ""/);
+  assert.match(read("components/dashboard/ProgyDashboard.tsx"), /window\.location\.replace\("\/acceso\?mode=login"\)/);
+  assert.match(read("components/onboarding/OnboardingSidebar.tsx"), /window\.location\.replace\("\/acceso\?mode=login"\)/);
+  const privateGuard = read("components/auth/PrivateSessionGuard.tsx");
+  assert.match(privateGuard, /\/api\/auth\/me/);
+  assert.match(privateGuard, /window\.location\.replace\("\/acceso\?mode=login"\)/);
+  assert.match(privateGuard, /pageshow/);
+  assert.doesNotMatch(auth, /preview-user/);
+  assert.match(onboardingLayout, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
+  assert.doesNotMatch(onboardingLayout, /NODE_ENV/);
+  assert.match(panel, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
+  assert.doesNotMatch(panel, /preview-user|NODE_ENV/);
+  assert.doesNotMatch(read("app/api/workspace/route.ts"), /preview-business/);
+});
+
 test("production template keeps secrets server-side and WhatsApp gated", () => {
   const env = read(".env.example");
   assert.match(env, /^OPENAI_API_KEY=/m);
@@ -128,6 +225,9 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(register, /onboarding_flow === "business_app"/);
   assert.match(connect, /flow/);
   assert.match(connect, /is_on_biz_app/);
+  assert.match(connect, /requestedPhoneNumberId/);
+  assert.match(connect, /selected phone is not accessible/);
+  assert.match(connect, /La conexión no se guardó/);
   assert.match(coexistenceMigration, /whatsapp_contacts/);
   assert.match(messages, /export async function GET/);
   assert.match(messages, /export async function POST/);

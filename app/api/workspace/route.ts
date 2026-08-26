@@ -1,17 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { requireApiUser } from "../../../lib/integrations";
 import { SupabaseDataError, supabaseDataRequest } from "../../../lib/supabase-data";
-
-const previewCategories = [
-  { code: "restaurant", name: "Restaurante", description: "Menú, pedidos, entrega y reservas", icon: "◉" },
-  { code: "clinic", name: "Clínica", description: "Especialidades, profesionales y citas", icon: "+" },
-  { code: "hotel", name: "Hotel", description: "Habitaciones, disponibilidad y reservas", icon: "◇" },
-  { code: "hardware_store", name: "Ferretería", description: "Productos, precios y cotizaciones", icon: "⌂" },
-  { code: "beauty_salon", name: "Salón de belleza", description: "Servicios, profesionales y citas", icon: "✦" },
-  { code: "retail_store", name: "Tienda", description: "Productos, pedidos y promociones", icon: "□" },
-  { code: "professional_services", name: "Servicios profesionales", description: "Consultas, prospectos y cotizaciones", icon: "▤" },
-  { code: "other", name: "Otro", description: "Configura el flujo según tu negocio", icon: "…" },
-];
+import { calculateReadiness } from "../../../lib/onboarding/service";
+import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "../../../lib/validation/input";
 
 type UnknownRow = Record<string, unknown>;
 
@@ -37,7 +28,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
   if (!selected) return { categories, businesses, selected: null };
 
   const id = enc(String(selected.id));
-  const [agents, hours, features, catalogCategories, catalogItems, knowledge, plans, conversations, orders, bookings, usage] = await Promise.all([
+  const [agents, hours, features, catalogCategories, catalogItems, knowledge, plans, conversations, orders, bookings, usage, onboardingRows] = await Promise.all([
     supabaseDataRequest<UnknownRow[]>(`agent_configs?business_id=eq.${id}&select=*`),
     supabaseDataRequest<UnknownRow[]>(`business_hours?business_id=eq.${id}&select=*&order=day_of_week.asc`),
     supabaseDataRequest<UnknownRow[]>(`business_features?business_id=eq.${id}&select=*&order=feature_code.asc`),
@@ -49,6 +40,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
     supabaseDataRequest<UnknownRow[]>(`orders?business_id=eq.${id}&select=*&order=created_at.desc&limit=30`),
     supabaseDataRequest<UnknownRow[]>(`bookings?business_id=eq.${id}&select=*&order=created_at.desc&limit=30`),
     supabaseDataRequest<UnknownRow[]>(`usage_ledger?business_id=eq.${id}&select=*&order=created_at.desc&limit=200`),
+    supabaseDataRequest<UnknownRow[]>(`business_onboarding?business_id=eq.${id}&select=*`),
   ]);
   let agent = agents[0] ?? null;
   if (agent && String(agent.agent_name || "").toLowerCase() === "kely") {
@@ -78,6 +70,8 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
       orders,
       bookings,
       usage,
+      onboarding: onboardingRows[0] ?? null,
+      readiness: onboardingRows[0] ? calculateReadiness(selected, onboardingRows[0], agent, hours, catalogItems) : null,
     },
   };
 }
@@ -85,10 +79,6 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
 export async function GET(request: Request) {
   const user = await requireApiUser();
   if (!user) return Response.json({ error: "Inicia sesión para abrir tu panel." }, { status: 401 });
-  if (process.env.NODE_ENV !== "production" && !process.env.SUPABASE_URL) {
-    const business = { id: "preview-business", owner_id: user.id, category_code: "restaurant", name: "Café Horizonte", description: "Cafetería y desayunos", phone: "+593990000000", whatsapp_phone: "+593990000000", city: "Quito", province: "Pichincha", country_code: "EC", timezone: "America/Guayaquil", currency: "USD", status: "trial" };
-    return Response.json({ categories: previewCategories, businesses: [business], selected: { business, agent: { id: "preview-agent", business_id: business.id, agent_name: "Progy", language_code: "es-EC", greeting: "Hola, gracias por comunicarte con Café Horizonte. Soy Progy, ¿en qué puedo ayudarte?", tone: "cálido, natural y profesional", voice_id: null, collect_customer_name: true, collect_customer_phone: true, fallback_message: "Puedo comunicarte con una persona del negocio.", settings: {} }, hours: Array.from({ length: 7 }, (_, day) => ({ id: `hour-${day}`, day_of_week: day, opens_at: day ? "08:00" : null, closes_at: day ? "18:00" : null, is_closed: day === 0 })), features: [{ id: "feature-1", feature_code: "answer_questions", enabled: true, available_in_trial: true }, { id: "feature-2", feature_code: "take_orders", enabled: true, available_in_trial: true }], catalogCategories: [], catalogItems: [{ id: "item-1", kind: "product", name: "Desayuno de la casa", description: "Café, jugo y sándwich", price: 6.5, stock_quantity: 0, track_stock: false, is_available: true }], knowledge: [], plan: { plan_code: "trial", status: "active", included_voice_seconds: 600, used_voice_seconds: 0 }, conversations: [], orders: [], bookings: [], usage: [] } });
-  }
   try {
     const businessId = new URL(request.url).searchParams.get("businessId");
     return Response.json(await snapshot(user.id, businessId));
@@ -154,29 +144,60 @@ export async function POST(request: Request) {
       return Response.json({ business: created }, { status: 201 });
     }
 
-    const businessId = String(body.businessId ?? "");
+    const businessId = validIdentifier(body.businessId);
     if (!businessId) throw new SupabaseDataError("Selecciona un negocio antes de guardar.", 400);
     const businessFilter = `business_id=eq.${enc(businessId)}`;
 
     if (body.action === "updateBusiness") {
-      const allowed = ["name", "description", "phone", "whatsapp_phone", "email", "website_url", "address", "city", "province", "accepts_online_orders", "accepts_online_bookings"];
-      const data = Object.fromEntries(allowed.filter((key) => key in body).map((key) => [key, body[key] === "" ? null : body[key]]));
+      const textFields: Record<string, number> = { name: 160, description: 1000, phone: 40, whatsapp_phone: 40, website_url: 300, address: 300, city: 120, province: 120 };
+      const data: Record<string, unknown> = {};
+      for (const [key, max] of Object.entries(textFields)) {
+        if (!(key in body)) continue;
+        if (body[key] === null) { data[key] = null; continue; }
+        if (typeof body[key] !== "string") throw new SupabaseDataError(`El campo ${key} no es válido.`, 400);
+        const value = cleanText(body[key], max);
+        if (key === "name" && !value) throw new SupabaseDataError("El nombre del negocio no puede quedar vacío.", 400);
+        data[key] = value || null;
+      }
+      if ("email" in body) {
+        if (body.email !== null && body.email !== "") {
+          const email = validEmail(body.email);
+          if (!email) throw new SupabaseDataError("El correo del negocio no es válido.", 400);
+          data.email = email;
+        } else data.email = null;
+      }
+      for (const key of ["accepts_online_orders", "accepts_online_bookings"]) {
+        if (!(key in body)) continue;
+        const value = validBoolean(body[key]);
+        if (value === null) throw new SupabaseDataError(`El campo ${key} debe ser verdadero o falso.`, 400);
+        data[key] = value;
+      }
+      if (!Object.keys(data).length) throw new SupabaseDataError("No hay cambios válidos para guardar.", 400);
       const rows = await supabaseDataRequest<UnknownRow[]>(`businesses?id=eq.${enc(businessId)}&owner_id=eq.${enc(user.id)}`, { method: "PATCH", body: JSON.stringify(data), prefer: "return=representation" });
       if (!rows.length) throw new SupabaseDataError("No encontramos un negocio que puedas editar.", 403);
       return Response.json({ business: rows[0] });
     }
 
     if (body.action === "saveHours") {
-      const values = Array.isArray(body.hours) ? body.hours : [];
+      const values = Array.isArray(body.hours) ? body.hours : null;
+      if (!values || values.length === 0 || values.length > 7 || values.some((entry) => !isRecord(entry))) throw new SupabaseDataError("Configura al menos un horario válido.", 400);
+      const seenDays = new Set<number>();
       const hours = values.slice(0, 7).map((entry) => {
         const row = entry as Record<string, unknown>;
-        const isClosed = Boolean(row.is_closed);
+        const day = validFiniteNumber(row.day_of_week, { min: 0, max: 6 });
+        const isClosed = validBoolean(row.is_closed);
+        if (day === null || !Number.isInteger(day) || isClosed === null || seenDays.has(day)) throw new SupabaseDataError("Los días y estados de horario no son válidos.", 400);
+        seenDays.add(day);
+        const opensAt = cleanText(row.opens_at, 5);
+        const closesAt = cleanText(row.closes_at, 5);
+        const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
+        if (!isClosed && (!timePattern.test(opensAt) || !timePattern.test(closesAt) || opensAt >= closesAt)) throw new SupabaseDataError("Revisa las horas de apertura y cierre.", 400);
         return {
           business_id: businessId,
-          day_of_week: Math.max(0, Math.min(6, Number(row.day_of_week))),
+          day_of_week: day,
           is_closed: isClosed,
-          opens_at: isClosed ? null : String(row.opens_at || "08:00"),
-          closes_at: isClosed ? null : String(row.closes_at || "18:00"),
+          opens_at: isClosed ? null : opensAt,
+          closes_at: isClosed ? null : closesAt,
         };
       });
       await supabaseDataRequest("business_hours?on_conflict=business_id,day_of_week", { method: "POST", body: JSON.stringify(hours), prefer: "resolution=merge-duplicates,return=minimal" });
@@ -184,21 +205,43 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "saveAgent") {
-      const allowed = ["agent_name", "language_code", "greeting", "tone", "voice_id", "collect_customer_name", "collect_customer_phone", "fallback_message", "settings"];
-      const data = Object.fromEntries(allowed.filter((key) => key in body).map((key) => [key, body[key]]));
+      const data: Record<string, unknown> = {};
+      const textFields: Record<string, number> = { agent_name: 80, language_code: 20, greeting: 1000, tone: 300, voice_id: 160, fallback_message: 1000 };
+      for (const [key, max] of Object.entries(textFields)) {
+        if (!(key in body)) continue;
+        if (typeof body[key] !== "string") throw new SupabaseDataError(`El campo ${key} no es válido.`, 400);
+        const value = cleanText(body[key], max);
+        if (["agent_name", "greeting", "tone", "fallback_message"].includes(key) && !value) throw new SupabaseDataError(`El campo ${key} no puede quedar vacío.`, 400);
+        data[key] = value || null;
+      }
+      for (const key of ["collect_customer_name", "collect_customer_phone"]) {
+        if (!(key in body)) continue;
+        const value = validBoolean(body[key]);
+        if (value === null) throw new SupabaseDataError(`El campo ${key} debe ser verdadero o falso.`, 400);
+        data[key] = value;
+      }
+      if ("settings" in body) {
+        if (!isRecord(body.settings)) throw new SupabaseDataError("La configuración del asistente no es válida.", 400);
+        data.settings = body.settings;
+      }
+      if (!Object.keys(data).length) throw new SupabaseDataError("No hay cambios válidos para guardar.", 400);
       const rows = await supabaseDataRequest<UnknownRow[]>(`agent_configs?${businessFilter}`, { method: "PATCH", body: JSON.stringify(data), prefer: "return=representation" });
       if (!rows.length) throw new SupabaseDataError("No encontramos la configuración de este asistente.", 404);
       return Response.json({ agent: rows[0] });
     }
 
     if (body.action === "saveFeature") {
-      const featureCode = String(body.featureCode ?? "");
-      await supabaseDataRequest(`business_features?${businessFilter}&feature_code=eq.${enc(featureCode)}`, { method: "PATCH", body: JSON.stringify({ enabled: Boolean(body.enabled) }), prefer: "return=minimal" });
+      const featureCode = requiredText(body.featureCode, 80);
+      const enabled = validBoolean(body.enabled);
+      if (!featureCode || enabled === null) throw new SupabaseDataError("La función solicitada no es válida.", 400);
+      await supabaseDataRequest(`business_features?${businessFilter}&feature_code=eq.${enc(featureCode)}`, { method: "PATCH", body: JSON.stringify({ enabled }), prefer: "return=minimal" });
       return Response.json({ ok: true });
     }
 
     if (body.action === "startConversation") {
-      const scenario = String(body.scenario ?? "Prueba libre").slice(0, 160);
+      const scenario = cleanText(body.scenario, 160) || "Prueba libre";
+      const access = await supabaseDataRequest<UnknownRow[]>(`businesses?id=eq.${enc(businessId)}&owner_id=eq.${enc(user.id)}&select=id`);
+      if (!access[0]) throw new SupabaseDataError("No tienes acceso a este negocio.", 403);
       const rows = await supabaseDataRequest<UnknownRow[]>("conversations", {
         method: "POST",
         body: JSON.stringify({
@@ -218,10 +261,11 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "endConversation") {
-      const conversationId = String(body.conversationId ?? "");
+      const conversationId = validIdentifier(body.conversationId);
       if (!conversationId) throw new SupabaseDataError("La conversación no es válida.", 400);
       const status = body.status === "failed" ? "failed" : "completed";
-      const duration = Math.max(0, Math.min(3600, Number(body.durationSeconds || 0)));
+      const duration = validFiniteNumber(body.durationSeconds, { min: 0, max: 3600 });
+      if (duration === null) throw new SupabaseDataError("La duración de la conversación no es válida.", 400);
       const rows = await supabaseDataRequest<UnknownRow[]>(`conversations?id=eq.${enc(conversationId)}&${businessFilter}`, {
         method: "PATCH",
         body: JSON.stringify({
@@ -229,7 +273,7 @@ export async function POST(request: Request) {
           ended_at: new Date().toISOString(),
           duration_seconds: duration,
           summary: status === "failed" ? "La prueba no pudo completarse." : "Prueba de voz realizada desde el panel de Progy.",
-          outcome: String(body.scenario ?? "Prueba del asistente").slice(0, 160),
+          outcome: cleanText(body.scenario, 160) || "Prueba del asistente",
         }),
         prefer: "return=representation",
       });
@@ -238,17 +282,26 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "saveCatalogItem") {
-      const id = body.id ? String(body.id) : "";
+      const id = body.id ? validIdentifier(body.id) : null;
+      if (body.id && !id) throw new SupabaseDataError("El identificador del producto no es válido.", 400);
       const kind = body.kind === "service" ? "service" : "product";
+      const price = validFiniteNumber(body.price, { min: 0, max: 100000000 });
+      if (price === null) throw new SupabaseDataError("El precio debe ser un número válido mayor o igual a cero.", 400);
+      const duration = kind === "service" ? validFiniteNumber(body.durationMinutes, { min: 1, max: 100000 }) : null;
+      const stock = kind === "product" ? validFiniteNumber(body.stockQuantity, { min: 0, max: 100000000 }) : 0;
+      if (kind === "service" && duration === null) throw new SupabaseDataError("La duración del servicio no es válida.", 400);
+      if (stock === null) throw new SupabaseDataError("El stock no es válido.", 400);
+      if ("trackStock" in body && typeof body.trackStock !== "boolean") throw new SupabaseDataError("El indicador de stock no es válido.", 400);
+      if ("isAvailable" in body && typeof body.isAvailable !== "boolean") throw new SupabaseDataError("El estado de disponibilidad no es válido.", 400);
       const data = {
         business_id: businessId,
         kind,
-        name: String(body.name ?? "").trim(),
-        description: String(body.description ?? "").trim() || null,
-        price: Math.max(0, Number(body.price || 0)),
-        duration_minutes: kind === "service" && body.durationMinutes ? Math.max(1, Number(body.durationMinutes)) : null,
-        stock_quantity: kind === "product" && body.stockQuantity ? Math.max(0, Number(body.stockQuantity)) : 0,
-        track_stock: kind === "product" && Boolean(body.trackStock),
+        name: requiredText(body.name, 160) || "",
+        description: body.description === null || body.description === undefined ? null : requiredText(body.description, 600),
+        price: Number(price.toFixed(2)),
+        duration_minutes: kind === "service" ? Math.round(duration ?? 0) : null,
+        stock_quantity: kind === "product" ? Math.round(stock ?? 0) : 0,
+        track_stock: kind === "product" ? body.trackStock === true : false,
         is_available: body.isAvailable !== false,
       };
       if (!data.name) throw new SupabaseDataError("Escribe el nombre del producto o servicio.", 400);
@@ -258,14 +311,18 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "deleteCatalogItem") {
-      await supabaseDataRequest(`catalog_items?id=eq.${enc(String(body.id ?? ""))}&${businessFilter}`, { method: "DELETE", prefer: "return=minimal" });
+      const id = validIdentifier(body.id);
+      if (!id) throw new SupabaseDataError("El producto no es válido.", 400);
+      await supabaseDataRequest(`catalog_items?id=eq.${enc(id)}&${businessFilter}`, { method: "DELETE", prefer: "return=minimal" });
       return Response.json({ ok: true });
     }
 
     if (body.action === "saveKnowledge") {
-      const id = body.id ? String(body.id) : "";
+      const id = body.id ? validIdentifier(body.id) : null;
+      if (body.id && !id) throw new SupabaseDataError("El identificador del contenido no es válido.", 400);
       const allowedKinds = ["faq", "policy", "instruction", "location", "payment_method", "other"];
-      const kind = allowedKinds.includes(String(body.kind)) ? String(body.kind) : "faq";
+      const kind = String(body.kind ?? "faq");
+      if (!allowedKinds.includes(kind)) throw new SupabaseDataError("El tipo de contenido no es válido.", 400);
       const data = {
         business_id: businessId,
         kind,
@@ -274,6 +331,7 @@ export async function POST(request: Request) {
         answer: String(body.answer ?? "").trim(),
         is_active: body.isActive !== false,
       };
+      if ("isActive" in body && typeof body.isActive !== "boolean") throw new SupabaseDataError("El estado del contenido no es válido.", 400);
       if (!data.title || !data.answer) throw new SupabaseDataError("Completa el título y la respuesta.", 400);
       const path = id ? `knowledge_items?id=eq.${enc(id)}&${businessFilter}` : "knowledge_items";
       const rows = await supabaseDataRequest<UnknownRow[]>(path, { method: id ? "PATCH" : "POST", body: JSON.stringify(data), prefer: "return=representation" });
@@ -281,7 +339,9 @@ export async function POST(request: Request) {
     }
 
     if (body.action === "deleteKnowledge") {
-      await supabaseDataRequest(`knowledge_items?id=eq.${enc(String(body.id ?? ""))}&${businessFilter}`, { method: "DELETE", prefer: "return=minimal" });
+      const id = validIdentifier(body.id);
+      if (!id) throw new SupabaseDataError("El contenido no es válido.", 400);
+      await supabaseDataRequest(`knowledge_items?id=eq.${enc(id)}&${businessFilter}`, { method: "DELETE", prefer: "return=minimal" });
       return Response.json({ ok: true });
     }
 

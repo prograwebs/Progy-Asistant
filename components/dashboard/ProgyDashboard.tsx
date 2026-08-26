@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, type FocusEvent, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
 import { useWorkspace } from "./useWorkspace";
-import BusinessOnboarding from "./BusinessOnboarding";
+import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
 import OverviewSection from "./sections/OverviewSection";
 import BusinessSection from "./sections/BusinessSection";
 import AgentSection from "./sections/AgentSection";
@@ -14,11 +15,16 @@ import VoiceSection from "./sections/VoiceSection";
 import WhatsAppSection from "./sections/WhatsAppSection";
 import { ConversationsSection, OrdersSection } from "./sections/RecordsSections";
 import UsageSection from "./sections/UsageSection";
+import PreparationSection from "./sections/PreparationSection";
 import VoiceTestStudio from "./VoiceTestStudio";
 import { Card, SectionHeader } from "./ui";
 import { initials } from "./utils";
+import { onboardingPathForStatus } from "../../lib/onboarding/paths";
 import { DashboardIcon } from "./LineIcon";
 import styles from "./ProgyDashboard.module.css";
+import PrivateSessionGuard from "../auth/PrivateSessionGuard";
+
+gsap.registerPlugin(useGSAP);
 
 type SectionId = "inicio" | "negocio" | "asistente" | "catalogo" | "conocimiento" | "voz" | "whatsapp" | "pruebas" | "conversaciones" | "pedidos" | "consumo" | "ajustes";
 
@@ -50,17 +56,36 @@ function planLabel(code?: string | null) {
   return code || "Prueba";
 }
 
+function AnimatedBrandMark() {
+  const mark = useRef<HTMLSpanElement>(null);
+
+  useGSAP(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    gsap.to("i", {
+      scaleY: 0.42,
+      duration: 0.34,
+      ease: "sine.inOut",
+      transformOrigin: "center center",
+      stagger: { each: 0.12, from: "center", repeat: -1, yoyo: true },
+    });
+  }, { scope: mark });
+
+  return <span ref={mark} className={styles.brandMark} aria-hidden="true"><i /><i /><i /></span>;
+}
+
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
-  const router = useRouter();
   const [section, setSection] = useState<SectionId>("inicio");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarTooltip, setSidebarTooltip] = useState<{ label: string; top: number } | null>(null);
+  const [activating, setActivating] = useState(false);
+  const [activationError, setActivationError] = useState("");
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.replace("/acceso?mode=login");
+    window.location.replace("/acceso?mode=login");
   }
 
   function go(next: string) {
@@ -72,13 +97,35 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   if (loading && !snapshot) return <main className={styles.loading}><div><div className={styles.spinner} />Preparando tu espacio de trabajo…</div></main>;
   if (error && !snapshot) return <main className={styles.loading}><div><div className={styles.errorBanner}>{error}</div><button className={styles.primary} onClick={() => void load()}>Volver a intentar</button></div></main>;
   if (!snapshot) return null;
-  if (!snapshot.selected) return <BusinessOnboarding user={user} categories={snapshot.categories} action={action} />;
+  if (!snapshot.selected) return <OnboardingRedirect to="/onboarding/business" />;
 
   const workspace = snapshot.selected;
+  const onboardingPath = onboardingPathForStatus(String(workspace.onboarding?.flow_status || ""), true);
+  if (onboardingPath !== "/panel") return <OnboardingRedirect to={onboardingPath} />;
   const category = snapshot.categories.find((item) => item.code === workspace.business.category_code);
-  const ready = Boolean(workspace.agent?.voice_id && workspace.catalogItems.length && workspace.hours.length);
   const workspaceKey = workspace.business.id;
   const currentPlan = planLabel(workspace.plan?.plan_code || workspace.business.status);
+  const isActive = workspace.business.status === "active" || workspace.onboarding?.activation_status === "active";
+  const ready = isActive && Boolean(workspace.agent?.voice_id && workspace.catalogItems.length && workspace.hours.length);
+
+  async function activate() {
+    setActivating(true);
+    setActivationError("");
+    try {
+      const response = await fetch("/api/onboarding", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "activate", businessId: workspace.business.id }),
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || "No pudimos activar la atención.");
+      await load(workspace.business.id);
+    } catch (activationError) {
+      setActivationError(activationError instanceof Error ? activationError.message : "No pudimos activar la atención.");
+    } finally {
+      setActivating(false);
+    }
+  }
 
   function toggleSidebar() {
     if (window.matchMedia("(max-width: 820px)").matches) {
@@ -100,10 +147,11 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const sidebarControlLabel = mobileOpen ? "Cerrar menú" : sidebarCollapsed ? "Expandir sidebar" : "Ocultar sidebar";
 
   return <main className={`${styles.app} ${isSidebarCollapsed ? styles.collapsed : ""}`}>
+    <PrivateSessionGuard />
     {mobileOpen && <button aria-label="Cerrar menú" className={styles.mobileOverlay} onClick={() => setMobileOpen(false)} />}
     <aside className={`${styles.sidebar} ${mobileOpen ? styles.open : ""}`}>
       <div className={styles.sidebarHeader}>
-        <div className={styles.brand}><span className={styles.brandMark}><i /><i /><i /></span><span className={styles.brandText}>Progy</span></div>
+        <div className={styles.brand}><AnimatedBrandMark /><span className={styles.brandText}>Progy</span></div>
         <button
           className={styles.sidebarToggle}
           type="button"
@@ -149,7 +197,9 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
       <div className={styles.content}>
         {notice && <div className={styles.notice}>{notice}</div>}
         {error && <div className={styles.errorBanner}>{error}</div>}
-        {section === "inicio" && <OverviewSection workspace={workspace} onGo={go} />}
+        {activationError && <div className={styles.errorBanner} role="alert">{activationError}</div>}
+        {section === "inicio" && !isActive && workspace.readiness && <PreparationSection workspace={workspace} readiness={workspace.readiness} onGo={go} onActivate={activate} activating={activating} />}
+        {section === "inicio" && isActive && <OverviewSection workspace={workspace} onGo={go} />}
         {section === "negocio" && <BusinessSection key={`business-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "asistente" && <AgentSection key={`agent-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "catalogo" && <CatalogSection key={`catalog-${workspaceKey}`} workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}

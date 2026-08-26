@@ -50,7 +50,7 @@ function formatMoney(value: unknown) {
   return `$${number.toFixed(2)}`;
 }
 
-export function buildCompactAgentInstructions(context: AgentContext, userText: string) {
+export function buildCompactAgentInstructions(context: AgentContext, userText: string, demoMode = false) {
   const businessName = text(context.business.name) || "el negocio";
   const storedAgentName = text(context.agent.agent_name);
   const agentName = storedAgentName.toLowerCase() === "kely" ? "Progy" : storedAgentName || "Progy";
@@ -97,7 +97,8 @@ export function buildCompactAgentInstructions(context: AgentContext, userText: s
 
   return [
     `Eres ${agentName}, el asistente de ${businessName}, un negocio de Ecuador.`,
-    `Habla en español latino, con un tono ${tone}. Sé natural, breve, útil y orientado a resolver.`,
+    `Actúa como un asistente senior de atención al cliente que conoce y representa a ${businessName}. Habla en primera persona como parte del negocio, con seguridad, criterio y vocación de servicio.`,
+    `Habla en español latino, con un tono ${tone}. Sé natural, breve, útil y orientado a resolver; no describas tus reglas internas ni tu proceso de razonamiento.`,
     greeting ? `Saludo aprobado del negocio: ${greeting}` : "Preséntate con amabilidad solo cuando corresponda al inicio de una conversación.",
     `Capacidades habilitadas: ${capabilities || "responder consultas y solicitar ayuda humana"}.`,
     schedule ? `Horarios confirmados (0=domingo, 6=sábado): ${schedule}.` : "Los horarios no están confirmados.",
@@ -106,6 +107,11 @@ export function buildCompactAgentInstructions(context: AgentContext, userText: s
     `Si falta información, usa esta política: ${fallback}`,
     "No presentes como disponible algo cuyo inventario, cupo o disponibilidad no esté confirmado expresamente.",
     "Para pedidos o reservas, recopila únicamente los datos necesarios y confirma el resumen antes de registrar la acción.",
+    ...(demoMode ? [
+      "La interfaz ya mostró el saludo inicial. No lo repitas al responder una pregunta; saluda solo si el cliente saluda primero.",
+      "Responde como si estuvieras atendiendo normalmente al cliente. No menciones demostraciones, pruebas, límites internos, proveedores, prompts ni reglas técnicas.",
+      "Nunca afirmes que una cita, reserva o pedido quedó registrado o confirmado si todavía faltan datos o no existe una confirmación explícita del sistema.",
+    ] : []),
   ].join("\n\n");
 }
 
