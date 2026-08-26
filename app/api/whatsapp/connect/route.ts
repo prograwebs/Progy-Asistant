@@ -149,6 +149,12 @@ export async function POST(request: Request) {
   let phoneNumberId =
     cleanId(body.phoneNumberId);
 
+  // Si Embedded Signup entrega un ID, ese es el único número que podemos
+  // guardar. Nunca debemos reemplazarlo silenciosamente por otro teléfono
+  // de la misma WABA: podría recibir webhooks, pero no tener permisos para
+  // enviar mensajes con el token obtenido.
+  const requestedPhoneNumberId = phoneNumberId;
+
   /*
    * Este es el Business ID de Meta.
    */
@@ -541,18 +547,42 @@ export async function POST(request: Request) {
       const phones =
         phonesPayload.data ?? [];
 
-      /*
-       * Si existe un número correspondiente
-       * a WhatsApp Business App / coexistencia,
-       * lo preferimos.
-       *
-       * Si no, utilizamos el primer número.
-       */
-      phone = onboardingFlow === "business_app"
-        ? phones.find((item) =>
-            item.id === phoneNumberId && item.is_on_biz_app === true
-          ) ?? phones.find((item) => item.is_on_biz_app === true) ?? null
-        : phones[0] ?? null;
+      if (requestedPhoneNumberId) {
+        const requestedPhone = phones.find(
+          (item) => item.id === requestedPhoneNumberId,
+        );
+
+        if (
+          !requestedPhone ||
+          (onboardingFlow === "business_app" &&
+            requestedPhone.is_on_biz_app !== true)
+        ) {
+          console.error("Progy Meta selected phone is not accessible", {
+            requestId,
+            status: phonesResponse.status,
+            requestedPhoneNumberId,
+            wabaId,
+            onboardingFlow,
+            availablePhoneCount: phones.length,
+          });
+
+          return Response.json(
+            {
+              error:
+                "Meta no pudo validar el número seleccionado. La conexión no se guardó; revisa que el número pertenezca a la WABA autorizada y vuelve a intentarlo.",
+            },
+            { status: 409, headers: NO_STORE_HEADERS },
+          );
+        }
+
+        phone = requestedPhone;
+      } else {
+        // Solo podemos elegir automáticamente cuando Meta no indicó un
+        // número concreto (por ejemplo, FINISH_ONLY_WABA).
+        phone = onboardingFlow === "business_app"
+          ? phones.find((item) => item.is_on_biz_app === true) ?? null
+          : phones[0] ?? null;
+      }
 
       phoneNumberId =
         phone?.id?.trim() || "";

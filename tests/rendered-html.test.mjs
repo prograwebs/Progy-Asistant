@@ -128,6 +128,9 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(register, /onboarding_flow === "business_app"/);
   assert.match(connect, /flow/);
   assert.match(connect, /is_on_biz_app/);
+  assert.match(connect, /requestedPhoneNumberId/);
+  assert.match(connect, /selected phone is not accessible/);
+  assert.match(connect, /La conexión no se guardó/);
   assert.match(coexistenceMigration, /whatsapp_contacts/);
   assert.match(messages, /export async function GET/);
   assert.match(messages, /export async function POST/);
