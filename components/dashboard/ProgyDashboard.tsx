@@ -185,7 +185,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
       </div>
     </aside>
 
-    <section className={styles.main}>
+    <section className={`${styles.main} ${section === "conversaciones" ? styles.conversationsMain : ""}`}>
       <header className={styles.topbar}>
         <div className={styles.topbarTitle}><small>PROGY · {workspace.business.name}</small><b>{headers[section]}</b></div>
         <div className={styles.topActions}>
@@ -194,7 +194,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
         </div>
       </header>
 
-      <div className={styles.content}>
+      <div className={`${styles.content} ${section === "conversaciones" ? styles.conversationsContent : ""}`}>
         {notice && <div className={styles.notice}>{notice}</div>}
         {error && <div className={styles.errorBanner}>{error}</div>}
         {activationError && <div className={styles.errorBanner} role="alert">{activationError}</div>}

@@ -301,6 +301,22 @@ test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   assert.match(inbound, /history/);
 });
 
+test("keeps conversations within the viewport and scrolls internally", () => {
+  const dashboard = read("components/dashboard/ProgyDashboard.tsx");
+  const dashboardCss = read("components/dashboard/ProgyDashboard.module.css");
+  const conversationsCss = read("components/dashboard/conversations/Conversations.module.css");
+
+  assert.match(dashboard, /styles\.conversationsMain/);
+  assert.match(dashboard, /styles\.conversationsContent/);
+  assert.match(dashboardCss, /\.main\.conversationsMain \{[^}]*height: 100vh;[^}]*overflow: hidden;[^}]*\}/);
+  assert.match(dashboardCss, /\.content\.conversationsContent \{[^}]*flex: 1;[^}]*min-height: 0;[^}]*overflow: hidden;[^}]*\}/);
+  assert.match(conversationsCss, /\.inboxCard \{[^}]*display:flex;[^}]*flex:1;[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
+  assert.match(conversationsCss, /\.inboxLayout \{[^}]*flex:1;[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
+  assert.match(conversationsCss, /\.conversationList \{[^}]*flex:1;[^}]*max-height:none;[^}]*overflow-y:auto;[^}]*\}/);
+  assert.match(conversationsCss, /\.threadContent \{[^}]*min-height:0;[^}]*overflow-y:auto;[^}]*\}/);
+  assert.match(conversationsCss, /\.detailPanel \{[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
+});
+
 test("forwards PostgREST Prefer headers used by WhatsApp claims", async () => {
   const admin = await importTypeScript("lib/supabase-admin.ts");
   const previousFetch = globalThis.fetch;

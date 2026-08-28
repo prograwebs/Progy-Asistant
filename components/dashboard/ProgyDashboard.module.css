@@ -211,6 +211,7 @@
 }
 
 .main { min-width: 0; }
+.main.conversationsMain { height: 100vh; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .topbar {
   height: 70px;
   position: sticky;
@@ -232,6 +233,7 @@
 .mobileButton { display:none;border:1px solid var(--dash-line);background:#111416;color:var(--dash-paper);width:38px;height:38px;border-radius:7px; }
 
 .content { padding: 32px; max-width: 1500px; margin: 0 auto; }
+.content.conversationsContent { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .header { display:flex;justify-content:space-between;gap:20px;align-items:flex-end;margin-bottom:24px; }
 .eyebrow { color:var(--dash-accent);font-size:10px;letter-spacing:.16em;font-weight:700;margin-bottom:8px;text-transform:uppercase; }
 .header h1 { margin:0;color:var(--dash-paper);font-family:var(--font-display),sans-serif;font-size:clamp(30px,3.2vw,44px);font-weight:400;letter-spacing:-.045em; }

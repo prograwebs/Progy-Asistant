@@ -569,7 +569,7 @@ export default function WhatsAppSection({
     }
 
     if (!/^\d{6}$/.test(registrationPin.trim())) {
-      setError("El PIN de registro debe tener exactamente 6 dígitos.");
+      setError("El PIN de seguridad debe tener exactamente 6 dígitos.");
       return;
     }
 
@@ -589,7 +589,7 @@ export default function WhatsAppSection({
       const result = (await response.json().catch(() => ({}))) as RegisterResponse;
 
       if (!response.ok) {
-        throw new Error(result.error || "No pudimos registrar el número.");
+        throw new Error(result.error || "No pudimos activar el número.");
       }
 
       setConnection((current) => current ? {
@@ -599,12 +599,12 @@ export default function WhatsAppSection({
         registrationStatus: result.registrationStatus || "registered",
       } : current);
       setRegistrationPin("");
-      setRegistrationMessage("Número registrado y listo para Cloud API.");
+      setRegistrationMessage("Número activado y listo para Cloud API.");
     } catch (cause) {
       setError(
         cause instanceof Error
           ? cause.message
-          : "No pudimos registrar el número de WhatsApp.",
+          : "No pudimos activar el número de WhatsApp.",
       );
     } finally {
       setRegisteringPhone(false);
@@ -950,8 +950,8 @@ export default function WhatsAppSection({
                 </b>
                 <small>
                   {connection.registrationStatus === "registered" || connection.onboardingFlow === "business_app" || connection.isOnBizApp
-                    ? "Este número ya está registrado y habilitado para Cloud API. No necesita PIN."
-                    : "Falta registrar el número con el PIN de seis dígitos de WhatsApp."}
+                    ? "Este número ya está activado y habilitado para Cloud API. No necesitas crear otro PIN."
+                    : "Crea un PIN de seguridad de 6 dígitos para activar este número en WhatsApp Cloud API."}
                 </small>
 
                 {connection.registrationStatus !== "registered" && connection.onboardingFlow !== "business_app" && !connection.isOnBizApp && (
@@ -965,7 +965,7 @@ export default function WhatsAppSection({
                       onChange={(event) =>
                         setRegistrationPin(event.target.value.replace(/\D/g, "").slice(0, 6))
                       }
-                      placeholder="PIN de 6 dígitos"
+                      placeholder="Crea un PIN de 6 dígitos"
                       disabled={registeringPhone || !featureEnabled}
                       style={{
                         width: "100%",
@@ -978,7 +978,7 @@ export default function WhatsAppSection({
                       }}
                     />
                     <small>
-                      El PIN solo se envía a Meta para registrar el número; Progy no lo guarda.
+                      Este PIN activa la verificación en dos pasos de WhatsApp. Guárdalo en un lugar seguro; Progy no podrá recuperarlo después.
                     </small>
                     <button
                       className={styles.primary}
@@ -990,8 +990,8 @@ export default function WhatsAppSection({
                       onClick={() => void registerPhone()}
                     >
                       {registeringPhone
-                        ? "Registrando número…"
-                        : "Registrar número en Cloud API"}
+                        ? "Activando número…"
+                        : "Activar número"}
                     </button>
                   </>
                 )}
