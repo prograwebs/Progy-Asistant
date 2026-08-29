@@ -35,21 +35,18 @@ export function ConversationComposer({
         onKeyDown={handleKeyDown}
         placeholder="Escribe una respuesta…"
         aria-label="Respuesta manual"
-        rows={2}
+        rows={1}
         disabled={sending}
       />
-      <div className={styles.composerFooter}>
-        <span>Enter para enviar · Shift + Enter para nueva línea</span>
-        <button
-          className={styles.sendButton}
-          type="submit"
-          disabled={sending || !value.trim()}
-          aria-label={sending ? "Enviando respuesta" : "Enviar respuesta manual"}
-          title={sending ? "Enviando respuesta" : "Enviar respuesta manual"}
-        >
-          <DashboardIcon name="send" size={17} />
-        </button>
-      </div>
+      <button
+        className={styles.sendButton}
+        type="submit"
+        disabled={sending || !value.trim()}
+        aria-label={sending ? "Enviando respuesta" : "Enviar respuesta manual"}
+        title={sending ? "Enviando respuesta" : "Enviar respuesta manual"}
+      >
+        <DashboardIcon name="send" size={17} />
+      </button>
     </form>
   );
 }

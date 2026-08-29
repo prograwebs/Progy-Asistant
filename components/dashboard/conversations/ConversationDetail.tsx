@@ -58,7 +58,7 @@ export function ConversationDetail({
         </div>
       </header>
       {error && <div className={styles.detailError} role="alert" aria-live="polite">{error}</div>}
-      <ConversationThread conversation={conversation} messages={messages} loading={loading} />
+      <ConversationThread key={`${conversation.id}-${conversation.channel}`} conversation={conversation} messages={messages} loading={loading} />
       {isWhatsApp ? (
         <ConversationComposer value={manualText} sending={sending} onChange={onManualText} onSend={onSend} />
       ) : (

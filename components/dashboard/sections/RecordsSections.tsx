@@ -18,7 +18,7 @@ export function ConversationsSection({
   onRefresh: () => Promise<unknown>;
 }) {
   return <>
-    <SectionHeader eyebrow="HISTORIAL DEL NEGOCIO" title="Conversaciones" description="Explora en un solo lugar las conversaciones de WhatsApp y las pruebas de voz de tu negocio." />
+    
     <ConversationInbox workspace={workspace} onRefresh={onRefresh} />
     {!workspace.conversations.length && <div className={styles.actions}><button className={styles.primary} onClick={() => onGo("pruebas")}>Realizar una prueba</button></div>}
   </>;

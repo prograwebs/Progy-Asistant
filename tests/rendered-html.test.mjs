@@ -206,6 +206,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const inboxHook = read("components/dashboard/conversations/useConversationInbox.ts");
   const composer = read("components/dashboard/conversations/ConversationComposer.tsx");
   const thread = read("components/dashboard/conversations/ConversationThread.tsx");
+  const records = read("components/dashboard/sections/RecordsSections.tsx");
 
   assert.match(config, /NEXT_PUBLIC_WHATSAPP_ENABLED === "true"/);
   assert.match(constants, /DEFAULT_META_GRAPH_VERSION = "v25\.0"/);
@@ -245,6 +246,12 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(inboxHook, /showLoading: false/);
   assert.match(inboxHook, /optimistic-/);
   assert.match(thread, /loading && !messages\.length/);
+  assert.doesNotMatch(records, /HISTORIAL DEL NEGOCIO/);
+  assert.doesNotMatch(records, /Explora en un solo lugar las conversaciones/);
+  assert.doesNotMatch(composer, /Enter para enviar · Shift \+ Enter para nueva línea/);
+  assert.doesNotMatch(composer, /composerFooter/);
+  assert.match(composer, /rows=\{1\}/);
+  assert.match(read("components/dashboard/conversations/Conversations.module.css"), /\.sendButton \{[^}]*position:absolute/);
   assert.match(read("supabase/migrations/20260823150000_whatsapp_realtime.sql"), /supabase_realtime/);
   assert.doesNotMatch(signup, /endsWith\("facebook\.com"\)/);
 });
@@ -309,12 +316,23 @@ test("keeps conversations within the viewport and scrolls internally", () => {
   assert.match(dashboard, /styles\.conversationsMain/);
   assert.match(dashboard, /styles\.conversationsContent/);
   assert.match(dashboardCss, /\.main\.conversationsMain \{[^}]*height: 100vh;[^}]*overflow: hidden;[^}]*\}/);
-  assert.match(dashboardCss, /\.content\.conversationsContent \{[^}]*flex: 1;[^}]*min-height: 0;[^}]*overflow: hidden;[^}]*\}/);
-  assert.match(conversationsCss, /\.inboxCard \{[^}]*display:flex;[^}]*flex:1;[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
-  assert.match(conversationsCss, /\.inboxLayout \{[^}]*flex:1;[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
+  assert.match(dashboardCss, /\.content\.conversationsContent \{[^}]*flex: 1 1 0%;[^}]*min-height: 0;[^}]*overflow: hidden;[^}]*\}/);
+  assert.match(conversationsCss, /\.inboxCard \{[^}]*display:flex;[^}]*flex:1 1 0%;[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
+  assert.match(conversationsCss, /\.inboxLayout \{[^}]*flex:1 1 0%;[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
   assert.match(conversationsCss, /\.conversationList \{[^}]*flex:1;[^}]*max-height:none;[^}]*overflow-y:auto;[^}]*\}/);
   assert.match(conversationsCss, /\.threadContent \{[^}]*min-height:0;[^}]*overflow-y:auto;[^}]*\}/);
   assert.match(conversationsCss, /\.detailPanel \{[^}]*min-height:0;[^}]*overflow:hidden;[^}]*\}/);
+  assert.match(conversationsCss, /\.inboxLayout \{[^}]*grid-template-rows:minmax\(0,1fr\);/);
+  assert.match(conversationsCss, /\.detailEmpty \{[^}]*width:100%;[^}]*height:100%;[^}]*align-self:stretch;/);
+  assert.match(dashboardCss, /\.main\.conversationsMain \{[^}]*width: 100%;[^}]*min-width: 0;/);
+  assert.match(dashboardCss, /\.content\.conversationsContent \{[^}]*width: 100%;[^}]*max-width: none;[^}]*min-width: 0;/);
+  assert.match(conversationsCss, /\.inboxLayout> \* \{[^}]*width:100%;[^}]*min-width:0;[^}]*min-height:0;/);
+  assert.match(dashboardCss, /@media\s*\(min-width:\s*756px\)\s*and\s*\(max-width:\s*1200px\)/);
+  assert.match(conversationsCss, /@media\s*\(min-width:\s*756px\)\s*and\s*\(max-width:\s*1200px\)/);
+  assert.match(conversationsCss, /scrollbar-gutter:stable/);
+  assert.match(conversationsCss, /::-webkit-scrollbar-thumb:hover/);
+  assert.match(conversationsCss, /@media\(max-width:755px\)/);
+  assert.match(read("components/dashboard/conversations/ConversationDetail.tsx"), /<ConversationThread key=\{/);
 });
 
 test("forwards PostgREST Prefer headers used by WhatsApp claims", async () => {
