@@ -195,6 +195,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const config = read("lib/whatsapp/config.ts");
   const constants = read("lib/whatsapp/constants.ts");
   const signup = read("components/dashboard/metaSignup.ts");
+  const whatsappSection = read("components/dashboard/sections/WhatsAppSection.tsx");
   const connect = read("app/api/whatsapp/connect/route.ts");
   const register = read("app/api/whatsapp/register/route.ts");
   const metaClient = read("lib/whatsapp/meta-client.ts");
@@ -229,6 +230,13 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(connect, /requestedPhoneNumberId/);
   assert.match(connect, /selected phone is not accessible/);
   assert.match(connect, /La conexión no se guardó/);
+  assert.match(connect, /previousConnection/);
+  assert.match(connect, /samePhoneWasAlreadyRegistered/);
+  assert.match(connect, /phoneRegisteredAt/);
+  assert.match(whatsappSection, /const cloudApiActive = Boolean/);
+  assert.match(whatsappSection, /"AUTORIZADO"/);
+  assert.match(whatsappSection, /"Cloud API Activo"/);
+  assert.match(whatsappSection, /Cloud API quedó activo\. El número está listo\./);
   assert.match(coexistenceMigration, /whatsapp_contacts/);
   assert.match(messages, /export async function GET/);
   assert.match(messages, /export async function POST/);

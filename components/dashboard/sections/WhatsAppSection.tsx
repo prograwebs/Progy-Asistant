@@ -599,7 +599,7 @@ export default function WhatsAppSection({
         registrationStatus: result.registrationStatus || "registered",
       } : current);
       setRegistrationPin("");
-      setRegistrationMessage("Número activado y listo para Cloud API.");
+      setRegistrationMessage("Cloud API quedó activo. El número está listo.");
     } catch (cause) {
       setError(
         cause instanceof Error
@@ -805,10 +805,17 @@ export default function WhatsAppSection({
       : loadingConnection
       ? "Comprobando"
       : connection?.wabaId
-        ? "Autorizado"
+        ? "AUTORIZADO"
         : available
           ? "Preparado"
           : "En revisión";
+
+  const cloudApiActive = Boolean(
+    connection?.wabaId &&
+      (connection.registrationStatus === "registered" ||
+        connection.onboardingFlow === "business_app" ||
+        connection.isOnBizApp),
+  );
 
   const templateApproved =
     selectedTemplateStatus === "APPROVED";
@@ -944,17 +951,17 @@ export default function WhatsAppSection({
                 }}
               >
                 <b>
-                  {connection.onboardingFlow === "business_app" || connection.isOnBizApp
-                    ? "Coexistence activado"
+                  {cloudApiActive
+                    ? "Cloud API Activo"
                     : "Activación de Cloud API"}
                 </b>
                 <small>
-                  {connection.registrationStatus === "registered" || connection.onboardingFlow === "business_app" || connection.isOnBizApp
-                    ? "Este número ya está activado y habilitado para Cloud API. No necesitas crear otro PIN."
+                  {cloudApiActive
+                    ? "Este número está activo y listo para usar WhatsApp Cloud API."
                     : "Crea un PIN de seguridad de 6 dígitos para activar este número en WhatsApp Cloud API."}
                 </small>
 
-                {connection.registrationStatus !== "registered" && connection.onboardingFlow !== "business_app" && !connection.isOnBizApp && (
+                {!cloudApiActive && (
                   <>
                     <input
                       type="password"

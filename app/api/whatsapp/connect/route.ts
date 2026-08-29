@@ -760,7 +760,22 @@ export async function POST(request: Request) {
       }
     }
 
+    const previousConnection = await getWhatsAppConnection(progyBusinessId);
+    const samePhoneWasAlreadyRegistered =
+      onboardingFlow === "standard" &&
+      previousConnection?.phone_number_id === phoneNumberId &&
+      previousConnection.registration_status === "registered";
+    const registrationStatus = onboardingFlow === "business_app"
+      ? "coexistence"
+      : samePhoneWasAlreadyRegistered
+        ? "registered"
+        : "pending";
+    const phoneRegisteredAt = samePhoneWasAlreadyRegistered
+      ? previousConnection?.phone_registered_at || null
+      : null;
+
     try {
+
       console.info("Progy WhatsApp connection persistence started", {
         requestId,
         progyBusinessId,
@@ -818,11 +833,10 @@ export async function POST(request: Request) {
         webhook_subscribed_at:
           webhookSubscribedAt,
 
-        registration_status:
-          onboardingFlow === "business_app" ? "coexistence" : "pending",
+        registration_status: registrationStatus,
 
         phone_registered_at:
-          null,
+          phoneRegisteredAt,
 
         last_meta_error:
           syncErrors.join(" | ").slice(0, 500) || null,
@@ -902,9 +916,9 @@ export async function POST(request: Request) {
 
           webhookSubscribedAt,
 
-          phoneRegisteredAt: null,
+          phoneRegisteredAt,
 
-          registrationStatus: onboardingFlow === "business_app" ? "coexistence" : "pending",
+          registrationStatus,
           onboardingFlow,
           historySyncStatus,
           contactsSyncStatus,
