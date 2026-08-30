@@ -1,4 +1,7 @@
 import type { OnboardingReadiness, OnboardingRecord } from "./onboarding";
+import type { NicheProfile } from "@/lib/niche/profile";
+
+export type { NicheProfile } from "@/lib/niche/profile";
 
 export type PanelUser = { id: string; email: string; name: string };
 export type IntegrationStatus = { supabase: boolean; openai: boolean; elevenlabs: boolean; elevenlabsVoice: boolean };
@@ -56,7 +59,7 @@ export type SelectedWorkspace = {
   business: Business; agent: Agent | null; hours: Hour[]; features: Feature[];
   catalogCategories: unknown[]; catalogItems: CatalogItem[]; knowledge: KnowledgeItem[];
   plan: Plan | null; conversations: Conversation[]; orders: Order[]; bookings: Booking[];
-  usage: Usage[]; onboarding?: OnboardingRecord | null; readiness?: OnboardingReadiness | null;
+  usage: Usage[]; nicheProfile: NicheProfile; onboarding?: OnboardingRecord | null; readiness?: OnboardingReadiness | null;
 };
 
 export type Snapshot = { categories: Category[]; businesses: Business[]; selected: SelectedWorkspace | null };

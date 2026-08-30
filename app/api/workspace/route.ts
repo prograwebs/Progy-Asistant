@@ -1,7 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { requireApiUser } from "@/lib/auth/supabase";
 import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
-import { calculateReadiness } from "../../../lib/onboarding/service";
+import { calculateReadiness, ensureNicheDefaults } from "../../../lib/onboarding/service";
+import { getNicheProfile } from "../../../lib/niche/profile";
 import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "@shared/validation/input";
 
 type UnknownRow = Record<string, unknown>;
@@ -42,6 +43,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
     supabaseDataRequest<UnknownRow[]>(`usage_ledger?business_id=eq.${id}&select=*&order=created_at.desc&limit=200`),
     supabaseDataRequest<UnknownRow[]>(`business_onboarding?business_id=eq.${id}&select=*`),
   ]);
+  const nicheProfile = await getNicheProfile(String(selected.category_code || ""));
   let agent = agents[0] ?? null;
   if (agent && String(agent.agent_name || "").toLowerCase() === "kely") {
     const migrated = await supabaseDataRequest<UnknownRow[]>(`agent_configs?business_id=eq.${id}`, {
@@ -70,6 +72,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
       orders,
       bookings,
       usage,
+      nicheProfile,
       onboarding: onboardingRows[0] ?? null,
       readiness: onboardingRows[0] ? calculateReadiness(selected, onboardingRows[0], agent, hours, catalogItems) : null,
     },
@@ -141,6 +144,7 @@ export async function POST(request: Request) {
         body: JSON.stringify(defaultHours),
         prefer: "resolution=merge-duplicates,return=minimal",
       });
+      await ensureNicheDefaults(businessId, categoryCode);
       return Response.json({ business: created }, { status: 201 });
     }
 

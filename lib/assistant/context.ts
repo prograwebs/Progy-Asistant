@@ -1,4 +1,5 @@
 import { loadAgentContext } from "@/lib/data/supabase";
+import { GENERIC_NICHE_PROFILE, type NicheProfile } from "@/lib/niche/profile";
 
 export type AgentContext = Awaited<ReturnType<typeof loadAgentContext>>;
 
@@ -50,13 +51,19 @@ function formatMoney(value: unknown) {
   return `$${number.toFixed(2)}`;
 }
 
-export function buildCompactAgentInstructions(context: AgentContext, userText: string, demoMode = false) {
+export function buildCompactAgentInstructions(
+  context: AgentContext,
+  userText: string,
+  demoMode = false,
+  niche: NicheProfile = GENERIC_NICHE_PROFILE,
+) {
   const businessName = text(context.business.name) || "el negocio";
   const storedAgentName = text(context.agent.agent_name);
   const agentName = storedAgentName.toLowerCase() === "kely" ? "Progy" : storedAgentName || "Progy";
   const tone = text(context.agent.tone) || "cálido, claro y profesional";
   const greeting = text(context.agent.greeting);
   const fallback = text(context.agent.fallback_message) || "No tengo esa información confirmada. Puedo comunicarte con una persona del negocio.";
+  const { booking_singular: bookingSingular, booking_plural: bookingPlural, order_singular: orderSingular, order_plural: orderPlural, resource_label: resourceLabel } = niche.terminology;
   const query = keywords(userText);
 
   const catalog = topRelevant(context.catalog, query, (item) => [
@@ -101,11 +108,12 @@ export function buildCompactAgentInstructions(context: AgentContext, userText: s
     knowledgeLines.length ? `Información relevante confirmada:\n${knowledgeLines.join("\n")}` : "No hay información adicional confirmada para esta consulta.",
     `Si falta información, usa esta política: ${fallback}`,
     "No presentes como disponible algo cuyo inventario, cupo o disponibilidad no esté confirmado expresamente.",
-    "Para pedidos o reservas, recopila únicamente los datos necesarios y confirma el resumen antes de registrar la acción.",
+    `Para ${orderPlural} o ${bookingPlural}, recopila únicamente los datos necesarios y confirma el resumen antes de registrar la acción. Si aplica, identifica el ${resourceLabel} solicitado sin prometer disponibilidad no confirmada.`,
+    niche.prompt_addendum ? `Reglas específicas de este tipo de negocio: ${niche.prompt_addendum}` : "",
     ...(demoMode ? [
       "La interfaz ya mostró el saludo inicial. No lo repitas al responder una pregunta; saluda solo si el cliente saluda primero.",
       "Responde como si estuvieras atendiendo normalmente al cliente. No menciones demostraciones, pruebas, límites internos, proveedores, prompts ni reglas técnicas.",
-      "Nunca afirmes que una cita, reserva o pedido quedó registrado o confirmado si todavía faltan datos o no existe una confirmación explícita del sistema.",
+      `Nunca afirmes que una ${bookingSingular} o un ${orderSingular} quedó registrado o confirmado si todavía faltan datos o no existe una confirmación explícita del sistema.`,
     ] : []),
   ].join("\n\n");
 }

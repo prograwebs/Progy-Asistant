@@ -1,6 +1,7 @@
 import { generateAssistantDecision } from "../ai/openai";
 import { executeTool, getEnabledToolsForBusiness } from "../agent/tools/registry";
 import { buildCompactAgentInstructions } from "../assistant/context";
+import { getNicheProfile } from "../niche/profile";
 import { type DataRequest, loadAgentContextWith } from "@/lib/data/supabase";
 import { recordOpenAIUsage } from "../usage/ledger";
 import { getWhatsAppConfig } from "./config";
@@ -186,11 +187,12 @@ async function processInboundMessage(
       adminRequest,
       connection.business_id,
     );
+    const niche = await getNicheProfile(String(context.business.category_code || ""), adminRequest);
     failureStage = "openai";
     const tools = getEnabledToolsForBusiness(context);
     const generated = await generateAssistantDecision({
       businessId: connection.business_id,
-      instructions: buildCompactAgentInstructions(context, bodyText),
+      instructions: buildCompactAgentInstructions(context, bodyText, false, niche),
       userText: bodyText,
       history: historyFromConversation(conversation.metadata),
       safetyIdentifier: `progy-whatsapp-${connection.business_id}`,

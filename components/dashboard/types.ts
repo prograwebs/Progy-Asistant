@@ -10,6 +10,7 @@ export type {
   Hour,
   IntegrationStatus,
   KnowledgeItem,
+  NicheProfile,
   Order,
   PanelUser,
   Plan,

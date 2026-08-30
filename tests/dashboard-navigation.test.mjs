@@ -50,9 +50,9 @@ test("sidebar exposes active page semantics and preserves the combined results v
   const records = read("components/dashboard/sections/RecordsSections.tsx");
   assert.match(dashboard, /aria-current=\{active \? "page" : undefined\}/);
   assert.match(dashboard, /const groupActive = group\.items\.some/);
-  assert.match(records, /title="Pedidos y reservas"/);
-  assert.match(records, /Pedidos \(\{workspace\.orders\.length\}\)/);
-  assert.match(records, /Reservas y citas/);
+  assert.match(records, /title=\{`\$\{labels\.orderPlural\} y \$\{labels\.bookingPlural\}`\}/);
+  assert.match(records, /labels\.orderPlural/);
+  assert.match(records, /labels\.bookingPlural/);
 });
 
 test("dashboard icons include future channel destinations", () => {

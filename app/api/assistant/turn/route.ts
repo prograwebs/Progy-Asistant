@@ -1,6 +1,7 @@
 import { requireApiUser } from "@/lib/auth/supabase";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "../../../../lib/ai/openai";
 import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
+import { getNicheProfile } from "../../../../lib/niche/profile";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
 import { executeTool, getEnabledToolsForBusiness } from "../../../../lib/agent/tools/registry";
 import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../../../lib/assistant/demo-limits";
@@ -246,6 +247,7 @@ export async function POST(request: Request) {
     }
 
     const context = await loadAgentContext(businessId);
+    const niche = await getNicheProfile(String(context.business.category_code || ""));
     const voiceId = demoMode
       ? await resolveOnboardingVoiceId(requestedVoiceId)
       : (typeof context.agent.voice_id === "string" ? context.agent.voice_id : null);
@@ -259,7 +261,7 @@ export async function POST(request: Request) {
       }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
     }
 
-    const instructions = buildCompactAgentInstructions(context, userText, demoMode);
+    const instructions = buildCompactAgentInstructions(context, userText, demoMode, niche);
     const tools = getEnabledToolsForBusiness(context);
     const generated = await generateAssistantDecision({
       businessId,

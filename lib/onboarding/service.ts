@@ -1,6 +1,7 @@
 import { isLibraryVoice, listElevenLabsVoices } from "../voice/catalog";
 import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { getOnboardingTemplate, TEMPLATE_VERSION } from "./templates";
+import { getNicheProfile } from "../niche/profile";
 import type { OnboardingActivationStatus, OnboardingChannelStatus, OnboardingFlowStatus, OnboardingReadiness, OnboardingSnapshot } from "@shared/types/onboarding";
 
 type Row = Record<string, unknown>;
@@ -106,6 +107,31 @@ async function upsertTemplateKnowledge(businessId: string, template: ReturnType<
   }
 }
 
+export async function ensureNicheDefaults(businessId: string, categoryCode: string) {
+  const niche = await getNicheProfile(categoryCode);
+  const featureCodes = [...new Set(niche.default_feature_codes)];
+  if (featureCodes.length) {
+    const existingFeatures = await supabaseDataRequest<Row[]>(`business_features?business_id=eq.${enc(businessId)}&feature_code=in.(${featureCodes.map(enc).join(",")})&select=id,feature_code`);
+    for (const featureCode of featureCodes) {
+      const payload = { business_id: businessId, feature_code: featureCode, enabled: true, available_in_trial: true };
+      const existing = existingFeatures.find((feature) => text(feature, "feature_code") === featureCode);
+      if (existing) {
+        await supabaseDataRequest(`business_features?id=eq.${enc(text(existing, "id"))}&business_id=eq.${enc(businessId)}`, { method: "PATCH", body: JSON.stringify(payload), prefer: "return=minimal" });
+      } else {
+        await supabaseDataRequest("business_features", { method: "POST", body: JSON.stringify(payload), prefer: "return=minimal" });
+      }
+    }
+  }
+  if (niche.default_tool_codes.length) {
+    await supabaseDataRequest("business_tool_settings?on_conflict=business_id,tool_code", {
+      method: "POST",
+      body: JSON.stringify(niche.default_tool_codes.map((toolCode) => ({ business_id: businessId, tool_code: toolCode, enabled: true, config: {} }))),
+      prefer: "resolution=merge-duplicates,return=minimal",
+    });
+  }
+  return niche;
+}
+
 async function seedTemplate(businessId: string, name: string, categoryCode: string) {
   const template = getOnboardingTemplate(categoryCode);
   await ensureOnboardingRow(businessId, { flow_status: "business_created", activation_status: "preparing", template_version: template.version });
@@ -133,6 +159,7 @@ async function seedTemplate(businessId: string, name: string, categoryCode: stri
       await supabaseDataRequest("business_features", { method: "POST", body: JSON.stringify(payload), prefer: "return=minimal" });
     }
   }
+  await ensureNicheDefaults(businessId, categoryCode);
   await upsertTemplateCatalog(businessId, template);
   await upsertTemplateKnowledge(businessId, template);
   return ensureOnboardingRow(businessId, { template_version: template.version });
