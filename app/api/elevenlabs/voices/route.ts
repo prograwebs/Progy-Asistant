@@ -1,4 +1,5 @@
-import { ElevenLabsVoiceError, listElevenLabsVoices, requireApiUser } from "../../../../lib/integrations";
+import { ElevenLabsVoiceError, listElevenLabsVoices } from "@/lib/voice/catalog";
+import { requireApiUser } from "@/lib/auth/supabase";
 import { serverConfig } from "../../../../lib/config/env";
 import { isLibraryVoice } from "../../../../lib/voice/catalog";
 

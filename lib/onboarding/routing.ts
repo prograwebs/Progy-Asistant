@@ -1,5 +1,5 @@
-import type { OnboardingDraft } from "../../components/onboarding/types";
-import { supabaseDataRequest } from "../supabase-data";
+import type { OnboardingDraft } from "@shared/types/onboarding";
+import { supabaseDataRequest } from "@/lib/data/supabase";
 import { onboardingPathForStatus } from "./paths";
 
 type Row = Record<string, unknown>;

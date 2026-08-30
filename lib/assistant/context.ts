@@ -1,4 +1,4 @@
-import { loadAgentContext } from "../supabase-data";
+import { loadAgentContext } from "@/lib/data/supabase";
 
 export type AgentContext = Awaited<ReturnType<typeof loadAgentContext>>;
 

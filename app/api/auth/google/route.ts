@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { integrationConfig, progyAuthCallbackUrl } from "../../../../lib/integrations";
+import { integrationConfig, progyAuthCallbackUrl } from "@/lib/config/env";
 
 export async function GET() {
   const { supabaseUrl } = integrationConfig();

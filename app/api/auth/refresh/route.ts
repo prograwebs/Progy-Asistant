@@ -1,4 +1,4 @@
-import { refreshSupabaseSession } from "../../../../lib/integrations";
+import { refreshSupabaseSession } from "@/lib/auth/supabase";
 
 export const dynamic = "force-dynamic";
 

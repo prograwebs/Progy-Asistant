@@ -1,6 +1,6 @@
 import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/whatsapp/store";
 import { getWhatsAppConfig } from "@/lib/whatsapp/config";
-import { requireApiUser } from "../../../../lib/integrations";
+import { requireApiUser } from "@/lib/auth/supabase";
 import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
 import {
   listClientWhatsAppAccounts,

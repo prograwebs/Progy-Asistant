@@ -1,4 +1,4 @@
-import { requireApiUser } from "../../../../lib/integrations";
+import { requireApiUser } from "@/lib/auth/supabase";
 import { getWhatsAppConfig } from "@/lib/whatsapp/config";
 import {
   DEFAULT_META_GRAPH_VERSION,

@@ -1,4 +1,4 @@
-import { type DataRequest, supabaseDataRequest } from "../supabase-data";
+import { type DataRequest, supabaseDataRequest } from "@/lib/data/supabase";
 import type { OpenAIUsage } from "../ai/openai";
 
 export type UsageKind =

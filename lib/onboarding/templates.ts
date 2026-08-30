@@ -1,4 +1,4 @@
-import type { OnboardingTemplate } from "./types";
+import type { OnboardingTemplate } from "@shared/types/onboarding";
 
 const demoHours = [
   { dayOfWeek: 0, opensAt: null, closesAt: null, isClosed: true },

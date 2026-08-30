@@ -1,7 +1,7 @@
 import { generateAssistantDecision } from "../ai/openai";
 import { executeAssistantDecision } from "../assistant/actions";
 import { buildCompactAgentInstructions } from "../assistant/context";
-import { type DataRequest, loadAgentContextWith } from "../supabase-data";
+import { type DataRequest, loadAgentContextWith } from "@/lib/data/supabase";
 import { recordOpenAIUsage } from "../usage/ledger";
 import { getWhatsAppConfig } from "./config";
 import { sendWhatsAppText } from "./meta-client";
@@ -18,7 +18,7 @@ import {
   type WhatsAppConnectionForWebhook,
 } from "./webhook-store";
 import { isWhatsAppTokenExpired } from "./store";
-import { supabaseAdminRequest } from "../supabase-admin";
+import { supabaseAdminRequest } from "@/lib/data/supabase-admin";
 
 type WebhookMessage = {
   id?: string;

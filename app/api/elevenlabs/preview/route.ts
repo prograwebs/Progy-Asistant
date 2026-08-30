@@ -1,4 +1,4 @@
-import { requireApiUser } from "../../../../lib/integrations";
+import { requireApiUser } from "@/lib/auth/supabase";
 import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
 import { synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
 

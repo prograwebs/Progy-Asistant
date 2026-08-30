@@ -1,6 +1,5 @@
-// Compatibility facade for existing API routes. New code should import from the
-// focused modules below so authentication, configuration and voice concerns stay
-// independent and testable.
+// @deprecated Compatibility facade. New code must import the focused module
+// directly so authentication, configuration and provider concerns stay separate.
 export {
   integrationConfig,
   progyAuthCallbackUrl,

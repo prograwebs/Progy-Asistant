@@ -3,7 +3,7 @@ import type {
   AssistantDecision,
   AssistantOrderDraft,
 } from "../ai/openai";
-import { type DataRequest, supabaseDataRequest } from "../supabase-data";
+import { type DataRequest, supabaseDataRequest } from "@/lib/data/supabase";
 import type { AgentContext } from "./context";
 
 type UnknownRow = Record<string, unknown>;

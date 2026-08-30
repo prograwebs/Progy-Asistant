@@ -1,8 +1,8 @@
 import { requireApiUser } from "../../../lib/auth/supabase";
-import { SupabaseDataError } from "../../../lib/supabase-data";
+import { SupabaseDataError } from "@/lib/data/supabase";
 import { activateBusiness, createBusinessFromTemplate, getOnboardingSnapshot, markChannelConnected, markChannelSkipped, saveDemoForBusiness } from "../../../lib/onboarding/service";
 import { listOnboardingTemplates } from "../../../lib/onboarding/templates";
-import { cleanText, isRecord, validIdentifier } from "../../../lib/validation/input";
+import { cleanText, isRecord, validIdentifier } from "@/shared/validation/input";
 
 export const dynamic = "force-dynamic";
 

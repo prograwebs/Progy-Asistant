@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { clearSupabaseSession, getSupabaseAccessToken, integrationConfig } from "../../../../lib/integrations";
+import { clearSupabaseSession, getSupabaseAccessToken } from "@/lib/auth/supabase";
+import { integrationConfig } from "@/lib/config/env";
 
 export async function POST() {
   const token = await getSupabaseAccessToken();

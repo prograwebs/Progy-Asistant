@@ -1,5 +1,7 @@
+/** @deprecated Import the authenticated data boundary from @/lib/data/supabase. */
 import { randomUUID } from "node:crypto";
-import { getSupabaseAccessToken, integrationConfig } from "./integrations";
+import { getSupabaseAccessToken } from "./auth/supabase";
+import { integrationConfig } from "./config/env";
 import { businessCreateErrorCode, providerErrorCode, publicDataError, type SupabasePublicErrorCode } from "./http/errors";
 import { retryTransientPostgrestJwt } from "./http/postgrest-retry";
 

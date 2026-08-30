@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSupabaseUser } from "../../../../lib/integrations";
+import { getSupabaseUser } from "@/lib/auth/supabase";
 
 export const dynamic = "force-dynamic";
 

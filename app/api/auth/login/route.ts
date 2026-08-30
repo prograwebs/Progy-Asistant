@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { safeErrorMessage, saveSupabaseSession, supabaseAuthRequest } from "../../../../lib/integrations";
-import { isRecord, validEmail } from "../../../../lib/validation/input";
+import { saveSupabaseSession, supabaseAuthRequest } from "@/lib/auth/supabase";
+import { safeErrorMessage } from "@/lib/http/errors";
+import { isRecord, validEmail } from "@shared/validation/input";
 
 export async function POST(request: Request) {
   try {

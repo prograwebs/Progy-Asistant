@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSupabaseUser } from "../../lib/integrations";
+import { getSupabaseUser } from "@/lib/auth/supabase";
 import OnboardingLayout from "../../components/onboarding/OnboardingLayout";
 import { getOnboardingResume } from "../../lib/onboarding/routing";
 

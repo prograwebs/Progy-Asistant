@@ -1,8 +1,8 @@
 import { randomUUID } from "node:crypto";
-import { requireApiUser } from "../../../lib/integrations";
-import { SupabaseDataError, supabaseDataRequest } from "../../../lib/supabase-data";
+import { requireApiUser } from "@/lib/auth/supabase";
+import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { calculateReadiness } from "../../../lib/onboarding/service";
-import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "../../../lib/validation/input";
+import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "@shared/validation/input";
 
 type UnknownRow = Record<string, unknown>;
 

@@ -1,7 +1,7 @@
 import { isLibraryVoice, listElevenLabsVoices } from "../voice/catalog";
-import { SupabaseDataError, supabaseDataRequest } from "../supabase-data";
+import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { getOnboardingTemplate, TEMPLATE_VERSION } from "./templates";
-import type { OnboardingActivationStatus, OnboardingChannelStatus, OnboardingFlowStatus, OnboardingReadiness, OnboardingSnapshot } from "./types";
+import type { OnboardingActivationStatus, OnboardingChannelStatus, OnboardingFlowStatus, OnboardingReadiness, OnboardingSnapshot } from "@shared/types/onboarding";
 
 type Row = Record<string, unknown>;
 

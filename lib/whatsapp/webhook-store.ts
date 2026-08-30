@@ -1,7 +1,7 @@
 import {
   SupabaseAdminRequestError,
   supabaseAdminRequest,
-} from "../supabase-admin";
+} from "@/lib/data/supabase-admin";
 
 type Row = Record<string, unknown>;
 

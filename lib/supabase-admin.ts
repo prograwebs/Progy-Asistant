@@ -1,3 +1,4 @@
+/** @deprecated Import the privileged data boundary from @/lib/data/supabase-admin. */
 type AdminRequestOptions = RequestInit & { prefer?: string };
 
 export class SupabaseAdminRequestError extends Error {

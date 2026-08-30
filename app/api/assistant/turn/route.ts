@@ -1,11 +1,11 @@
-import { requireApiUser } from "../../../../lib/integrations";
+import { requireApiUser } from "@/lib/auth/supabase";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "../../../../lib/ai/openai";
 import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
 import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../../../lib/assistant/demo-limits";
 import { developmentTestingMode, entitlementsFor, normalizePlanCode, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
 import { exceedsBase64SourceLimit, exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
-import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
+import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { recordElevenLabsUsage, recordOpenAIUsage } from "../../../../lib/usage/ledger";
 import { resolveOnboardingVoiceId, synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
 

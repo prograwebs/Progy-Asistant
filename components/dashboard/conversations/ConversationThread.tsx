@@ -1,5 +1,5 @@
 import { DashboardIcon } from "../LineIcon";
-import { dateTime } from "../utils";
+import { dateTime } from "@shared/utils/formatters";
 import type { Conversation } from "../types";
 import type { ConversationTurn, WhatsAppMessage } from "./conversation-types";
 import { conversationDuration, conversationTurns, statusLabel } from "./conversation-utils";

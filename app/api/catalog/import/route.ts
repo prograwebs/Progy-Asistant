@@ -1,8 +1,8 @@
-import { requireApiUser } from "../../../../lib/integrations";
+import { requireApiUser } from "@/lib/auth/supabase";
 import { extractCatalogFromFile, OpenAIServiceError } from "../../../../lib/ai/openai";
 import { catalogImportAllowance } from "../../../../lib/billing/entitlements";
 import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
-import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "../../../../lib/supabase-data";
+import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { recordCatalogImport, recordOpenAIUsage } from "../../../../lib/usage/ledger";
 
 export const dynamic = "force-dynamic";

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { SelectedWorkspace } from "../types";
-import { dateTime, money } from "../utils";
+import { dateTime, money } from "@shared/utils/formatters";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import { ConversationInbox } from "../conversations/ConversationInbox";
 import { statusLabel } from "../conversations/conversation-utils";

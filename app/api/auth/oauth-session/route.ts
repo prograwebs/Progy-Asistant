@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { integrationConfig, saveSupabaseSession } from "../../../../lib/integrations";
+import { saveSupabaseSession } from "@/lib/auth/supabase";
+import { integrationConfig } from "@/lib/config/env";
 
 export async function POST(request: Request) {
   try {

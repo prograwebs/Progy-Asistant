@@ -60,6 +60,15 @@ components/
     utils.ts
     useWorkspace.ts
 
+shared/                         # código seguro para cliente y servidor
+  types/
+    onboarding.ts               contratos de onboarding y plantillas
+    workspace.ts                contratos del panel y workspace
+  validation/
+    input.ts                    guards y normalización de entradas
+  utils/
+    formatters.ts               funciones puras de presentación
+
 lib/
   ai/
     openai.ts            transcripción y decisiones estructuradas
@@ -68,22 +77,64 @@ lib/
     actions.ts           validación y ejecución transaccional
   auth/
     supabase.ts          sesión y usuario
+  data/
+    supabase.ts          frontera de datos autenticada
+    supabase-admin.ts    frontera privilegiada (solo servidor)
   billing/
     entitlements.ts      capacidades y límites por plan
   config/
     env.ts               variables y readiness del servidor
   http/
     errors.ts            errores seguros para cliente
+  onboarding/
+    service.ts            orquestación durable del onboarding
+    templates.ts          catálogo de plantillas demo
   usage/
     ledger.ts            consumo y coste por negocio
   voice/
     catalog.ts           catálogo de voces ElevenLabs
     elevenlabs.ts        síntesis
-  integrations.ts        fachada temporal de compatibilidad
-  supabase-data.ts       PostgREST con sesión del usuario
+  whatsapp/
+    config.ts             feature flag y configuración del canal
+    meta-client.ts        llamadas server-side a Meta
+    inbound.ts            webhook -> asistente -> respuesta
+  integrations.ts        fachada temporal de compatibilidad (legacy)
+  supabase-data.ts       implementación legacy de la frontera autenticada
+  supabase-admin.ts      implementación legacy de la frontera privilegiada
 ```
 
 `lib/integrations.ts` ya no contiene implementaciones; reexporta servicios separados para evitar una migración masiva de imports. Código nuevo debe importar desde el módulo específico.
+
+### Reglas de dependencias
+
+La dirección de dependencias es deliberada:
+
+```text
+app (rutas y handlers)
+  ├─ components (UI)
+  └─ lib (servicios, proveedores y datos)
+       └─ shared (tipos, validación y utilidades puras)
+```
+
+- `shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
+- `components/` no importa `lib/data`, `lib/auth/supabase`, `lib/supabase-admin`, `lib/ai` ni `lib/assistant/actions`.
+- Los handlers de `app/api` obtienen sesión, validan entrada y delegan en un servicio focalizado.
+- El acceso Supabase nuevo entra por `lib/data/supabase` o `lib/data/supabase-admin`; los archivos en la raíz de `lib/` son compatibilidad para pruebas y migraciones antiguas.
+- `lib/integrations.ts` queda congelado como fachada de compatibilidad. Código nuevo debe importar el módulo específico.
+- Un tipo utilizado por servidor y cliente vive en `shared/types`, nunca dentro de `components/`.
+
+Los archivos `components/dashboard/types.ts`, `components/onboarding/types.ts`, `components/dashboard/utils.ts`, `lib/onboarding/types.ts` y `lib/validation/input.ts` conservan reexportaciones marcadas como deprecated para no romper consumidores externos durante la migración.
+
+### Convenciones de imports
+
+```ts
+import type { SelectedWorkspace } from "@shared/types/workspace";
+import { validIdentifier } from "@shared/validation/input";
+import { supabaseDataRequest } from "@/lib/data/supabase";
+import { supabaseAdminRequest } from "@/lib/data/supabase-admin";
+```
+
+No se debe crear una carpeta `src/client` o `src/server` para duplicar las fronteras de Next.js. La frontera de cliente se expresa con `'use client'`; la frontera de servidor se mantiene en `app/api` y en los servicios de `lib/` que acceden a cookies, proveedores o secretos.
 
 ## Flujo de prueba por voz
 

@@ -1,4 +1,4 @@
-import { integrationConfig } from "../integrations";
+import { integrationConfig } from "@/lib/config/env";
 
 export type OpenAIUsage = {
   inputTokens: number;

@@ -1,5 +1,5 @@
 import { getOnboardingTemplate, listOnboardingTemplates } from "../../lib/onboarding/templates";
-import type { DemoScenario, OnboardingCategory } from "./types";
+import type { DemoScenario, OnboardingCategory } from "@shared/types/onboarding";
 
 export const onboardingCategories: OnboardingCategory[] = listOnboardingTemplates().map((template) => ({
   code: template.code,
