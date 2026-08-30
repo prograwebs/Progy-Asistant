@@ -133,7 +133,7 @@ export async function loadAgentContextWith(
   businessId: string,
 ) {
   const id = encodeURIComponent(businessId);
-  const [businesses, agents, hours, catalogResult, knowledgeResult, features] = await Promise.all([
+  const [businesses, agents, hours, catalogResult, knowledgeResult, features, agentTools, businessToolSettings] = await Promise.all([
     request<Record<string, unknown>[]>(`businesses?id=eq.${id}&select=id,name,category_code,status,description,address,city,province,phone,whatsapp_phone`),
     optionalContextRows(request, `agent_configs?business_id=eq.${id}&select=*`),
     optionalContextRows(request, `business_hours?business_id=eq.${id}&select=day_of_week,opens_at,closes_at,is_closed&order=day_of_week.asc`),
@@ -148,6 +148,8 @@ export async function loadAgentContextWith(
       `knowledge_items?business_id=eq.${id}&is_active=eq.true&select=kind,title,question,answer&order=priority.desc&limit=80`,
     ),
     optionalContextRows(request, `business_features?business_id=eq.${id}&enabled=eq.true&select=feature_code`),
+    optionalContextRows(request, "agent_tools?is_active=eq.true&select=code,name,description,parameters_schema,category,requires_feature_code,handler_key,is_active&order=code.asc"),
+    optionalContextRows(request, `business_tool_settings?business_id=eq.${id}&select=tool_code,enabled,config`),
   ]);
   if (!businesses[0]) throw new SupabaseDataError("No tienes acceso a este negocio.", 403);
   const activeBusiness = line(businesses[0].status) === "active";
@@ -160,6 +162,8 @@ export async function loadAgentContextWith(
     catalog: activeBusiness ? catalog.filter((item) => !Boolean(item.is_demo)) : catalog,
     knowledge: activeBusiness ? knowledge.filter((item) => !Boolean(item.is_demo)) : knowledge,
     features,
+    agentTools,
+    businessToolSettings,
   };
 }
 

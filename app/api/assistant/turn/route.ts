@@ -2,6 +2,7 @@ import { requireApiUser } from "@/lib/auth/supabase";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "../../../../lib/ai/openai";
 import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
+import { executeTool, getEnabledToolsForBusiness } from "../../../../lib/agent/tools/registry";
 import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../../../lib/assistant/demo-limits";
 import { developmentTestingMode, entitlementsFor, normalizePlanCode, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
 import { exceedsBase64SourceLimit, exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
@@ -259,17 +260,37 @@ export async function POST(request: Request) {
     }
 
     const instructions = buildCompactAgentInstructions(context, userText, demoMode);
+    const tools = getEnabledToolsForBusiness(context);
     const generated = await generateAssistantDecision({
       businessId,
       instructions,
       userText,
       history,
       safetyIdentifier: `progy-${user.id}`,
+      tools,
+      onToolCalls: async (toolCalls) => {
+        const results: unknown[] = [];
+        for (const toolCall of toolCalls) {
+          if (demoMode) {
+            results.push({ executed: false, type: toolCall.name === "create_order" ? "order" : toolCall.name === "create_booking" ? "booking" : "none", message: "La acción está simulada durante la demo." });
+            continue;
+          }
+          const configuredTool = context.agentTools.find((tool) => String(tool.code || "") === toolCall.name);
+          results.push(await executeTool(
+            String(configuredTool?.handler_key || toolCall.name),
+            context,
+            toolCall.arguments,
+            supabaseDataRequest,
+            { toolCode: toolCall.name, conversationId: conversationId || null, customerId: user.id },
+          ));
+        }
+        return results;
+      },
     });
 
     const action = demoMode
       ? simulatedAction(generated.decision.intent)
-      : await executeAssistantDecision(context, generated.decision);
+      : (generated.tool_calls.map((call) => call.result).filter((result): result is AssistantAction => Boolean(result)).at(-1) || { type: "none", executed: false });
     const generatedReply = generated.decision.reply.trim();
     const reply = !demoMode && action.type !== "none" && action.message
       ? `${generatedReply} ${action.message}`.trim()

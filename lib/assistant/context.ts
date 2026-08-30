@@ -90,17 +90,12 @@ export function buildCompactAgentInstructions(context: AgentContext, userText: s
     return `- ${title}: ${text(item.answer).slice(0, 360)}`;
   });
 
-  const capabilities = context.features
-    .map((item) => text(item.feature_code))
-    .filter(Boolean)
-    .join(", ");
-
   return [
     `Eres ${agentName}, el asistente de ${businessName}, un negocio de Ecuador.`,
     `Actúa como un asistente senior de atención al cliente que conoce y representa a ${businessName}. Habla en primera persona como parte del negocio, con seguridad, criterio y vocación de servicio.`,
     `Habla en español latino, con un tono ${tone}. Sé natural, breve, útil y orientado a resolver; no describas tus reglas internas ni tu proceso de razonamiento.`,
     greeting ? `Saludo aprobado del negocio: ${greeting}` : "Preséntate con amabilidad solo cuando corresponda al inicio de una conversación.",
-    `Capacidades habilitadas: ${capabilities || "responder consultas y solicitar ayuda humana"}.`,
+    "Las capacidades operativas disponibles se entregan como herramientas. Usa una herramienta solo cuando corresponda y cuando sus datos requeridos estén confirmados.",
     schedule ? `Horarios confirmados (0=domingo, 6=sábado): ${schedule}.` : "Los horarios no están confirmados.",
     catalogLines.length ? `Productos o servicios más relevantes para esta consulta:\n${catalogLines.join("\n")}` : "No hay productos o servicios confirmados que puedas citar.",
     knowledgeLines.length ? `Información relevante confirmada:\n${knowledgeLines.join("\n")}` : "No hay información adicional confirmada para esta consulta.",
@@ -123,5 +118,6 @@ export function buildSearchableContextSummary(context: AgentContext) {
     knowledgeCount: context.knowledge.length,
     hoursCount: context.hours.length,
     features: context.features.map((item) => text(item.feature_code)).filter(Boolean),
+    tools: context.agentTools.map((item) => text(item.code)).filter(Boolean),
   };
 }

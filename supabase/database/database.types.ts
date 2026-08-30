@@ -90,6 +90,95 @@ export type Database = {
           },
         ]
       }
+      agent_tools: {
+        Row: {
+          category: string | null
+          code: string
+          created_at: string
+          description: string
+          handler_key: string
+          is_active: boolean
+          name: string
+          parameters_schema: Json
+          requires_feature_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          created_at?: string
+          description: string
+          handler_key: string
+          is_active?: boolean
+          name: string
+          parameters_schema: Json
+          requires_feature_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          created_at?: string
+          description?: string
+          handler_key?: string
+          is_active?: boolean
+          name?: string
+          parameters_schema?: Json
+          requires_feature_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_tools_requires_feature_code_fkey"
+            columns: ["requires_feature_code"]
+            isOneToOne: false
+            referencedRelation: "feature_definitions"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      business_tool_settings: {
+        Row: {
+          business_id: string
+          config: Json
+          created_at: string
+          enabled: boolean
+          tool_code: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          tool_code: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          config?: Json
+          created_at?: string
+          enabled?: boolean
+          tool_code?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_tool_settings_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_tool_settings_tool_code_fkey"
+            columns: ["tool_code"]
+            isOneToOne: false
+            referencedRelation: "agent_tools"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       agent_configs: {
         Row: {
           agent_name: string

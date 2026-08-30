@@ -86,7 +86,8 @@ test("onboarding assistant demo validates voice overrides and never executes act
   assert.match(turnRoute, /demoMode\s*\?\s*simulatedAction/);
   assert.doesNotMatch(turnRoute, /En esta demo el pedido solo se simula/);
   assert.doesNotMatch(turnRoute, /En esta demo la reserva solo se simula/);
-  assert.match(turnRoute, /await executeAssistantDecision\(context, generated\.decision\)/);
+  assert.match(turnRoute, /onToolCalls/);
+  assert.match(turnRoute, /executeTool/);
   assert.match(sessionRoute, /body\.demoMode === true/);
   assert.match(sessionRoute, /source: demoMode \? "progy_onboarding_demo"/);
   assert.match(voiceService, /!voice \|\| isLibraryVoice\(voice\)/);

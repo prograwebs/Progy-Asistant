@@ -1,5 +1,5 @@
 import { generateAssistantDecision } from "../ai/openai";
-import { executeAssistantDecision } from "../assistant/actions";
+import { executeTool, getEnabledToolsForBusiness } from "../agent/tools/registry";
 import { buildCompactAgentInstructions } from "../assistant/context";
 import { type DataRequest, loadAgentContextWith } from "@/lib/data/supabase";
 import { recordOpenAIUsage } from "../usage/ledger";
@@ -187,19 +187,34 @@ async function processInboundMessage(
       connection.business_id,
     );
     failureStage = "openai";
+    const tools = getEnabledToolsForBusiness(context);
     const generated = await generateAssistantDecision({
       businessId: connection.business_id,
       instructions: buildCompactAgentInstructions(context, bodyText),
       userText: bodyText,
       history: historyFromConversation(conversation.metadata),
       safetyIdentifier: `progy-whatsapp-${connection.business_id}`,
+      tools,
+      onToolCalls: async (toolCalls) => {
+        const results: unknown[] = [];
+        for (const toolCall of toolCalls) {
+          const configuredTool = context.agentTools.find((tool) => String(tool.code || "") === toolCall.name);
+          results.push(await executeTool(
+            String(configuredTool?.handler_key || toolCall.name),
+            context,
+            toolCall.arguments,
+            adminRequest,
+            { toolCode: toolCall.name, conversationId: conversation.id },
+          ));
+        }
+        return results;
+      },
     });
     failureStage = "action";
-    const action = await executeAssistantDecision(
-      context,
-      generated.decision,
-      adminRequest,
-    );
+    const action = generated.tool_calls
+      .map((call) => call.result)
+      .filter((result): result is Awaited<ReturnType<typeof executeTool>> => Boolean(result))
+      .at(-1) || { type: "none" as const, executed: false };
     const reply = (action.type !== "none" && !action.executed && action.message
       ? action.message
       : generated.decision.reply.trim()) ||
