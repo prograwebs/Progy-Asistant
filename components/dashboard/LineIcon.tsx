@@ -12,6 +12,8 @@ import {
   Home,
   MessageCircle,
   Mic2,
+  Globe2,
+  Phone,
   Play,
   RefreshCw,
   Search,
@@ -30,6 +32,8 @@ type DashboardIconName =
   | "voice"
   | "test"
   | "whatsapp"
+  | "phone"
+  | "globe"
   | "conversation"
   | "orders"
   | "usage"
@@ -53,6 +57,8 @@ const icons: Record<DashboardIconName, LucideIcon> = {
   voice: Mic2,
   test: Play,
   whatsapp: MessageCircle,
+  phone: Phone,
+  globe: Globe2,
   conversation: MessageCircle,
   orders: ShoppingBasket,
   usage: BarChart3,

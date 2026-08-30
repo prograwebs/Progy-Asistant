@@ -8,15 +8,14 @@ import { useWorkspace } from "./useWorkspace";
 import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
 import OverviewSection from "./sections/OverviewSection";
 import BusinessSection from "./sections/BusinessSection";
-import AgentSection from "./sections/AgentSection";
 import CatalogSection from "./sections/CatalogSection";
 import KnowledgeSection from "./sections/KnowledgeSection";
-import VoiceSection from "./sections/VoiceSection";
 import WhatsAppSection from "./sections/WhatsAppSection";
 import { ConversationsSection, OrdersSection } from "./sections/RecordsSections";
 import UsageSection from "./sections/UsageSection";
 import PreparationSection from "./sections/PreparationSection";
 import VoiceTestStudio from "./VoiceTestStudio";
+import ProgySection from "./sections/ProgySection";
 import { Card, SectionHeader } from "./ui";
 import { initials } from "./utils";
 import { onboardingPathForStatus } from "../../lib/onboarding/paths";
@@ -26,27 +25,69 @@ import PrivateSessionGuard from "../auth/PrivateSessionGuard";
 
 gsap.registerPlugin(useGSAP);
 
-type SectionId = "inicio" | "negocio" | "asistente" | "catalogo" | "conocimiento" | "voz" | "whatsapp" | "pruebas" | "conversaciones" | "pedidos" | "consumo" | "ajustes";
+type SectionId = "inicio" | "negocio" | "progy" | "catalogo" | "conocimiento" | "whatsapp" | "pruebas" | "conversaciones" | "pedidos" | "consumo" | "ajustes";
 
-const nav: Array<{ id: SectionId; icon: Parameters<typeof DashboardIcon>[0]["name"]; label: string }> = [
-  { id: "inicio", icon: "home", label: "Inicio" },
-  { id: "negocio", icon: "business", label: "Mi negocio" },
-  { id: "asistente", icon: "assistant", label: "Configurar Progy" },
-  { id: "catalogo", icon: "catalog", label: "Catálogo" },
-  { id: "conocimiento", icon: "knowledge", label: "Conocimiento" },
-  { id: "voz", icon: "voice", label: "Voz e idioma" },
-  { id: "pruebas", icon: "test", label: "Pruebas" },
-  { id: "whatsapp", icon: "whatsapp", label: "WhatsApp" },
-  { id: "conversaciones", icon: "conversation", label: "Conversaciones" },
-  { id: "pedidos", icon: "orders", label: "Pedidos y reservas" },
-  { id: "consumo", icon: "usage", label: "Consumo y plan" },
+type DashboardIconName = Parameters<typeof DashboardIcon>[0]["name"];
+type ProgyTab = "personalidad" | "voz";
+type NavItem = { id: string; icon: DashboardIconName; label: string; destination?: SectionId; soon?: boolean };
+type NavGroup = { id: string; label: string; items: NavItem[] };
+
+const homeNavItem: NavItem = { id: "inicio", icon: "home", label: "Inicio", destination: "inicio" };
+
+const navGroups: NavGroup[] = [
+  {
+    id: "operacion",
+    label: "OPERACIÓN",
+    items: [
+      { id: "conversaciones", icon: "conversation", label: "Conversaciones", destination: "conversaciones" },
+      { id: "resultados", icon: "orders", label: "Resultados", destination: "pedidos" },
+      { id: "interesados", icon: "conversation", label: "Interesados", soon: true },
+      { id: "cotizaciones", icon: "orders", label: "Cotizaciones", soon: true },
+    ],
+  },
+  {
+    id: "mi-progy",
+    label: "MI PROGY",
+    items: [
+      { id: "negocio", icon: "business", label: "Negocio", destination: "negocio" },
+      { id: "catalogo", icon: "catalog", label: "Catálogo", destination: "catalogo" },
+      { id: "conocimiento", icon: "knowledge", label: "Información y respuestas", destination: "conocimiento" },
+      { id: "personalidad-voz", icon: "assistant", label: "Personalidad y voz", destination: "progy" },
+      { id: "pruebas", icon: "test", label: "Pruebas", destination: "pruebas" },
+    ],
+  },
+  {
+    id: "canales",
+    label: "CANALES",
+    items: [
+      { id: "whatsapp", icon: "whatsapp", label: "WhatsApp", destination: "whatsapp" },
+      { id: "llamadas", icon: "phone", label: "Llamadas", soon: true },
+      { id: "web", icon: "globe", label: "Web", soon: true },
+    ],
+  },
+  {
+    id: "cuenta",
+    label: "CUENTA",
+    items: [
+      { id: "consumo", icon: "usage", label: "Uso y plan", destination: "consumo" },
+      { id: "ajustes", icon: "settings", label: "Configuración", destination: "ajustes" },
+    ],
+  },
 ];
 
 const headers: Record<SectionId, string> = {
-  inicio: "Inicio", negocio: "Mi negocio", asistente: "Configurar Progy", catalogo: "Catálogo",
-  conocimiento: "Conocimiento", voz: "Voz e idioma", whatsapp: "WhatsApp", pruebas: "Pruebas",
-  conversaciones: "Conversaciones", pedidos: "Pedidos y reservas", consumo: "Consumo y plan", ajustes: "Configuración",
+  inicio: "Inicio", negocio: "Negocio", progy: "Personalidad y voz", catalogo: "Catálogo",
+  conocimiento: "Información y respuestas", whatsapp: "WhatsApp", pruebas: "Pruebas",
+  conversaciones: "Conversaciones", pedidos: "Resultados", consumo: "Uso y plan", ajustes: "Configuración",
 };
+
+function resolveNavigation(next: string): { section: SectionId; progyTab?: ProgyTab } {
+  if (next === "asistente" || next === "personalidad" || next === "progy") return { section: "progy", progyTab: "personalidad" };
+  if (next === "voz") return { section: "progy", progyTab: "voz" };
+  if (next === "resultados") return { section: "pedidos" };
+  if (next in headers) return { section: next as SectionId };
+  return { section: "inicio" };
+}
 
 function planLabel(code?: string | null) {
   const normalized = String(code || "trial").toLowerCase().replaceAll("-", "_");
@@ -74,9 +115,36 @@ function AnimatedBrandMark() {
   return <span ref={mark} className={styles.brandMark} aria-hidden="true"><i /><i /><i /></span>;
 }
 
+function NavButton({ item, active, onNavigate, onTooltip, onClearTooltip }: {
+  item: NavItem;
+  active: boolean;
+  onNavigate: (destination: string) => void;
+  onTooltip: (event: MouseEvent<HTMLButtonElement> | FocusEvent<HTMLButtonElement>, label: string) => void;
+  onClearTooltip: () => void;
+}) {
+  const tooltipLabel = item.soon ? `${item.label} · Próximamente` : item.label;
+  return <button
+    type="button"
+    className={`${active ? styles.active : ""} ${item.soon ? styles.soon : ""}`}
+    onClick={() => { if (!item.soon && item.destination) onNavigate(item.destination); }}
+    aria-label={tooltipLabel}
+    aria-current={active ? "page" : undefined}
+    aria-disabled={item.soon ? "true" : undefined}
+    onMouseEnter={(event) => onTooltip(event, tooltipLabel)}
+    onMouseLeave={onClearTooltip}
+    onFocus={(event) => onTooltip(event, tooltipLabel)}
+    onBlur={onClearTooltip}
+  >
+    <span className={styles.navIcon}><DashboardIcon name={item.icon} /></span>
+    <span className={styles.navText}>{item.label}</span>
+    {item.soon && <span className={styles.navSoon}>Próximamente</span>}
+  </button>;
+}
+
 export default function ProgyDashboard({ user, integrations }: { user: PanelUser; integrations: IntegrationStatus }) {
   const { snapshot, loading, error, notice, load, action } = useWorkspace();
   const [section, setSection] = useState<SectionId>("inicio");
+  const [progyTab, setProgyTab] = useState<ProgyTab>("personalidad");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
   const [sidebarTooltip, setSidebarTooltip] = useState<{ label: string; top: number } | null>(null);
@@ -89,7 +157,9 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   }
 
   function go(next: string) {
-    setSection((headers[next as SectionId] ? next : "inicio") as SectionId);
+    const target = resolveNavigation(next);
+    setSection(target.section);
+    if (target.progyTab) setProgyTab(target.progyTab);
     setMobileOpen(false);
     setSidebarTooltip(null);
   }
@@ -171,10 +241,16 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
       {snapshot.businesses.length > 1 && <select className={styles.businessSelect} value={workspace.business.id} onChange={(event) => void load(event.target.value)}>{snapshot.businesses.map((business) => <option value={business.id} key={business.id}>{business.name}</option>)}</select>}
 
       <nav className={styles.nav} aria-label="Panel de Progy">
-        <div className={styles.navLabel}>TRABAJO</div>
-        {nav.map((item) => <button key={item.id} className={section === item.id ? styles.active : ""} onClick={() => go(item.id)} aria-label={item.label} onMouseEnter={(event) => showSidebarTooltip(event, item.label)} onMouseLeave={() => setSidebarTooltip(null)} onFocus={(event) => showSidebarTooltip(event, item.label)} onBlur={() => setSidebarTooltip(null)}><span className={styles.navIcon}><DashboardIcon name={item.icon} /></span><span className={styles.navText}>{item.label}</span></button>)}
-        <div className={styles.navLabel}>CUENTA</div>
-        <button className={section === "ajustes" ? styles.active : ""} onClick={() => go("ajustes")} aria-label="Configuración" onMouseEnter={(event) => showSidebarTooltip(event, "Configuración")} onMouseLeave={() => setSidebarTooltip(null)} onFocus={(event) => showSidebarTooltip(event, "Configuración")} onBlur={() => setSidebarTooltip(null)}><span className={styles.navIcon}><DashboardIcon name="settings" /></span><span className={styles.navText}>Configuración</span></button>
+        <NavButton item={homeNavItem} active={section === "inicio"} onNavigate={go} onTooltip={showSidebarTooltip} onClearTooltip={() => setSidebarTooltip(null)} />
+        {navGroups.map((group) => {
+          const groupActive = group.items.some((item) => !item.soon && item.destination === section);
+          return <div className={`${styles.navGroup} ${groupActive ? styles.navGroupActive : ""}`} key={group.id}>
+            <div className={styles.navLabel}>{group.label}</div>
+            <div className={styles.navGroupItems}>
+              {group.items.map((item) => <NavButton key={item.id} item={item} active={!item.soon && item.destination === section} onNavigate={go} onTooltip={showSidebarTooltip} onClearTooltip={() => setSidebarTooltip(null)} />)}
+            </div>
+          </div>;
+        })}
       </nav>
       {isSidebarCollapsed && sidebarTooltip && <div className={styles.sidebarTooltip} role="tooltip" style={{ top: sidebarTooltip.top }}>{sidebarTooltip.label}</div>}
 
@@ -201,10 +277,9 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
         {section === "inicio" && !isActive && workspace.readiness && <PreparationSection workspace={workspace} readiness={workspace.readiness} onGo={go} onActivate={activate} activating={activating} />}
         {section === "inicio" && isActive && <OverviewSection workspace={workspace} onGo={go} />}
         {section === "negocio" && <BusinessSection key={`business-${workspaceKey}`} workspace={workspace} action={action} />}
-        {section === "asistente" && <AgentSection key={`agent-${workspaceKey}`} workspace={workspace} action={action} />}
+        {section === "progy" && <ProgySection key={`progy-${workspaceKey}`} workspace={workspace} action={action} tab={progyTab} onTabChange={setProgyTab} />}
         {section === "catalogo" && <CatalogSection key={`catalog-${workspaceKey}`} workspace={workspace} action={action} onRefresh={() => load(workspace.business.id)} />}
         {section === "conocimiento" && <KnowledgeSection key={`knowledge-${workspaceKey}`} workspace={workspace} action={action} />}
-        {section === "voz" && <VoiceSection key={`voice-${workspaceKey}`} workspace={workspace} action={action} />}
         {section === "whatsapp" && <WhatsAppSection key={`whatsapp-${workspaceKey}`} workspace={workspace} />}
         {section === "pruebas" && <><SectionHeader eyebrow="PRUEBA ANTES DE ACTIVAR" title="Habla con Progy" description="Prueba el conocimiento y la voz del negocio. Cada turno registra su consumo para que podamos medir el costo real durante esta etapa de validación." />{!integrations.openai || !integrations.elevenlabs ? <div className={styles.errorBanner}>La prueba hablada está temporalmente en mantenimiento. Inténtalo nuevamente más tarde.</div> : <VoiceTestStudio key={`test-${workspaceKey}`} workspace={workspace} onRefresh={() => load(workspace.business.id)} />}</>}
         {section === "conversaciones" && <ConversationsSection workspace={workspace} onGo={go} onRefresh={() => load(workspace.business.id)} />}

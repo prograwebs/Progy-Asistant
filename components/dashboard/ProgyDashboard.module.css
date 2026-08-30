@@ -133,6 +133,9 @@
 .nav::-webkit-scrollbar-thumb { border-radius: 999px; background: #45484a; }
 .nav::-webkit-scrollbar-thumb:hover { background: #6a6f72; }
 .navLabel { color: #5f6467; font-size: 9px; letter-spacing: .14em; padding: 10px 10px 5px; }
+.navGroup { display: flex; flex-direction: column; gap: 3px; }
+.navGroupActive > .navLabel { color: var(--dash-accent); }
+.navGroupItems { display: flex; flex-direction: column; gap: 3px; }
 .nav button {
   min-height: 42px;
   border: 0;
@@ -148,9 +151,12 @@
 }
 .nav button:hover { color: #ddd9d2; background: rgba(255,255,255,.025); }
 .nav button.active { color: #f5f1e7; background: rgba(219,165,106,.10); box-shadow: inset 2px 0 0 var(--dash-accent); }
+.nav button.soon { color: #676d70; cursor: default; }
+.nav button.soon:hover { color: #858a8d; background: rgba(255,255,255,.018); }
 .navIcon { width: 18px; height: 19px; display: grid; place-items: center; text-align: center; color: #b8824f; }
 .navIcon svg { display: block; width: 19px; height: 19px; }
 .navText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navSoon { margin-left: auto; color: #5f6467; font-size: 8px; letter-spacing: .04em; white-space: nowrap; }
 
 .user {
   margin-top: auto;
@@ -177,6 +183,7 @@
 .app.collapsed .businessSelect,
 .app.collapsed .navLabel,
 .app.collapsed .navText,
+.app.collapsed .navSoon,
 .app.collapsed .userDetails,
 .app.collapsed .logout { display: none; }
 .app.collapsed .businessSwitch { justify-content: center; padding-left: 8px; padding-right: 8px; }
@@ -316,6 +323,10 @@
 .tabs { display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid #25292d;padding-bottom:9px;overflow:auto; }
 .tabs button { border:0;background:transparent;color:#777d80;font-size:11px;padding:8px 10px;border-radius:6px;cursor:pointer;white-space:nowrap; }
 .tabs button.active{background:var(--dash-accent-soft);color:#f2d1aa}
+.sectionTabs { display: flex; gap: 6px; margin-bottom: 24px; border-bottom: 1px solid #25292d; padding-bottom: 9px; overflow: auto; }
+.sectionTabs button { border: 0; background: transparent; color: #777d80; font-size: 11px; padding: 8px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.sectionTabs button:hover { color: #ddd9d2; background: rgba(255,255,255,.025); }
+.sectionTabs button.active { background: var(--dash-accent-soft); color: #f2d1aa; }
 
 .voiceGrid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px; }
 .voice { position:relative;border:1px solid #292d30;background:#0f1214;border-radius:9px;padding:13px;cursor:pointer;text-align:left;color:inherit; }
