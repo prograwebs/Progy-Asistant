@@ -2,6 +2,7 @@ import { isLibraryVoice, listElevenLabsVoices } from "../voice/catalog";
 import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { getOnboardingTemplate, TEMPLATE_VERSION } from "./templates";
 import { getNicheProfile } from "../niche/profile";
+import { initializeTrialPlan } from "../billing/quota";
 import type { OnboardingActivationStatus, OnboardingChannelStatus, OnboardingFlowStatus, OnboardingReadiness, OnboardingSnapshot } from "@shared/types/onboarding";
 
 type Row = Record<string, unknown>;
@@ -173,6 +174,7 @@ export async function createBusinessFromTemplate(userId: string, input: { name: 
   if (template.code !== categoryCode) throw new SupabaseDataError("La categoría seleccionada no es válida.", 400);
 
   let business: Row | null = input.businessId ? await findBusiness(userId, input.businessId) : await findPendingBusiness(userId, name, categoryCode);
+  let created = false;
   if (!business) {
     const categories = await supabaseDataRequest<Row[]>(`business_categories?code=eq.${enc(categoryCode)}&is_active=eq.true&select=code`);
     if (!categories[0]) throw new SupabaseDataError("La categoría seleccionada no está disponible.", 400);
@@ -182,8 +184,10 @@ export async function createBusinessFromTemplate(userId: string, input: { name: 
       prefer: "return=representation",
     });
     business = Array.isArray(createdPayload) ? createdPayload[0] : createdPayload;
+    created = true;
   }
   if (!business?.id) throw new SupabaseDataError("El negocio no pudo crearse.", 500);
+  if (created) await initializeTrialPlan(text(business, "id"));
   const onboarding = await seedTemplate(text(business, "id"), text(business, "name") || name, text(business, "category_code") || categoryCode);
   return { business, onboarding };
 }

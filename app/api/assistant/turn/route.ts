@@ -6,6 +6,7 @@ import { executeAssistantDecision } from "../../../../lib/assistant/actions";
 import { executeTool, getEnabledToolsForBusiness } from "../../../../lib/agent/tools/registry";
 import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../../../lib/assistant/demo-limits";
 import { developmentTestingMode, entitlementsFor, normalizePlanCode, voiceTrialAllowance } from "../../../../lib/billing/entitlements";
+import { checkQuota } from "../../../../lib/billing/quota";
 import { exceedsBase64SourceLimit, exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
 import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { recordElevenLabsUsage, recordOpenAIUsage } from "../../../../lib/usage/ledger";
@@ -218,6 +219,14 @@ export async function POST(request: Request) {
     }
 
     if (!businessId) throw new SupabaseDataError("Selecciona un negocio antes de probar a Progy.", 400);
+    const quota = await checkQuota(businessId, supabaseDataRequest);
+    if (!quota.allowed) {
+      return Response.json({
+        error: "En este momento no puedo continuar la conversación. Contacta directamente al negocio.",
+        code: `quota_${quota.reason}`,
+        reason: quota.reason,
+      }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+    }
     if (!userText) throw new OpenAIServiceError("No logramos identificar qué deseas preguntar.", 422);
     if (conversationId && !demoMode) {
       try {

@@ -1,4 +1,5 @@
 import { type DataRequest, supabaseDataRequest } from "@/lib/data/supabase";
+import { recordUsageAndEnforce } from "@/lib/billing/quota";
 import type { OpenAIUsage } from "../ai/openai";
 
 export type UsageKind =
@@ -37,28 +38,10 @@ async function insertUsage(
   quantity: number,
   estimatedCostUsd: number,
   request: DataRequest,
+  provider?: string,
 ) {
   if (!quantity || quantity < 0) return;
-  try {
-    await request("usage_ledger", {
-      method: "POST",
-      body: JSON.stringify({
-        business_id: businessId,
-        kind,
-        quantity,
-        estimated_cost_usd: Number(Math.max(0, estimatedCostUsd).toFixed(8)),
-      }),
-      prefer: "return=minimal",
-    });
-  } catch (error) {
-    // Usage metering must never break a customer interaction. Keep the error
-    // visible to developers while allowing the primary request to complete.
-    console.error("Progy usage ledger write failed", {
-      businessId,
-      kind,
-      error,
-    });
-  }
+  await recordUsageAndEnforce({ businessId, kind, quantity, estimatedCostUsd, provider, request });
 }
 
 export async function recordOpenAIUsage(
@@ -74,6 +57,7 @@ export async function recordOpenAIUsage(
       usage.inputTokens,
       estimatedCost,
       request,
+      "openai",
     ),
     insertUsage(
       businessId,
@@ -81,6 +65,7 @@ export async function recordOpenAIUsage(
       usage.outputTokens,
       0,
       request,
+      "openai",
     ),
     insertUsage(
       businessId,
@@ -88,6 +73,7 @@ export async function recordOpenAIUsage(
       usage.audioInputTokens,
       0,
       request,
+      "openai",
     ),
   ]);
 }
@@ -104,6 +90,7 @@ export async function recordElevenLabsUsage(
     Math.max(0, Math.round(characters)),
     (Math.max(0, characters) / 1000) * rate,
     request,
+    "elevenlabs",
   );
 }
 
@@ -118,5 +105,6 @@ export async function recordCatalogImport(
     Math.max(1, extractedItems),
     0,
     request,
+    "openai",
   );
 }

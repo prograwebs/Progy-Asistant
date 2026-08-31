@@ -47,7 +47,7 @@ export type Conversation = {
 
 export type Order = { id: string; order_number: number; customer_name?: string | null; status: string; fulfillment: string; total: number; created_at: string };
 export type Booking = { id: string; customer_name?: string | null; type: string; status: string; starts_at: string; party_size?: number | null; resource_name?: string | null; created_at: string };
-export type Plan = { plan_code: string; status: string; included_voice_seconds: number; used_voice_seconds: number; trial_ends_at?: string | null };
+export type Plan = { plan_code: string; status: string; included_voice_seconds: number; used_voice_seconds: number; included_budget_usd?: number; used_budget_usd?: number; trial_ends_at?: string | null };
 export type Usage = { id: string; kind: string; quantity: number; estimated_cost_usd: number; created_at: string };
 
 export type VoiceOption = {

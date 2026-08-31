@@ -464,6 +464,7 @@ export type Database = {
       business_members: {
         Row: {
           business_id: string
+          budget_period_starts_at: string
           created_at: string
           id: string
           is_active: boolean
@@ -569,6 +570,7 @@ export type Database = {
           current_period_ends_at: string | null
           current_period_starts_at: string | null
           customer_demo_seconds_per_user: number
+          included_budget_usd: number
           included_voice_seconds: number
           max_customer_demo_sessions: number
           owner_demo_seconds: number
@@ -577,14 +579,17 @@ export type Database = {
           trial_ends_at: string
           trial_starts_at: string
           updated_at: string
+          used_budget_usd: number
           used_voice_seconds: number
         }
         Insert: {
           business_id: string
+          budget_period_starts_at?: string
           created_at?: string
           current_period_ends_at?: string | null
           current_period_starts_at?: string | null
           customer_demo_seconds_per_user?: number
+          included_budget_usd?: number
           included_voice_seconds?: number
           max_customer_demo_sessions?: number
           owner_demo_seconds?: number
@@ -593,14 +598,17 @@ export type Database = {
           trial_ends_at?: string
           trial_starts_at?: string
           updated_at?: string
+          used_budget_usd?: number
           used_voice_seconds?: number
         }
         Update: {
           business_id?: string
+          budget_period_starts_at?: string
           created_at?: string
           current_period_ends_at?: string | null
           current_period_starts_at?: string | null
           customer_demo_seconds_per_user?: number
+          included_budget_usd?: number
           included_voice_seconds?: number
           max_customer_demo_sessions?: number
           owner_demo_seconds?: number
@@ -609,6 +617,7 @@ export type Database = {
           trial_ends_at?: string
           trial_starts_at?: string
           updated_at?: string
+          used_budget_usd?: number
           used_voice_seconds?: number
         }
         Relationships: [

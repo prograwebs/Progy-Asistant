@@ -2,6 +2,7 @@ import { generateAssistantDecision } from "../ai/openai";
 import { executeTool, getEnabledToolsForBusiness } from "../agent/tools/registry";
 import { buildCompactAgentInstructions } from "../assistant/context";
 import { getNicheProfile } from "../niche/profile";
+import { checkQuota } from "../billing/quota";
 import { type DataRequest, loadAgentContextWith } from "@/lib/data/supabase";
 import { recordOpenAIUsage } from "../usage/ledger";
 import { getWhatsAppConfig } from "./config";
@@ -128,6 +129,25 @@ async function requestAsAdmin<T>(
 
 const adminRequest: DataRequest = requestAsAdmin;
 
+const QUOTA_FALLBACK = "En este momento no puedo continuar la conversación. Por favor contacta directamente al negocio.";
+
+async function markQuotaNotice(conversationId: string, businessId: string, metadata: unknown) {
+  const current = metadata && typeof metadata === "object" && !Array.isArray(metadata)
+    ? metadata as Record<string, unknown>
+    : {};
+  const lastNotice = Date.parse(text(current.quota_notice_sent_at));
+  if (Number.isFinite(lastNotice) && Date.now() - lastNotice < 24 * 60 * 60 * 1000) return false;
+  await supabaseAdminRequest(`conversations?id=eq.${encodeURIComponent(conversationId)}&business_id=eq.${encodeURIComponent(businessId)}&channel=eq.whatsapp_chat`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      summary: QUOTA_FALLBACK,
+      metadata: { ...current, quota_notice_sent_at: new Date().toISOString() },
+    }),
+    prefer: "return=minimal",
+  });
+  return true;
+}
+
 async function processInboundMessage(
   connection: WhatsAppConnectionForWebhook,
   value: WebhookValue,
@@ -181,6 +201,37 @@ async function processInboundMessage(
     await updateMessage(providerMessageId, {
       conversation_id: conversation.id,
     });
+
+    failureStage = "quota";
+    const quota = await checkQuota(connection.business_id, adminRequest);
+    if (!quota.allowed) {
+      const shouldNotify = await markQuotaNotice(conversation.id, connection.business_id, conversation.metadata);
+      if (shouldNotify) {
+        const sent = await sendWhatsAppText({
+          graphVersion: getWhatsAppConfig().graphVersion,
+          phoneNumberId: connection.phone_number_id,
+          accessToken: connection.access_token,
+          to: fromPhone,
+          text: QUOTA_FALLBACK,
+        });
+        const outboundId = sent.result.messages?.[0]?.id || "";
+        if (!sent.response.ok || !outboundId) throw new Error("Meta did not accept the quota response");
+        await saveOutboundMessage({
+          providerMessageId: outboundId,
+          businessId: connection.business_id,
+          phoneNumberId: connection.phone_number_id,
+          fromPhone: value.metadata?.display_phone_number || connection.phone_number_id,
+          toPhone: fromPhone,
+          textBody: QUOTA_FALLBACK,
+          conversationId: conversation.id,
+          providerPayload: sent.result,
+        });
+        await updateMessage(providerMessageId, { status: "processed", response_message_id: outboundId });
+      } else {
+        await updateMessage(providerMessageId, { status: "processed" });
+      }
+      return "processed" as const;
+    }
 
     failureStage = "context";
     const context = await loadAgentContextWith(

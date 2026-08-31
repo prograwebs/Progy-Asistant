@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { requireApiUser } from "@/lib/auth/supabase";
 import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { calculateReadiness, ensureNicheDefaults } from "../../../lib/onboarding/service";
+import { initializeTrialPlan } from "../../../lib/billing/quota";
 import { getNicheProfile } from "../../../lib/niche/profile";
 import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "@shared/validation/input";
 
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
       const created = Array.isArray(createdPayload) ? createdPayload[0] : createdPayload;
       if (!created?.id) throw new SupabaseDataError("El negocio no pudo crearse.", 500);
       const businessId = String(created.id);
+      await initializeTrialPlan(businessId);
       const greeting = `Hola, gracias por comunicarte con ${name}. Soy Progy, ¿en qué puedo ayudarte?`;
       const updatedAgent = await supabaseDataRequest<UnknownRow[]>(`agent_configs?business_id=eq.${enc(businessId)}`, {
         method: "PATCH",

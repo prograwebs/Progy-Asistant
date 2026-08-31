@@ -3,6 +3,11 @@ const MIN_MAX_PAYLOAD_MB = 0.25;
 const MAX_MAX_PAYLOAD_MB = 100;
 const BASE64_RESPONSE_OVERHEAD_BYTES = 64 * 1024;
 
+// Platform-level trial settings. Change these values when the pilot policy
+// changes; they intentionally are not stored per business yet.
+export const TRIAL_DEFAULT_BUDGET_USD = 0.25;
+export const TRIAL_DEFAULT_DURATION_DAYS = 14;
+
 export function resolveMaxPayloadMegabytes(value: string | undefined) {
   const configured = Number(value);
   if (!Number.isFinite(configured) || configured < MIN_MAX_PAYLOAD_MB || configured > MAX_MAX_PAYLOAD_MB) {
