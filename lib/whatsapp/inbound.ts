@@ -1,6 +1,5 @@
 import { generateAssistantDecision } from "../ai/openai";
 import { executeTool, getEnabledToolsForBusiness } from "../agent/tools/registry";
-import { buildCompactAgentInstructions } from "../assistant/context";
 import { getNicheProfile } from "../niche/profile";
 import { checkQuota } from "../billing/quota";
 import { type DataRequest, loadAgentContextWith } from "@/lib/data/supabase";
@@ -21,6 +20,7 @@ import {
 } from "./webhook-store";
 import { isWhatsAppTokenExpired } from "./store";
 import { supabaseAdminRequest } from "@/lib/data/supabase-admin";
+import { finishTurnTrace, startTurnTrace, type TurnTrace } from "../observability/langfuse";
 
 type WebhookMessage = {
   id?: string;
@@ -163,6 +163,7 @@ async function processInboundMessage(
   const bodyText = messageText(message);
   let failureStage = "claim";
   let hasClaim = false;
+  let turnTrace: TurnTrace | undefined;
   try {
     const claimed = await claimIncomingMessage({
       providerMessageId,
@@ -239,11 +240,21 @@ async function processInboundMessage(
       connection.business_id,
     );
     const niche = await getNicheProfile(String(context.business.category_code || ""), adminRequest);
+    turnTrace = startTurnTrace({
+      businessId: connection.business_id,
+      conversationId: conversation.id,
+      channel: "whatsapp",
+      categoryCode: String(context.business.category_code || ""),
+      userText: bodyText,
+      tags: ["production", "whatsapp"],
+    });
     failureStage = "openai";
     const tools = getEnabledToolsForBusiness(context);
     const generated = await generateAssistantDecision({
       businessId: connection.business_id,
-      instructions: buildCompactAgentInstructions(context, bodyText, false, niche),
+      context,
+      niche,
+      trace: turnTrace,
       userText: bodyText,
       history: historyFromConversation(conversation.metadata),
       safetyIdentifier: `progy-whatsapp-${connection.business_id}`,
@@ -327,8 +338,10 @@ async function processInboundMessage(
       status: "processed",
       response_message_id: outboundId,
     });
+    await finishTurnTrace(turnTrace, { reply, intent: generated.decision.intent, action });
     return "processed" as const;
   } catch (error) {
+    await finishTurnTrace(turnTrace, null, error);
     console.error("Progy WhatsApp inbound processing failed", {
       businessId: connection.business_id,
       providerMessageId,

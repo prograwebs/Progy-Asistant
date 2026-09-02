@@ -1,6 +1,5 @@
 import { requireApiUser } from "@/lib/auth/supabase";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "../../../../lib/ai/openai";
-import { buildCompactAgentInstructions } from "../../../../lib/assistant/context";
 import { getNicheProfile } from "../../../../lib/niche/profile";
 import { executeAssistantDecision } from "../../../../lib/assistant/actions";
 import { executeTool, getEnabledToolsForBusiness } from "../../../../lib/agent/tools/registry";
@@ -11,8 +10,10 @@ import { exceedsBase64SourceLimit, exceedsPayloadLimit, MAX_PAYLOAD_MB } from ".
 import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
 import { recordElevenLabsUsage, recordOpenAIUsage } from "../../../../lib/usage/ledger";
 import { resolveOnboardingVoiceId, synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
+import { finishTurnTrace, startTurnTrace, type TurnTrace } from "../../../../lib/observability/langfuse";
 
 export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
 
 type UnknownRow = Record<string, unknown>;
 type HistoryEntry = { role: "user" | "assistant"; text: string };
@@ -172,6 +173,7 @@ export async function POST(request: Request) {
   const user = await requireApiUser();
   if (!user) return Response.json({ error: "Inicia sesión para probar a Progy." }, { status: 401 });
 
+  let turnTrace: TurnTrace | undefined;
   try {
     const contentType = request.headers.get("content-type") || "";
     let businessId = "";
@@ -181,6 +183,7 @@ export async function POST(request: Request) {
     let wantsAudio = false;
     let demoMode = false;
     let requestedVoiceId = "";
+    let audioFile: File | null = null;
     let transcriptionUsage = null as Awaited<ReturnType<typeof transcribeAudio>>["usage"] | null;
 
     if (contentType.includes("multipart/form-data")) {
@@ -202,10 +205,7 @@ export async function POST(request: Request) {
       if (exceedsPayloadLimit(audio.size)) {
         throw new OpenAIServiceError(`El audio supera el límite de ${MAX_PAYLOAD_MB} MB. Habla en turnos más cortos.`, 413);
       }
-
-      const transcription = await transcribeAudio(audio, `progy-${user.id}`);
-      userText = transcription.text;
-      transcriptionUsage = transcription.usage;
+      audioFile = audio;
     } else {
       const body = await request.json().catch(() => null) as Record<string, unknown> | null;
       if (!body) throw new OpenAIServiceError("La solicitud no es válida.", 400);
@@ -226,6 +226,31 @@ export async function POST(request: Request) {
         code: `quota_${quota.reason}`,
         reason: quota.reason,
       }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+    }
+    const context = await loadAgentContext(businessId);
+    const niche = await getNicheProfile(String(context.business.category_code || ""));
+    const allowance = await trialAllowance(businessId, conversationId || null);
+    if (!allowance.allowed) {
+      return Response.json({
+        error: "Ya utilizaste la prueba de voz incluida. Puedes seguir configurando Progy y activar un plan cuando quieras continuar probando.",
+        code: "voice_trial_limit_reached",
+        plan: allowance.entitlements.code,
+        upgradeRequired: true,
+      }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
+    }
+
+    turnTrace = startTurnTrace({
+      businessId,
+      conversationId,
+      channel: "web",
+      categoryCode: String(context.business.category_code || ""),
+      userText: userText || "[audio]",
+      tags: [demoMode ? "demo" : "production", audioFile ? "audio" : "text"],
+    });
+    if (audioFile) {
+      const transcription = await transcribeAudio(audioFile, `progy-${user.id}`, turnTrace);
+      userText = transcription.text;
+      transcriptionUsage = transcription.usage;
     }
     if (!userText) throw new OpenAIServiceError("No logramos identificar qué deseas preguntar.", 422);
     if (conversationId && !demoMode) {
@@ -255,26 +280,16 @@ export async function POST(request: Request) {
       }
     }
 
-    const context = await loadAgentContext(businessId);
-    const niche = await getNicheProfile(String(context.business.category_code || ""));
     const voiceId = demoMode
       ? await resolveOnboardingVoiceId(requestedVoiceId)
       : (typeof context.agent.voice_id === "string" ? context.agent.voice_id : null);
-    const allowance = await trialAllowance(businessId, conversationId || null);
-    if (!allowance.allowed) {
-      return Response.json({
-        error: "Ya utilizaste la prueba de voz incluida. Puedes seguir configurando Progy y activar un plan cuando quieras continuar probando.",
-        code: "voice_trial_limit_reached",
-        plan: allowance.entitlements.code,
-        upgradeRequired: true,
-      }, { status: 402, headers: { "Cache-Control": "private, no-store, max-age=0" } });
-    }
-
-    const instructions = buildCompactAgentInstructions(context, userText, demoMode, niche);
     const tools = getEnabledToolsForBusiness(context);
     const generated = await generateAssistantDecision({
       businessId,
-      instructions,
+      context,
+      niche,
+      demoMode,
+      trace: turnTrace,
       userText,
       history,
       safetyIdentifier: `progy-${user.id}`,
@@ -349,7 +364,7 @@ export async function POST(request: Request) {
     await persistConversationTurn({ businessId, conversationId, userText, reply, action, audioWarning });
 
     const testingMode = developmentTestingMode();
-    return Response.json({
+    const responseBody = {
       userText,
       reply,
       intent: generated.decision.intent,
@@ -362,8 +377,11 @@ export async function POST(request: Request) {
         sessionsRemaining: testingMode ? 9999 : allowance.sessionsRemaining,
         testingMode,
       },
-    }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
+    };
+    await finishTurnTrace(turnTrace, { reply, intent: generated.decision.intent, action });
+    return Response.json(responseBody, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
   } catch (error) {
+    await finishTurnTrace(turnTrace, null, error);
     return jsonError(error);
   }
 }
