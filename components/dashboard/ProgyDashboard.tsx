@@ -22,6 +22,7 @@ import { onboardingPathForStatus } from "@/lib/shared/onboarding/paths";
 import { DashboardIcon } from "./LineIcon";
 import styles from "./ProgyDashboard.module.css";
 import PrivateSessionGuard from "../auth/PrivateSessionGuard";
+import { logout as logoutSession } from "@/lib/client/services/auth";
 
 gsap.registerPlugin(useGSAP);
 
@@ -153,7 +154,7 @@ export default function ProgyDashboard({ user, integrations }: { user: PanelUser
   const [activationError, setActivationError] = useState("");
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await logoutSession();
     window.location.replace("/acceso?mode=login");
   }
 

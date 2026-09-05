@@ -116,6 +116,7 @@ lib/
     types/                contratos propios del cliente
       auth.ts             contratos de autenticación cliente
     services/             adaptadores cliente para consumir Route Handlers
+      auth.ts             consumo centralizado de login, sesión, OAuth y logout
   shared/                 código seguro para cliente y servidor
     assistant/
       demo-limits.ts      límites y normalización de la demo

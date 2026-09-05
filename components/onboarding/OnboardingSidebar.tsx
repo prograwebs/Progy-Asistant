@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { LogOut } from "lucide-react";
+import { logout as logoutSession } from "@/lib/client/services/auth";
 import type { PanelUser } from "@/lib/shared/types/workspace";
 import { getCategory } from "./data";
 import { OnboardingIcon, ProgyMark } from "./OnboardingIcon";
@@ -20,7 +21,7 @@ export default function OnboardingSidebar({ user, draft, currentStep }: { user: 
   const category = getCategory(draft.categoryCode);
 
   async function logout() {
-    await fetch("/api/auth/logout", { method: "POST" });
+    await logoutSession();
     window.location.replace("/acceso?mode=login");
   }
 

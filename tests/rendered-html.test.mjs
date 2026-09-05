@@ -233,6 +233,35 @@ test("auth success requires a persisted session or email confirmation", () => {
   assert.match(oauth, /if \(!sessionSaved\)[\s\S]*status: 502/);
 });
 
+test("centralizes browser authentication requests in the client auth service", () => {
+  const service = read("lib/client/services/auth.ts");
+  const types = read("lib/client/types/auth.ts");
+  const oauth = read("components/auth/OAuthCallbackClient.tsx");
+  const guard = read("components/auth/PrivateSessionGuard.tsx");
+  const workspace = read("hooks/dashboard/useWorkspace.ts");
+  const dashboard = read("components/dashboard/ProgyDashboard.tsx");
+  const onboarding = read("components/onboarding/OnboardingSidebar.tsx");
+
+  assert.match(types, /export type OAuthSessionInput/);
+  assert.match(types, /export type AuthSessionStatus/);
+  assert.match(service, /fetch\("\/api\/auth\/oauth-session"/);
+  assert.match(service, /fetch\("\/api\/auth\/me"/);
+  assert.match(service, /fetch\("\/api\/auth\/refresh"/);
+  assert.match(service, /fetch\("\/api\/auth\/logout"/);
+  assert.match(service, /export async function oauthSession/);
+  assert.match(service, /export async function checkSession/);
+  assert.match(service, /export async function refreshSession/);
+  assert.match(service, /export async function logout/);
+  assert.match(oauth, /await oauthSession\(/);
+  assert.match(guard, /const result = await checkSession\(\)/);
+  assert.match(workspace, /const refreshed = await refreshSession\(\)/);
+  assert.match(dashboard, /await logoutSession\(\)/);
+  assert.match(onboarding, /await logoutSession\(\)/);
+  for (const source of [oauth, guard, workspace, dashboard, onboarding]) {
+    assert.doesNotMatch(source, /fetch\(["'`]\/api\/auth\/(?:oauth-session|me|refresh|logout)/);
+  }
+});
+
 test("enforces authentication input limits on the server and renews expired sessions", () => {
   const authConfig = read("lib/shared/config/auth.ts");
   const input = read("lib/shared/validation/input.ts");

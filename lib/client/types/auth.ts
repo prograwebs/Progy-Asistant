@@ -13,3 +13,14 @@ export type AuthResult = {
 };
 
 export type AuthEndpoint = "login" | "signup";
+
+export type OAuthSessionInput = {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+};
+
+export type AuthSessionStatus = {
+  ok: boolean;
+  status: number | null;
+};

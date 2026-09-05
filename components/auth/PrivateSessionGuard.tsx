@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect } from "react";
+import { checkSession } from "@/lib/client/services/auth";
 
 export default function PrivateSessionGuard() {
   useEffect(() => {
     let active = true;
 
     async function verifySession() {
-      const response = await fetch("/api/auth/me", { cache: "no-store" }).catch(() => null);
-      if (active && response?.status === 401) window.location.replace("/acceso?mode=login");
+      const result = await checkSession();
+      if (active && result.status === 401) window.location.replace("/acceso?mode=login");
     }
 
     function handlePageShow() {

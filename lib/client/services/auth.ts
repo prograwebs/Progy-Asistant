@@ -4,7 +4,14 @@ import {
   AUTH_PASSWORD_MAX_LENGTH,
   AUTH_PASSWORD_MIN_LENGTH,
 } from "@/lib/shared/config/auth";
-import type { AuthEndpoint, AuthResult, LoginInput, SignupInput } from "@/lib/client/types/auth";
+import type {
+  AuthEndpoint,
+  AuthResult,
+  AuthSessionStatus,
+  LoginInput,
+  OAuthSessionInput,
+  SignupInput,
+} from "@/lib/client/types/auth";
 
 export const googleAuthPath = "/api/auth/google";
 
@@ -61,4 +68,34 @@ export function signup(input: SignupInput) {
   }
 
   return postAuth("signup", { name, email, password: input.password }, "No pudimos crear la cuenta.");
+}
+
+export async function oauthSession(input: OAuthSessionInput) {
+  const response = await fetch("/api/auth/oauth-session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const body = await response.json().catch(() => null) as unknown;
+  const error = isRecord(body) && typeof body.error === "string" ? body.error : "";
+
+  if (!response.ok) throw new Error(error || "No pudimos completar el acceso con Google.");
+}
+
+export async function checkSession(): Promise<AuthSessionStatus> {
+  try {
+    const response = await fetch("/api/auth/me", { cache: "no-store" });
+    return { ok: response.ok, status: response.status };
+  } catch {
+    return { ok: false, status: null };
+  }
+}
+
+export async function refreshSession() {
+  const response = await fetch("/api/auth/refresh", { method: "POST", cache: "no-store" });
+  return response.ok;
+}
+
+export async function logout() {
+  await fetch("/api/auth/logout", { method: "POST" });
 }

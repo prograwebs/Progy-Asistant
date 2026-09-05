@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { refreshSession } from "@/lib/client/services/auth";
 import type { Business, Snapshot } from "@/lib/shared/types/workspace";
 
 type WorkspaceResponse = Snapshot & {
@@ -35,8 +36,8 @@ export function useWorkspace() {
       let { response, result } = await requestWorkspace();
 
       if (response.status === 401 && result.code === "session_refresh_required") {
-        const refresh = await fetch("/api/auth/refresh", { method: "POST", cache: "no-store" });
-        if (!refresh.ok) {
+        const refreshed = await refreshSession();
+        if (!refreshed) {
           redirectToLogin();
           return;
         }

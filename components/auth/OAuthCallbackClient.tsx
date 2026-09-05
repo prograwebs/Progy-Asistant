@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { oauthSession } from "@/lib/client/services/auth";
 
 export default function OAuthCallbackClient() {
   const [message, setMessage] = useState("Validando tu cuenta de Google…");
@@ -25,13 +26,7 @@ export default function OAuthCallbackClient() {
       }
 
       try {
-        const response = await fetch("/api/auth/oauth-session", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken, refreshToken, expiresIn }),
-        });
-        const result = (await response.json()) as { error?: string };
-        if (!response.ok) throw new Error(result.error || "No pudimos completar el acceso con Google.");
+        await oauthSession({ accessToken, refreshToken, expiresIn });
         window.history.replaceState(null, "", "/auth/callback");
         window.location.replace("/panel");
       } catch (error) {
