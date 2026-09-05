@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { SupabaseDataError } from "@/lib/server/data/supabase";
 import { activateBusiness, createBusinessFromTemplate, getOnboardingSnapshot, markChannelConnected, markChannelSkipped, saveDemoForBusiness } from "@/lib/server/onboarding/service";
 import { listOnboardingTemplates } from "@/lib/shared/onboarding/templates";
@@ -13,7 +13,7 @@ function jsonError(error: unknown) {
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Inicia sesión para continuar." }, { status: 401 });
   const businessId = new URL(request.url).searchParams.get("businessId")?.trim();
   try {
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Tu sesión terminó. Vuelve a iniciar sesión." }, { status: 401 });
   const body = await request.json().catch(() => null) as unknown;
   if (!isRecord(body) || typeof body.action !== "string") return Response.json({ error: "La solicitud no es válida." }, { status: 400 });

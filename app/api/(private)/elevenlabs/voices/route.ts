@@ -1,12 +1,12 @@
 import { ElevenLabsVoiceError, listElevenLabsVoices } from "@/lib/server/voice/catalog";
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { serverConfig } from "@/lib/server/config/env";
 import { isLibraryVoice } from "@/lib/server/voice/catalog";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Inicia sesión para elegir una voz." }, { status: 401 });
 
   try {

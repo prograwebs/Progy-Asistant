@@ -1,6 +1,6 @@
 import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/server/whatsapp/store";
 import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { DEFAULT_META_GRAPH_VERSION } from "@/lib/shared/whatsapp/constants";
 import {
   listClientWhatsAppAccounts,
@@ -98,7 +98,7 @@ function cleanId(value: unknown) {
  */
 export async function POST(request: Request) {
   const requestId = crypto.randomUUID();
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
 
   if (!user) {
     return Response.json(
@@ -976,7 +976,7 @@ export async function GET(
   request: Request,
 ) {
   const user =
-    await requireApiUser();
+    await getSupabaseUser();
 
   if (!user) {
     return Response.json(

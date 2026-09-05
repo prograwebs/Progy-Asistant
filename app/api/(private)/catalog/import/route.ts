@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { extractCatalogFromFile, OpenAIServiceError } from "@/lib/server/ai/openai";
 import { catalogImportAllowance } from "@/lib/server/billing/entitlements";
 import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "@/lib/shared/config/limits";
@@ -184,7 +184,7 @@ async function confirm(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Inicia sesión para importar tu catálogo." }, { status: 401 });
 
   try {

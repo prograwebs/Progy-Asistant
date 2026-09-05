@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import {
   assertAdmin,
   listPendingInvoices,
@@ -24,7 +24,7 @@ function jsonError(error: unknown) {
 
 export async function GET() {
   try {
-    const user = await requireApiUser();
+    const user = await getSupabaseUser();
     if (!user) return Response.json({ error: "Inicia sesión." }, { status: 401, headers: noStore });
     await assertAdmin();
     return Response.json({ invoices: await listPendingInvoices() }, { headers: noStore });
@@ -35,7 +35,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await requireApiUser();
+    const user = await getSupabaseUser();
     if (!user) return Response.json({ error: "Inicia sesión." }, { status: 401, headers: noStore });
     await assertAdmin();
 

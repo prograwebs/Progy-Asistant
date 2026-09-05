@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
 import { DEFAULT_META_GRAPH_VERSION } from "@/lib/shared/whatsapp/constants";
 import { sendWhatsAppText } from "@/lib/server/whatsapp/meta-client";
@@ -53,7 +53,7 @@ async function assertAccess(userId: string, businessId: string, conversationId: 
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return json({ error: "Inicia sesión para ver la conversación." }, 401);
 
   if (!getWhatsAppConfig().enabled) {
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return json({ error: "Inicia sesión para responder." }, 401);
 
   if (!getWhatsAppConfig().enabled) {

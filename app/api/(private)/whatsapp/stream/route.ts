@@ -1,5 +1,5 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
 import { canManageBusiness } from "@/lib/server/whatsapp/store";
 import { createWhatsAppRealtimeClient } from "@/lib/server/whatsapp/realtime";
@@ -38,7 +38,7 @@ function eventData(businessId: string, conversationId?: string) {
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) {
     return new Response("Unauthorized", {
       status: 401,

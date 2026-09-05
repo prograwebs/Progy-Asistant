@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { generateAssistantDecision, OpenAIServiceError, transcribeAudio } from "@/lib/server/ai/openai";
 import { getNicheProfile } from "@/lib/server/niche/profile";
 import { executeAssistantDecision } from "@/lib/server/assistant/actions";
@@ -170,7 +170,7 @@ async function persistConversationTurn(options: {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Inicia sesión para probar a Progy." }, { status: 401 });
 
   let turnTrace: TurnTrace | undefined;

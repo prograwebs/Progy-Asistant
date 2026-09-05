@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
 import {
   DEFAULT_META_GRAPH_VERSION,
@@ -158,7 +158,7 @@ async function listTemplates(
 
 export async function GET(request: Request) {
   try {
-    const user = await requireApiUser();
+    const user = await getSupabaseUser();
 
     if (!user) {
       return Response.json(
@@ -281,7 +281,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user =
-      await requireApiUser();
+      await getSupabaseUser();
 
     if (!user) {
       return Response.json(

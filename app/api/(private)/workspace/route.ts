@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { SupabaseDataError, supabaseDataRequest } from "@/lib/server/data/supabase";
 import { calculateReadiness, ensureNicheDefaults } from "@/lib/server/onboarding/service";
 import { initializeTrialPlan } from "@/lib/server/billing/quota";
@@ -81,7 +81,7 @@ async function snapshot(userId: string, requestedBusinessId?: string | null) {
 }
 
 export async function GET(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Inicia sesión para abrir tu panel." }, { status: 401 });
   try {
     const businessId = new URL(request.url).searchParams.get("businessId");
@@ -90,7 +90,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const user = await requireApiUser();
+  const user = await getSupabaseUser();
   if (!user) return Response.json({ error: "Tu sesión terminó. Vuelve a iniciar sesión." }, { status: 401 });
   const body = await request.json().catch(() => null) as Record<string, unknown> | null;
   if (!body || typeof body.action !== "string") return Response.json({ error: "La solicitud no es válida." }, { status: 400 });

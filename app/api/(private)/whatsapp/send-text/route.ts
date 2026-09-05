@@ -1,4 +1,4 @@
-import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
 import {
   DEFAULT_META_GRAPH_VERSION,
@@ -95,7 +95,7 @@ export async function POST(request: Request) {
      * 1. Usuario autenticado.
      */
     const user =
-      await requireApiUser();
+      await getSupabaseUser();
 
     if (!user) {
       return Response.json(
