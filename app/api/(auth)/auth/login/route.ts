@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { saveSupabaseSession, supabaseAuthRequest } from "@/lib/server/auth/supabase";
+import { validateAuthRequestOrigin } from "@/lib/server/auth/csrf";
 import {
   AUTH_RATE_LIMITS,
   AuthRateLimitUnavailableError,
@@ -13,6 +14,9 @@ import { safeErrorMessage } from "@/lib/server/http/errors";
 import { isRecord, validEmail } from "@/lib/shared/validation/input";
 
 export async function POST(request: Request) {
+  const csrfResponse = validateAuthRequestOrigin(request);
+  if (csrfResponse) return csrfResponse;
+
   try {
     const ipLimit = await checkAuthRateLimit([ipRateLimitRule(request, AUTH_RATE_LIMITS.loginIp)]);
     if (!ipLimit.allowed) return rateLimitResponse(ipLimit.retryAfterSeconds);

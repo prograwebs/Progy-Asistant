@@ -54,6 +54,13 @@ No deben existir variantes `NEXT_PUBLIC_` de esas credenciales privadas.
 
 La clave server-side de Supabase es obligatoria en producción porque las rutas de autenticación usan una RPC privada para rate limiting. El proxy debe sobrescribir los headers de IP (`CF-Connecting-IP` o `X-Forwarded-For`) antes de reenviar solicitudes a Node.
 
+`PROGY_APP_URL` debe ser el origen público exacto que utiliza el navegador, por
+ejemplo `https://progy.prograwebs.com` en producción o
+`http://localhost:4173` en desarrollo. Las rutas de autenticación comparan
+`Origin` y `Referer` con ese origen para bloquear solicitudes CSRF; no se deben
+usar aliases de dominio no configurados ni confiar en `Host` o
+`X-Forwarded-Host` para esta validación.
+
 ## 4. Compilación de release
 
 En una copia limpia del repositorio:

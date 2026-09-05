@@ -68,6 +68,8 @@ Producción requiere `SUPABASE_SECRET_KEY` o `SUPABASE_SERVICE_ROLE_KEY` para co
 
 El proxy/hosting debe sobrescribir `CF-Connecting-IP` o `X-Forwarded-For`. La aplicación no debe desplegarse confiando en esos headers si el origen puede recibirlos directamente desde clientes externos.
 
+Las rutas `login`, `signup`, `logout`, `refresh` y `oauth-session` validan explícitamente `Origin` y `Referer` antes de leer cookies, consultar Supabase o modificar la sesión. Solo se acepta el origen exacto devuelto por `PROGY_APP_URL`; si faltan ambos headers, son `null`, están malformados o no coinciden, la ruta responde `403` y no ejecuta la operación. Esta comprobación server-side complementa, pero no sustituye, las cookies `SameSite=Lax`.
+
 Antes de campañas o adquisición amplia de usuarios, el reverse proxy/hosting debe aplicar una segunda capa de rate limiting a rutas públicas y autenticación. Las rutas autenticadas siguen necesitando límites de producto por negocio.
 
 ## Headers

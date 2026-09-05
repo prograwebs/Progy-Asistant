@@ -233,6 +233,35 @@ test("auth success requires a persisted session or email confirmation", () => {
   assert.match(oauth, /if \(!sessionSaved\)[\s\S]*status: 502/);
 });
 
+test("protects session-changing auth routes with an explicit origin check", () => {
+  const csrf = read("lib/server/auth/csrf.ts");
+  const login = read("app/api/(auth)/auth/login/route.ts");
+  const signup = read("app/api/(auth)/auth/signup/route.ts");
+  const logout = read("app/api/(auth)/auth/logout/route.ts");
+  const refresh = read("app/api/(auth)/auth/refresh/route.ts");
+  const oauth = read("app/api/(auth)/auth/oauth-session/route.ts");
+
+  assert.match(csrf, /progyOrigin\(\)/);
+  assert.match(csrf, /headers\.get\("origin"\)/);
+  assert.match(csrf, /headers\.get\("referer"\)/);
+  assert.match(csrf, /new URL\(value\)\.origin === expectedOrigin/);
+  assert.match(csrf, /if \(!referer \|\| !matchesOrigin\(referer, expectedOrigin\)\)/);
+  assert.match(csrf, /status: 403/);
+  assert.match(csrf, /private, no-store, max-age=0/);
+  assert.match(csrf, /Solicitud de autenticación no permitida/);
+
+  for (const route of [login, signup, logout, refresh, oauth]) {
+    assert.match(route, /validateAuthRequestOrigin\(request\)/);
+    assert.ok(route.indexOf("const csrfResponse = validateAuthRequestOrigin(request)") < route.indexOf("if (csrfResponse) return csrfResponse"));
+  }
+  assert.ok(login.indexOf("if (csrfResponse) return csrfResponse") < login.indexOf("checkAuthRateLimit"));
+  assert.ok(signup.indexOf("if (csrfResponse) return csrfResponse") < signup.indexOf("checkAuthRateLimit"));
+  assert.ok(refresh.indexOf("if (csrfResponse) return csrfResponse") < refresh.indexOf("getSupabaseRefreshToken"));
+  assert.ok(oauth.indexOf("if (csrfResponse) return csrfResponse") < oauth.indexOf("request.json"));
+  assert.ok(logout.indexOf("if (csrfResponse) return csrfResponse") < logout.indexOf("getSupabaseAccessToken"));
+  assert.match(logout, /export async function POST\(request: Request\)/);
+});
+
 test("protects auth endpoints with persistent server-side rate limits", () => {
   const limiter = read("lib/server/auth/rate-limit.ts");
   const limiterTypes = read("lib/server/auth/types/rate-limit.ts");

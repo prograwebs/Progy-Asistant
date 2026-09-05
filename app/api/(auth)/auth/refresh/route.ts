@@ -1,4 +1,5 @@
 import { getSupabaseRefreshToken, refreshSupabaseSession } from "@/lib/server/auth/supabase";
+import { validateAuthRequestOrigin } from "@/lib/server/auth/csrf";
 import {
   AUTH_RATE_LIMITS,
   AuthRateLimitUnavailableError,
@@ -12,6 +13,9 @@ import {
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
+  const csrfResponse = validateAuthRequestOrigin(request);
+  if (csrfResponse) return csrfResponse;
+
   try {
     const ipLimit = await checkAuthRateLimit([ipRateLimitRule(request, AUTH_RATE_LIMITS.refreshIp)]);
     if (!ipLimit.allowed) return rateLimitResponse(ipLimit.retryAfterSeconds);
