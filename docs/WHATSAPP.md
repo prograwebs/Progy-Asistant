@@ -15,7 +15,7 @@ end-to-end antes de producción.
 
 ```text
 WhatsAppSection
-  └─ metaSignup.ts
+  └─ components/whatsapp/metaSignup.ts
        └─ Facebook Embedded Signup
             └─ POST /api/whatsapp/connect
                  ├─ valida sesión y permisos del negocio

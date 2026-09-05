@@ -14,7 +14,7 @@ import WhatsAppSection from "./sections/WhatsAppSection";
 import { ConversationsSection, OrdersSection } from "./sections/RecordsSections";
 import UsageSection from "./sections/UsageSection";
 import PreparationSection from "./sections/PreparationSection";
-import VoiceTestStudio from "./VoiceTestStudio";
+import VoiceTestStudio from "./voice/VoiceTestStudio";
 import ProgySection from "./sections/ProgySection";
 import { Card, SectionHeader } from "./ui";
 import { initials } from "@shared/utils/formatters";

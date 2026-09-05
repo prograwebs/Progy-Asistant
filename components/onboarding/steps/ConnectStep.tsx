@@ -5,7 +5,7 @@ import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
-import { launchWhatsAppSignup } from "../../dashboard/metaSignup";
+import { launchWhatsAppSignup } from "../../whatsapp/metaSignup";
 import BenefitList, { SecureConnectionNote } from "../BenefitList";
 import OnboardingComplete from "../OnboardingComplete";
 import { OnboardingProgress } from "../OnboardingProgress";

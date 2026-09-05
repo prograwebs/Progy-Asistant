@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../lib/config/limits";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../lib/config/limits";
 import type { SelectedWorkspace } from "@/shared/types/workspace";
-import { DashboardIcon } from "./LineIcon";
+import { DashboardIcon } from "../LineIcon";
 import styles from "./VoiceTestStudio.module.css";
 
 type Turn = { role: "user" | "assistant"; text: string };

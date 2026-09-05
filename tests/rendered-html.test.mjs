@@ -197,7 +197,7 @@ test("production template keeps secrets server-side and WhatsApp gated", () => {
 test("keeps WhatsApp configuration consistent across client and server", () => {
   const config = read("lib/whatsapp/config.ts");
   const constants = read("lib/whatsapp/constants.ts");
-  const signup = read("components/dashboard/metaSignup.ts");
+  const signup = read("components/whatsapp/metaSignup.ts");
   const whatsappSection = read("components/dashboard/sections/WhatsAppSection.tsx");
   const connect = read("app/api/whatsapp/connect/route.ts");
   const register = read("app/api/whatsapp/register/route.ts");
@@ -433,7 +433,7 @@ test("does not expose Supabase or PostgREST error details", async () => {
 
 test("seeds onboarding reference data and refuses an empty category configuration", () => {
   const migration = read("supabase/migrations/20260822070000_seed_workspace_reference_data.sql");
-  const onboarding = read("components/dashboard/BusinessOnboarding.tsx");
+  const onboarding = read("components/onboarding/steps/BusinessStep.tsx");
   const errors = read("lib/http/errors.ts");
   for (const code of [
     "restaurant",
@@ -455,8 +455,8 @@ test("seeds onboarding reference data and refuses an empty category configuratio
     assert.match(migration, new RegExp(`['\\"]${code}['\\"]`));
   }
   assert.match(migration, /on conflict \(code\) do update/);
-  assert.match(onboarding, /categories\[0\]\?\.code \|\| ""/);
-  assert.match(onboarding, /disabled=\{busy \|\| !categoryCode\}/);
+  assert.match(onboarding, /draft\.categoryCode/);
+  assert.match(onboarding, /categoryCode: draft\.categoryCode/);
   assert.match(errors, /business_create_schema/);
 });
 
@@ -516,8 +516,8 @@ test("uses one configurable payload limit for uploads and binary responses", asy
   const env = read(".env.example");
   const assistant = read("app/api/assistant/turn/route.ts");
   const catalogApi = read("app/api/catalog/import/route.ts");
-  const catalogClient = read("components/dashboard/CatalogImport.tsx");
-  const voiceClient = read("components/dashboard/VoiceTestStudio.tsx");
+  const catalogClient = read("components/dashboard/catalog/CatalogImport.tsx");
+  const voiceClient = read("components/dashboard/voice/VoiceTestStudio.tsx");
   const preview = read("app/api/elevenlabs/preview/route.ts");
   assert.match(env, /^NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB=4$/m);
   for (const source of [assistant, catalogApi, catalogClient, voiceClient, preview]) {

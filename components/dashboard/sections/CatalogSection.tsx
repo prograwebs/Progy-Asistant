@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import CatalogImport from "../CatalogImport";
+import CatalogImport from "../catalog/CatalogImport";
 import type { CatalogItem, SelectedWorkspace, WorkspaceAction } from "@/shared/types/workspace";
 import { businessBlueprint, money } from "@shared/utils/formatters";
 import { Card, EmptyState, SectionHeader } from "../ui";

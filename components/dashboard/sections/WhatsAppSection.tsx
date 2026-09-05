@@ -6,7 +6,7 @@ import {
 } from "react";
 
 import type { SelectedWorkspace } from "@/shared/types/workspace";
-import { launchWhatsAppSignup } from "../metaSignup";
+import { launchWhatsAppSignup } from "../../whatsapp/metaSignup";
 import {
   TEST_TEMPLATE_BODY,
   TEST_TEMPLATE_NAME,

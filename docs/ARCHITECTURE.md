@@ -50,15 +50,29 @@ app/
   eliminar-datos/
 
 components/
+  auth/
+    AccessMotion.tsx
+    PrivateSessionGuard.tsx
   dashboard/
     ProgyDashboard.tsx
-    BusinessOnboarding.tsx
-    VoiceTestStudio.tsx
-    CatalogImport.tsx
+    catalog/
+      CatalogImport.tsx
+      CatalogImport.module.css
+    voice/
+      VoiceTestStudio.tsx
+      VoiceTestStudio.module.css
+    conversations/
     sections/
-    types.ts
-    utils.ts
     useWorkspace.ts
+  whatsapp/
+    metaSignup.ts
+  onboarding/
+    OnboardingLayout.tsx
+    steps/
+  landing/
+    LandingMotion.tsx
+  public/
+    Brand.tsx
 
 shared/                         # código seguro para cliente y servidor
   types/
@@ -239,9 +253,9 @@ El dashboard incluye un checklist de preparación que exige configuración compl
 - configuración/env: `lib/config/env.ts`;
 - voces: `lib/voice/`;
 - límites: `lib/billing/entitlements.ts`;
-- importación: `app/api/catalog/import/` y `components/dashboard/CatalogImport.tsx`;
+- importación: `app/api/catalog/import/` y `components/dashboard/catalog/CatalogImport.tsx`;
 - panel: `components/dashboard/sections/`;
-- WhatsApp: `components/dashboard/metaSignup.ts` y `app/api/whatsapp/`.
+- WhatsApp: `components/whatsapp/metaSignup.ts`, `components/dashboard/sections/WhatsAppSection.tsx` y `app/api/whatsapp/`.
 
 ## Regla para futuras integraciones
 
