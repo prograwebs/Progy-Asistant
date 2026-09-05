@@ -1,17 +1,17 @@
-import { requireApiUser } from "@/lib/auth/supabase";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
 import {
   DEFAULT_META_GRAPH_VERSION,
   TEST_TEMPLATE_BODY as TEMPLATE_BODY,
   TEST_TEMPLATE_CATEGORY as TEMPLATE_CATEGORY,
   TEST_TEMPLATE_LANGUAGE as TEMPLATE_LANGUAGE,
   TEST_TEMPLATE_NAME as TEMPLATE_NAME,
-} from "@/lib/whatsapp/constants";
+} from "@/lib/shared/whatsapp/constants";
 import {
   canManageBusiness,
   getWhatsAppConnection,
   isWhatsAppTokenExpired,
-} from "../../../../lib/whatsapp/store";
+} from "@/lib/server/whatsapp/store";
 
 export const dynamic = "force-dynamic";
 

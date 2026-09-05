@@ -1,5 +1,5 @@
-import type { Conversation } from "@/shared/types/workspace";
-import { dateTime } from "@shared/utils/formatters";
+import type { Conversation } from "@/lib/shared/types/workspace";
+import { dateTime } from "@/lib/shared/utils/formatters";
 import type {
   ConversationFiltersState,
   ConversationTurn,

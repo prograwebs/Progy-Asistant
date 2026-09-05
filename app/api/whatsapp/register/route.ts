@@ -1,15 +1,15 @@
-import { requireApiUser } from "@/lib/auth/supabase";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
 import {
   canManageBusiness,
   getWhatsAppConnection,
   isWhatsAppTokenExpired,
   updateWhatsAppConnection,
-} from "@/lib/whatsapp/store";
+} from "@/lib/server/whatsapp/store";
 import {
   registerWhatsAppPhone,
   subscribeWhatsAppBusinessAccount,
-} from "@/lib/whatsapp/meta-client";
+} from "@/lib/server/whatsapp/meta-client";
 
 export const dynamic = "force-dynamic";
 

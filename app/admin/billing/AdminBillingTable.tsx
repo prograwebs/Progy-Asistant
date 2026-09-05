@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { BillingInvoice } from "@/lib/billing/invoices";
+import type { BillingInvoice } from "@/lib/server/billing/invoices";
 import styles from "./billing.module.css";
 
 function money(value: number) {

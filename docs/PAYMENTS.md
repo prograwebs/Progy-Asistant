@@ -7,7 +7,7 @@ La versión Platform V1 separa **planes y capacidades** del proveedor de pago. E
 La plataforma ya tiene:
 
 - `trial`, `business` y `pro` como códigos de plan;
-- límites de pruebas, catálogo, historial y funciones en `lib/billing/entitlements.ts`;
+- límites de pruebas, catálogo, historial y funciones en `lib/server/billing/entitlements.ts`;
 - `business_plans` como fuente del plan activo del negocio;
 - consumo por negocio en `usage_ledger`;
 - interfaz de Consumo y plan.
@@ -19,7 +19,7 @@ El Módulo 5 agrega un registro interno de cobros para administradores. No es un
 Cuando PrograWebs elija el proveedor, crear:
 
 ```text
-lib/billing/provider.ts
+lib/server/billing/provider.ts
 app/api/billing/checkout/route.ts
 app/api/billing/webhook/route.ts
 app/api/billing/portal/route.ts

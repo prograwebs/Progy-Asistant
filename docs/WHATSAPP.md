@@ -96,7 +96,7 @@ Meta webhook
 
 ## Datos server-side
 
-`lib/whatsapp/store.ts` persiste y recupera la conexión; `webhook-store.ts`
+`lib/server/whatsapp/store.ts` persiste y recupera la conexión; `webhook-store.ts`
 persiste mensajes y conversaciones desde el proceso server-side. Ambos deben
 usar las tablas del proyecto Supabase real y mantener
 el token fuera del cliente. En un proyecto Supabase nuevo deben aplicarse las migraciones

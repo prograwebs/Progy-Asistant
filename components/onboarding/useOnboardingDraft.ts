@@ -2,7 +2,7 @@
 
 import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { defaultOnboardingDraft } from "./data";
-import type { OnboardingDraft } from "@shared/types/onboarding";
+import type { OnboardingDraft } from "@/lib/shared/types/onboarding";
 
 const STORAGE_KEY = "progy-onboarding-draft";
 

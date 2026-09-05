@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { getSupabaseUser } from "@/lib/auth/supabase";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import {
   assertAdmin,
   listPendingInvoices,
   type BillingInvoice,
-} from "@/lib/billing/invoices";
-import { SupabaseDataError } from "@/lib/data/supabase";
+} from "@/lib/server/billing/invoices";
+import { SupabaseDataError } from "@/lib/server/data/supabase";
 import AdminBillingTable from "./AdminBillingTable";
 import styles from "./billing.module.css";
 

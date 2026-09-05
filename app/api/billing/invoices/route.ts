@@ -1,10 +1,10 @@
-import { requireApiUser } from "@/lib/auth/supabase";
+import { requireApiUser } from "@/lib/server/auth/supabase";
 import {
   assertAdmin,
   listPendingInvoices,
   markInvoicePaid,
-} from "@/lib/billing/invoices";
-import { SupabaseDataError } from "@/lib/data/supabase";
+} from "@/lib/server/billing/invoices";
+import { SupabaseDataError } from "@/lib/server/data/supabase";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

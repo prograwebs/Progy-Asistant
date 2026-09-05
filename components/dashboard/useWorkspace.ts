@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { Business, Snapshot } from "@/shared/types/workspace";
+import type { Business, Snapshot } from "@/lib/shared/types/workspace";
 
 type WorkspaceResponse = Snapshot & {
   error?: string;

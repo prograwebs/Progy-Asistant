@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import ProgyDashboard from "../../components/dashboard/ProgyDashboard";
-import { getSupabaseUser } from "@/lib/auth/supabase";
-import { publicIntegrationStatus } from "@/lib/config/env";
-import { resolveUserRoute } from "../../lib/onboarding/routing";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
+import { publicIntegrationStatus } from "@/lib/server/config/env";
+import { resolveUserRoute } from "@/lib/server/onboarding/routing";
 
 export const dynamic = "force-dynamic";
 

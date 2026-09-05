@@ -24,7 +24,7 @@ test("billing migration creates the internal invoice model and compatibility pla
 
 test("billing calculations and transactional cycle functions are server-side", () => {
   const migration = read("supabase/migrations/20260902010000_billing_invoices.sql");
-  const invoices = read("lib/billing/invoices.ts");
+  const invoices = read("lib/server/billing/invoices.ts");
   assert.match(migration, /create or replace function public\.create_subscription_invoice/);
   assert.match(migration, /create or replace function public\.close_billing_period_and_create_invoice/);
   assert.match(migration, /create or replace function public\.mark_invoice_paid/);
@@ -39,7 +39,7 @@ test("billing calculations and transactional cycle functions are server-side", (
 test("billing routes protect administrative operations and the cron secret", () => {
   const adminRoute = read("app/api/billing/invoices/route.ts");
   const cronRoute = read("app/api/billing/run-cycle/route.ts");
-  const env = read("lib/config/env.ts");
+  const env = read("lib/server/config/env.ts");
   assert.match(adminRoute, /requireApiUser/);
   assert.match(adminRoute, /assertAdmin/);
   assert.match(adminRoute, /markInvoicePaid/);
@@ -50,7 +50,7 @@ test("billing routes protect administrative operations and the cron secret", () 
 });
 
 test("starter preserves business functional entitlements", () => {
-  const entitlements = read("lib/billing/entitlements.ts");
+  const entitlements = read("lib/server/billing/entitlements.ts");
   assert.match(entitlements, /starter: \{/);
   assert.match(entitlements, /if \(normalized === "starter"\) return "starter"/);
   assert.match(entitlements, /maxCatalogItems: 500/);

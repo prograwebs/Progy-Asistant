@@ -1,4 +1,4 @@
-import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
+import { DEFAULT_META_GRAPH_VERSION } from "@/lib/shared/whatsapp/constants";
 
 type MetaLoginResponse = {
   authResponse?: { code?: string };

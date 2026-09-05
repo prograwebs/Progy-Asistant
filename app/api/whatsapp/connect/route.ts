@@ -1,12 +1,12 @@
-import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/whatsapp/store";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
-import { requireApiUser } from "@/lib/auth/supabase";
-import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
+import { canManageBusiness, getWhatsAppConnection, saveWhatsAppConnection } from "@/lib/server/whatsapp/store";
+import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { DEFAULT_META_GRAPH_VERSION } from "@/lib/shared/whatsapp/constants";
 import {
   listClientWhatsAppAccounts,
   requestWhatsAppAppDataSync,
   subscribeWhatsAppBusinessAccount,
-} from "@/lib/whatsapp/meta-client";
+} from "@/lib/server/whatsapp/meta-client";
 
 
 export const dynamic = "force-dynamic";

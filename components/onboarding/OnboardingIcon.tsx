@@ -7,7 +7,7 @@ import {
   Wrench,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-import type { OnboardingIconName } from "@shared/types/onboarding";
+import type { OnboardingIconName } from "@/lib/shared/types/onboarding";
 
 const icons: Record<OnboardingIconName, LucideIcon> = {
   clinic: HeartPulse,

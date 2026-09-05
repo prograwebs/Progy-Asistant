@@ -2,11 +2,11 @@
 
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
-import type { PanelUser } from "@/shared/types/workspace";
+import type { PanelUser } from "@/lib/shared/types/workspace";
 import PrivateSessionGuard from "../auth/PrivateSessionGuard";
 import OnboardingSidebar from "./OnboardingSidebar";
 import { OnboardingDraftProvider, useOnboardingDraft } from "./useOnboardingDraft";
-import type { OnboardingDraft, OnboardingStep } from "@shared/types/onboarding";
+import type { OnboardingDraft, OnboardingStep } from "@/lib/shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 function currentStep(pathname: string): OnboardingStep {

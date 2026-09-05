@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { saveSupabaseSession, supabaseAuthRequest } from "@/lib/auth/supabase";
-import { progyAuthCallbackUrl } from "@/lib/config/env";
-import { safeErrorMessage } from "@/lib/http/errors";
-import { isRecord, requiredText, validEmail } from "@shared/validation/input";
+import { saveSupabaseSession, supabaseAuthRequest } from "@/lib/server/auth/supabase";
+import { progyAuthCallbackUrl } from "@/lib/server/config/env";
+import { safeErrorMessage } from "@/lib/server/http/errors";
+import { isRecord, requiredText, validEmail } from "@/lib/shared/validation/input";
 
 export async function POST(request: Request) {
   try {

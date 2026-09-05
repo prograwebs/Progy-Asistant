@@ -18,10 +18,10 @@ test("niche profiles are additive and reference only current business categories
 });
 
 test("niche terminology reaches both agent instructions and Results UI", () => {
-  const profile = read("lib/niche/profile.ts");
-  const context = read("lib/assistant/context.ts");
+  const profile = read("lib/server/niche/profile.ts");
+  const context = read("lib/server/assistant/context.ts");
   const workspace = read("app/api/workspace/route.ts");
-  const labels = read("lib/niche/useNicheLabels.ts");
+  const labels = read("lib/client/niche/useNicheLabels.ts");
   const records = read("components/dashboard/sections/RecordsSections.tsx");
 
   assert.match(profile, /GENERIC_TERMINOLOGY/);
@@ -37,7 +37,7 @@ test("niche terminology reaches both agent instructions and Results UI", () => {
 });
 
 test("onboarding applies niche feature and tool defaults", () => {
-  const onboarding = read("lib/onboarding/service.ts");
+  const onboarding = read("lib/server/onboarding/service.ts");
   const legacyCreatePath = read("app/api/workspace/route.ts");
   assert.match(onboarding, /ensureNicheDefaults/);
   assert.match(onboarding, /default_feature_codes/);

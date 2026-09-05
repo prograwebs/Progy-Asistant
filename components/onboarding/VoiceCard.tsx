@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Play, Volume2 } from "lucide-react";
-import type { OnboardingVoice } from "@shared/types/onboarding";
+import type { OnboardingVoice } from "@/lib/shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 function displayVoiceName(name: string) {

@@ -1,6 +1,6 @@
 import ConnectStep from "../../../components/onboarding/steps/ConnectStep";
-import { getSupabaseUser } from "../../../lib/auth/supabase";
-import { resolveUserRoute } from "../../../lib/onboarding/routing";
+import { getSupabaseUser } from "@/lib/server/auth/supabase";
+import { resolveUserRoute } from "@/lib/server/onboarding/routing";
 import { redirect } from "next/navigation";
 
 export default async function ConnectOnboardingPage() {

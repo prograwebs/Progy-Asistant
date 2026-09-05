@@ -132,15 +132,9 @@ app/
 components/dashboard/      módulos de interfaz del panel
 
 lib/
-  ai/                      OpenAI: transcripción y decisiones
-  assistant/               contexto, validación y acciones
-  auth/                    sesión Supabase
-  billing/                 capacidades y límites por plan
-  config/                  configuración del servidor
-  http/                    errores seguros
-  usage/                   medición de consumo
-  voice/                   catálogo y síntesis de voz
-  data/                    acceso PostgREST autenticado y privilegiado
+  client/                  hooks y utilidades exclusivas del navegador
+  shared/                  tipos, constantes y funciones puras
+  server/                  servicios, proveedores, autenticación y datos
 ```
 
 Consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para el mapa completo.
@@ -165,6 +159,6 @@ Consulta [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) para variables, comandos, he
 
 - `main`: versión aprobada y desplegable;
 - `agent/progy-platform-v1`: evolución actual hasta completar validación;
-- nuevas integraciones deben vivir detrás de servicios server-side en `lib/`;
+- nuevas integraciones deben vivir detrás de servicios server-side en `lib/server/`;
 - no volver a concentrar lógica de negocio, proveedores e interfaz en un componente monolítico;
 - cualquier cambio de comportamiento del asistente debe volver a pasar la prueba de publicación del panel antes de salir a clientes.

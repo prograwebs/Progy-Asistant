@@ -20,11 +20,13 @@ test("trial budget migration adds USD fields and an atomic usage function", () =
 });
 
 test("quota settings are configurable and usage goes through the atomic path", () => {
-  const limits = read("lib/config/limits.ts");
-  const quota = read("lib/billing/quota.ts");
-  const ledger = read("lib/usage/ledger.ts");
-  assert.match(limits, /TRIAL_DEFAULT_BUDGET_USD = 0\.25/);
-  assert.match(limits, /TRIAL_DEFAULT_DURATION_DAYS = 14/);
+  const limits = read("lib/shared/config/limits.ts");
+  const trialLimits = read("lib/server/billing/trial-limits.ts");
+  const quota = read("lib/server/billing/quota.ts");
+  const ledger = read("lib/server/usage/ledger.ts");
+  assert.match(limits, /MAX_PAYLOAD_MB/);
+  assert.match(trialLimits, /TRIAL_DEFAULT_BUDGET_USD = 0\.25/);
+  assert.match(trialLimits, /TRIAL_DEFAULT_DURATION_DAYS = 14/);
   assert.match(quota, /status === "active"\) return \{ allowed: true \}/);
   assert.match(quota, /trial_expired/);
   assert.match(quota, /budget_exhausted/);
@@ -34,7 +36,7 @@ test("quota settings are configurable and usage goes through the atomic path", (
 
 test("assistant entry points check quota before provider calls", () => {
   const turn = read("app/api/assistant/turn/route.ts");
-  const inbound = read("lib/whatsapp/inbound.ts");
+  const inbound = read("lib/server/whatsapp/inbound.ts");
   assert.ok(turn.indexOf("checkQuota") < turn.indexOf("transcribeAudio(audio"));
   assert.ok(turn.indexOf("checkQuota") < turn.indexOf("generateAssistantDecision({"));
   assert.ok(inbound.indexOf("checkQuota") < inbound.indexOf("generateAssistantDecision({"));

@@ -8,7 +8,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (file) => readFileSync(path.join(root, file), "utf8");
 
 test("the Langfuse prompt contract has exactly the 13 approved variables", () => {
-  const context = read("lib/assistant/context.ts");
+  const context = read("lib/server/assistant/context.ts");
   const expected = [
     "agentName", "businessName", "tone", "nicheAddendum", "greetingLine",
     "scheduleLine", "catalogBlock", "knowledgeBlock", "fallbackPolicy",
@@ -26,11 +26,11 @@ test("the Langfuse prompt contract has exactly the 13 approved variables", () =>
 });
 
 test("Langfuse is optional and both assistant channels use one post-quota trace", () => {
-  const observability = read("lib/observability/langfuse.ts");
-  const config = read("lib/config/env.ts");
-  const openai = read("lib/ai/openai.ts");
+  const observability = read("lib/server/observability/langfuse.ts");
+  const config = read("lib/server/config/env.ts");
+  const openai = read("lib/server/ai/openai.ts");
   const web = read("app/api/assistant/turn/route.ts");
-  const whatsapp = read("lib/whatsapp/inbound.ts");
+  const whatsapp = read("lib/server/whatsapp/inbound.ts");
 
   for (const variable of ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"]) {
     assert.match(config, new RegExp(variable));
@@ -49,9 +49,9 @@ test("Langfuse is optional and both assistant channels use one post-quota trace"
 });
 
 test("OpenAI turn keeps the three-iteration tool loop and shared cost estimator", () => {
-  const openai = read("lib/ai/openai.ts");
-  const costs = read("lib/usage/costs.ts");
-  const ledger = read("lib/usage/ledger.ts");
+  const openai = read("lib/server/ai/openai.ts");
+  const costs = read("lib/server/usage/costs.ts");
+  const ledger = read("lib/server/usage/ledger.ts");
   assert.match(openai, /const maxToolIterations = 3/);
   assert.match(openai, /openai-assistant-iteration-\$\{iteration \+ 1\}/);
   assert.match(openai, /logToolExecution\(options\.trace/);

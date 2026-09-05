@@ -1,4 +1,4 @@
-import { releaseEnvironmentStatus } from "../../../lib/config/env";
+import { releaseEnvironmentStatus } from "@/lib/server/config/env";
 
 export const dynamic = "force-dynamic";
 

@@ -74,47 +74,47 @@ components/
   public/
     Brand.tsx
 
-shared/                         # código seguro para cliente y servidor
-  types/
-    onboarding.ts               contratos de onboarding y plantillas
-    workspace.ts                contratos del panel y workspace
-  validation/
-    input.ts                    guards y normalización de entradas
-  utils/
-    formatters.ts               funciones puras de presentación
-
 lib/
-  ai/
-    openai.ts            transcripción y decisiones estructuradas
-  assistant/
-    context.ts           recuperación/contexto compacto
-    actions.ts           validación y ejecución transaccional
-  auth/
-    supabase.ts          sesión y usuario
-  data/
-    supabase.ts          frontera de datos autenticada
-    supabase-admin.ts    frontera privilegiada (solo servidor)
-  billing/
-    entitlements.ts      capacidades y límites por plan
-  config/
-    env.ts               variables y readiness del servidor
-  http/
-    errors.ts            errores seguros para cliente
-  onboarding/
-    service.ts            orquestación durable del onboarding
-    templates.ts          catálogo de plantillas demo
-  usage/
-    ledger.ts            consumo y coste por negocio
-  voice/
-    catalog.ts           catálogo de voces ElevenLabs
-    elevenlabs.ts        síntesis
-  whatsapp/
-    config.ts             feature flag y configuración del canal
-    meta-client.ts        llamadas server-side a Meta
-    inbound.ts            webhook -> asistente -> respuesta
+  client/
+    niche/
+      useNicheLabels.ts   hook de etiquetas para el navegador
+  shared/                 código seguro para cliente y servidor
+    assistant/
+      demo-limits.ts      límites y normalización de la demo
+    config/
+      limits.ts           límites públicos de payload
+    niche/
+      profile.ts          tipos y valores genéricos de nicho
+    onboarding/
+      paths.ts            destinos del flujo de onboarding
+      templates.ts        catálogo de plantillas demo
+    whatsapp/
+      constants.ts        constantes públicas del canal
+    types/
+      onboarding.ts       contratos de onboarding y plantillas
+      workspace.ts        contratos del panel y workspace
+    validation/
+      input.ts            guards y normalización de entradas
+    utils/
+      formatters.ts       funciones puras de presentación
+  server/
+    agent/                herramientas del agente
+    ai/                   transcripción y decisiones estructuradas
+    assistant/            contexto, validación y acciones
+    auth/                 sesión y usuario
+    billing/              capacidades, cuotas e invoices
+    config/               variables y readiness del servidor
+    data/                 fronteras Supabase autenticada y privilegiada
+    http/                 errores y reintentos server-side
+    niche/                lectura del perfil de nicho
+    observability/        trazas y observabilidad
+    onboarding/           orquestación durable del onboarding
+    usage/                consumo y coste por negocio
+    voice/                catálogo y síntesis ElevenLabs
+    whatsapp/             configuración, Graph API y webhooks
 ```
 
-Las integraciones y fronteras de datos se importan desde sus módulos específicos dentro de `lib/`.
+Las integraciones y fronteras de datos se importan desde sus módulos específicos dentro de `lib/server/`. Los componentes solo pueden usar `lib/client/` y `lib/shared/`.
 
 ### Reglas de dependencias
 
@@ -123,26 +123,28 @@ La dirección de dependencias es deliberada:
 ```text
 app (rutas y handlers)
   ├─ components (UI)
-  └─ lib (servicios, proveedores y datos)
-       └─ shared (tipos, validación y utilidades puras)
+  │    ├─ lib/client
+  │    └─ lib/shared
+  └─ lib/server (servicios, proveedores y datos)
+       └─ lib/shared
 ```
 
-- `shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
-- `components/` no importa `lib/data`, `lib/auth/supabase`, `lib/ai` ni `lib/assistant/actions`.
+- `lib/shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
+- `components/` no importa `lib/server/`; solo puede importar `lib/client/` y `lib/shared/`.
 - Los handlers de `app/api` obtienen sesión, validan entrada y delegan en un servicio focalizado.
-- El acceso Supabase entra por `lib/data/supabase` o `lib/data/supabase-admin`.
-- Un tipo utilizado por servidor y cliente vive en `shared/types`, nunca dentro de `components/`.
+- El acceso Supabase entra por `lib/server/data/supabase` o `lib/server/data/supabase-admin`.
+- Un tipo utilizado por servidor y cliente vive en `lib/shared/types`, nunca dentro de `components/`.
 
 ### Convenciones de imports
 
 ```ts
-import type { SelectedWorkspace } from "@shared/types/workspace";
-import { validIdentifier } from "@shared/validation/input";
-import { supabaseDataRequest } from "@/lib/data/supabase";
-import { supabaseAdminRequest } from "@/lib/data/supabase-admin";
+import type { SelectedWorkspace } from "@/lib/shared/types/workspace";
+import { validIdentifier } from "@/lib/shared/validation/input";
+import { supabaseDataRequest } from "@/lib/server/data/supabase";
+import { supabaseAdminRequest } from "@/lib/server/data/supabase-admin";
 ```
 
-No se debe crear una carpeta `src/client` o `src/server` para duplicar las fronteras de Next.js. La frontera de cliente se expresa con `'use client'`; la frontera de servidor se mantiene en `app/api` y en los servicios de `lib/` que acceden a cookies, proveedores o secretos.
+No se debe crear una carpeta `src/client` o `src/server` para duplicar las fronteras de Next.js. La frontera de cliente se expresa con `'use client'` y los hooks cliente viven en `lib/client/`; la frontera de servidor se mantiene en `app/api` y en los servicios de `lib/server/` que acceden a cookies, proveedores o secretos.
 
 ## Flujo de prueba por voz
 
@@ -190,7 +192,7 @@ Nunca publicar precios inferidos silenciosamente.
 
 ## Pedidos y reservas
 
-`lib/assistant/actions.ts` vuelve a consultar los datos del sistema antes de escribir una acción propuesta por la IA. Un pedido solo puede usar productos y precios confirmados. Una reserva/cita requiere fecha válida y capacidad habilitada en `business_features`.
+`lib/server/assistant/actions.ts` vuelve a consultar los datos del sistema antes de escribir una acción propuesta por la IA. Un pedido solo puede usar productos y precios confirmados. Una reserva/cita requiere fecha válida y capacidad habilitada en `business_features`.
 
 ## Consumo
 
@@ -247,12 +249,12 @@ El dashboard incluye un checklist de preparación que exige configuración compl
 
 ## Dónde modificar cada función
 
-- comportamiento de IA: `lib/assistant/context.ts` y `lib/ai/openai.ts`;
-- acciones: `lib/assistant/actions.ts`;
-- autenticación: `lib/auth/supabase.ts`;
-- configuración/env: `lib/config/env.ts`;
-- voces: `lib/voice/`;
-- límites: `lib/billing/entitlements.ts`;
+- comportamiento de IA: `lib/server/assistant/context.ts` y `lib/server/ai/openai.ts`;
+- acciones: `lib/server/assistant/actions.ts`;
+- autenticación: `lib/server/auth/supabase.ts`;
+- configuración/env: `lib/server/config/env.ts`;
+- voces: `lib/server/voice/`;
+- límites: `lib/server/billing/entitlements.ts`;
 - importación: `app/api/catalog/import/` y `components/dashboard/catalog/CatalogImport.tsx`;
 - panel: `components/dashboard/sections/`;
 - WhatsApp: `components/whatsapp/metaSignup.ts`, `components/dashboard/sections/WhatsAppSection.tsx` y `app/api/whatsapp/`.

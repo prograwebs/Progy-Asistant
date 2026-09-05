@@ -1,5 +1,5 @@
 import { Check, Circle } from "lucide-react";
-import type { OnboardingStep } from "@shared/types/onboarding";
+import type { OnboardingStep } from "@/lib/shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 const steps: Array<{ id: OnboardingStep; label: string }> = [

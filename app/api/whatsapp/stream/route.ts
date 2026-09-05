@@ -1,8 +1,8 @@
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { requireApiUser } from "@/lib/auth/supabase";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
-import { canManageBusiness } from "@/lib/whatsapp/store";
-import { createWhatsAppRealtimeClient } from "@/lib/whatsapp/realtime";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
+import { canManageBusiness } from "@/lib/server/whatsapp/store";
+import { createWhatsAppRealtimeClient } from "@/lib/server/whatsapp/realtime";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

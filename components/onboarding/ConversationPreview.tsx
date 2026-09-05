@@ -3,8 +3,8 @@
 import { Bot, Mic, Pause, Play, Send, Sparkles, Square, UserRound, Volume2, VolumeX } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
-import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../lib/assistant/demo-limits";
-import type { DemoScenario } from "@shared/types/onboarding";
+import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "@/lib/shared/assistant/demo-limits";
+import type { DemoScenario } from "@/lib/shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 type Turn = {

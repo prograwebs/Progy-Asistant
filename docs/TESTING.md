@@ -178,7 +178,7 @@ Con la fase 2 habilitada, agrega:
 - cerrar o cambiar de negocio → el canal SSE se cierra y nunca recibe eventos del negocio anterior;
 - respuesta manual desde el panel → mensaje `outbound` visible en Progy y recibido en el teléfono externo;
 - respuesta manual con otro `businessId` o `conversationId` → rechazo sin enviar desde otra cuenta;
-- pedido/reserva propuestos por IA → validación de `lib/assistant/actions.ts` antes de persistir;
+- pedido/reserva propuestos por IA → validación de `lib/server/assistant/actions.ts` antes de persistir;
 - error de Meta/OpenAI → mensaje marcado como `failed` y sin secretos en la respuesta HTTP.
 
 ### 13. Release/hosting

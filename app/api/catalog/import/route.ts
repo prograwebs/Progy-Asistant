@@ -1,9 +1,9 @@
-import { requireApiUser } from "@/lib/auth/supabase";
-import { extractCatalogFromFile, OpenAIServiceError } from "../../../../lib/ai/openai";
-import { catalogImportAllowance } from "../../../../lib/billing/entitlements";
-import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
-import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
-import { recordCatalogImport, recordOpenAIUsage } from "../../../../lib/usage/ledger";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { extractCatalogFromFile, OpenAIServiceError } from "@/lib/server/ai/openai";
+import { catalogImportAllowance } from "@/lib/server/billing/entitlements";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "@/lib/shared/config/limits";
+import { loadAgentContext, SupabaseDataError, supabaseDataRequest } from "@/lib/server/data/supabase";
+import { recordCatalogImport, recordOpenAIUsage } from "@/lib/server/usage/ledger";
 
 export const dynamic = "force-dynamic";
 

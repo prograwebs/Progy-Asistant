@@ -20,19 +20,21 @@ Estructura principal:
 ```text
 app/                    páginas, Server Components y Route Handlers/API
 components/dashboard/  interfaz y módulos del panel
-lib/ai/                 transcripción y decisiones estructuradas con OpenAI
-lib/assistant/          contexto, validación y ejecución de acciones
-lib/auth/               sesión y autenticación Supabase
-lib/billing/            capacidades y límites por plan
-lib/config/             variables y readiness del servidor
-lib/usage/              medición de consumo y coste
-lib/voice/              catálogo y síntesis de voz
-lib/data/               acceso a datos autenticado y privilegiado
+lib/client/             hooks y utilidades exclusivas del navegador
+lib/shared/             tipos, constantes y utilidades puras cliente/servidor
+lib/server/ai/          transcripción y decisiones estructuradas con OpenAI
+lib/server/assistant/   contexto, validación y ejecución de acciones
+lib/server/auth/        sesión y autenticación Supabase
+lib/server/billing/     capacidades y límites por plan
+lib/server/config/      variables y readiness del servidor
+lib/server/usage/       medición de consumo y coste
+lib/server/voice/       catálogo y síntesis de voz
+lib/server/data/        acceso a datos autenticado y privilegiado
 docs/                   arquitectura, pruebas, despliegue y seguridad
 tests/                  pruebas automatizadas
 ```
 
-Las integraciones deben permanecer detrás de servicios server-side en `lib/`. El código nuevo debe importar desde el módulo específico.
+Las integraciones deben permanecer detrás de servicios server-side en `lib/server/`. El código nuevo debe importar desde el módulo específico.
 
 ## Configuración, desarrollo y build
 

@@ -5,12 +5,12 @@ import {
   useState,
 } from "react";
 
-import type { SelectedWorkspace } from "@/shared/types/workspace";
+import type { SelectedWorkspace } from "@/lib/shared/types/workspace";
 import { launchWhatsAppSignup } from "../../whatsapp/metaSignup";
 import {
   TEST_TEMPLATE_BODY,
   TEST_TEMPLATE_NAME,
-} from "@/lib/whatsapp/constants";
+} from "@/lib/shared/whatsapp/constants";
 import { Card, SectionHeader } from "../ui";
 import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";

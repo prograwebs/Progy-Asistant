@@ -40,7 +40,7 @@ test("onboarding demo uses the live assistant flow instead of static conversatio
 test("onboarding demo normalizes voice labels and enforces server-side question limits", () => {
   const voiceCard = read("components/onboarding/VoiceCard.tsx");
   const styles = read("components/onboarding/Onboarding.module.css");
-  const limits = read("lib/assistant/demo-limits.ts");
+  const limits = read("lib/shared/assistant/demo-limits.ts");
   const turnRoute = read("app/api/assistant/turn/route.ts");
 
   assert.match(voiceCard, /split\(\/\\s\+\(\?:-\|–\|—\|\\\|\)/);
@@ -56,7 +56,7 @@ test("onboarding demo normalizes voice labels and enforces server-side question 
 });
 
 test("assistant context tolerates a stale schema cache for demo markers", () => {
-  const data = read("lib/data/supabase.ts");
+  const data = read("lib/server/data/supabase.ts");
 
   assert.match(data, /contextRowsWithDemoMarker/);
   assert.match(data, /optionalContextRows/);
@@ -67,7 +67,7 @@ test("assistant context tolerates a stale schema cache for demo markers", () => 
 });
 
 test("assistant data errors expose only a development operation hint", () => {
-  const data = read("lib/data/supabase.ts");
+  const data = read("lib/server/data/supabase.ts");
   const turnRoute = read("app/api/assistant/turn/route.ts");
 
   assert.match(data, /operation\?: string/);
@@ -79,7 +79,7 @@ test("assistant data errors expose only a development operation hint", () => {
 test("onboarding assistant demo validates voice overrides and never executes actions", () => {
   const turnRoute = read("app/api/assistant/turn/route.ts");
   const sessionRoute = read("app/api/assistant/session/route.ts");
-  const voiceService = read("lib/voice/elevenlabs.ts");
+  const voiceService = read("lib/server/voice/elevenlabs.ts");
 
   assert.match(turnRoute, /demoMode = body\.demoMode === true/);
   assert.match(turnRoute, /resolveOnboardingVoiceId\(requestedVoiceId\)/);
@@ -94,7 +94,7 @@ test("onboarding assistant demo validates voice overrides and never executes act
 });
 
 test("Responses API history uses output_text for previous assistant turns", () => {
-  const openai = read("lib/ai/openai.ts");
+  const openai = read("lib/server/ai/openai.ts");
   assert.match(openai, /entry\.role === "assistant" \? "output_text" : "input_text"/);
   assert.match(openai, /content: \[\{ type: "input_text", text: options\.userText/);
   assert.match(openai, /max_output_tokens: 900/);
@@ -103,7 +103,7 @@ test("Responses API history uses output_text for previous assistant turns", () =
 
 test("onboarding keeps the visible greeting out of assistant history", () => {
   const component = read("components/onboarding/ConversationPreview.tsx");
-  const context = read("lib/assistant/context.ts");
+  const context = read("lib/server/assistant/context.ts");
   assert.match(component, /filter\(\(turn\) => turn\.id !== "welcome"\)/);
   assert.match(context, /La interfaz ya mostró el saludo inicial/);
   assert.match(context, /No menciones demostraciones, pruebas, límites internos/);

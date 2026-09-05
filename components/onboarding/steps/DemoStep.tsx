@@ -3,7 +3,7 @@
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import type { VoiceOption } from "@/shared/types/workspace";
+import type { VoiceOption } from "@/lib/shared/types/workspace";
 import ConversationPreview from "../ConversationPreview";
 import { getScenario, getScenarios } from "../data";
 import { OnboardingProgress } from "../OnboardingProgress";

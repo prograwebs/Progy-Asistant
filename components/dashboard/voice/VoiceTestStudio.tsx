@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../lib/config/limits";
-import type { SelectedWorkspace } from "@/shared/types/workspace";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "@/lib/shared/config/limits";
+import type { SelectedWorkspace } from "@/lib/shared/types/workspace";
 import { DashboardIcon } from "../LineIcon";
 import styles from "./VoiceTestStudio.module.css";
 

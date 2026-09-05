@@ -16,7 +16,7 @@ async function importTypeScript(file) {
 }
 
 test("resolves every durable onboarding state to the correct destination", async () => {
-  const { onboardingPathForStatus } = await importTypeScript("lib/onboarding/paths.ts");
+  const { onboardingPathForStatus } = await importTypeScript("lib/shared/onboarding/paths.ts");
   assert.equal(onboardingPathForStatus("business_created", true), "/onboarding/demo");
   assert.equal(onboardingPathForStatus("demo_completed", true), "/onboarding/connect");
   assert.equal(onboardingPathForStatus("channel_skipped", true), "/panel");

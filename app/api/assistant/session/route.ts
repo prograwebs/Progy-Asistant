@@ -1,7 +1,7 @@
-import { requireApiUser } from "@/lib/auth/supabase";
-import { developmentTestingMode, entitlementsFor, normalizePlanCode } from "../../../../lib/billing/entitlements";
-import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
-import { resolveOnboardingVoiceId, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { developmentTestingMode, entitlementsFor, normalizePlanCode } from "@/lib/server/billing/entitlements";
+import { SupabaseDataError, supabaseDataRequest } from "@/lib/server/data/supabase";
+import { resolveOnboardingVoiceId, VoiceServiceError } from "@/lib/server/voice/elevenlabs";
 
 export const dynamic = "force-dynamic";
 

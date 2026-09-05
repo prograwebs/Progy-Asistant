@@ -1,5 +1,5 @@
-import type { SelectedWorkspace } from "@/shared/types/workspace";
-import { completionPercent, money } from "@shared/utils/formatters";
+import type { SelectedWorkspace } from "@/lib/shared/types/workspace";
+import { completionPercent, money } from "@/lib/shared/utils/formatters";
 import { Card, SectionHeader } from "../ui";
 import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";

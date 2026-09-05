@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { requireApiUser } from "@/lib/auth/supabase";
-import { SupabaseDataError, supabaseDataRequest } from "@/lib/data/supabase";
-import { calculateReadiness, ensureNicheDefaults } from "../../../lib/onboarding/service";
-import { initializeTrialPlan } from "../../../lib/billing/quota";
-import { getNicheProfile } from "../../../lib/niche/profile";
-import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "@shared/validation/input";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { SupabaseDataError, supabaseDataRequest } from "@/lib/server/data/supabase";
+import { calculateReadiness, ensureNicheDefaults } from "@/lib/server/onboarding/service";
+import { initializeTrialPlan } from "@/lib/server/billing/quota";
+import { getNicheProfile } from "@/lib/server/niche/profile";
+import { cleanText, isRecord, requiredText, validBoolean, validEmail, validFiniteNumber, validIdentifier } from "@/lib/shared/validation/input";
 
 type UnknownRow = Record<string, unknown>;
 

@@ -1,6 +1,6 @@
-import { requireApiUser } from "@/lib/auth/supabase";
-import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../../lib/config/limits";
-import { synthesizeSpeech, VoiceServiceError } from "../../../../lib/voice/elevenlabs";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "@/lib/shared/config/limits";
+import { synthesizeSpeech, VoiceServiceError } from "@/lib/server/voice/elevenlabs";
 
 export async function POST(request: Request) {
   const user = await requireApiUser();

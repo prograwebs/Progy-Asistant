@@ -1,7 +1,7 @@
-import { ElevenLabsVoiceError, listElevenLabsVoices } from "@/lib/voice/catalog";
-import { requireApiUser } from "@/lib/auth/supabase";
-import { serverConfig } from "../../../../lib/config/env";
-import { isLibraryVoice } from "../../../../lib/voice/catalog";
+import { ElevenLabsVoiceError, listElevenLabsVoices } from "@/lib/server/voice/catalog";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { serverConfig } from "@/lib/server/config/env";
+import { isLibraryVoice } from "@/lib/server/voice/catalog";
 
 export const dynamic = "force-dynamic";
 

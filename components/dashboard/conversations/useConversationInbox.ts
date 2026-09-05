@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { Conversation } from "@/shared/types/workspace";
+import type { Conversation } from "@/lib/shared/types/workspace";
 import type {
   ConversationChannelFilter,
   ConversationFiltersState,

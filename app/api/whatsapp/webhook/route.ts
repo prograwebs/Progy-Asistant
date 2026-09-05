@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
-import { processWhatsAppWebhook } from "@/lib/whatsapp/inbound";
+import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
+import { processWhatsAppWebhook } from "@/lib/server/whatsapp/inbound";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

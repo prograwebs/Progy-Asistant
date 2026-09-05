@@ -108,7 +108,7 @@ test("onboarding production flow has durable state, versioned templates, and a s
   const categories = read("supabase/migrations/20260818000001_seed_business_categories.sql");
   const features = read("supabase/migrations/20260818000002_seed_feature_definitions.sql");
   const api = read("app/api/onboarding/route.ts");
-  const service = read("lib/onboarding/service.ts");
+  const service = read("lib/server/onboarding/service.ts");
   const workspace = read("app/api/workspace/route.ts");
 
   assert.match(migration, /CREATE TABLE public\.business_onboarding/);
@@ -129,7 +129,7 @@ test("onboarding production flow has durable state, versioned templates, and a s
   assert.match(service, /readiness\.ready/);
   assert.match(workspace, /calculateReadiness/);
 
-  const templates = await importTypeScript("lib/onboarding/templates.ts");
+  const templates = await importTypeScript("lib/shared/onboarding/templates.ts");
   const values = templates.listOnboardingTemplates();
   assert.equal(values.length, 6);
   for (const template of values) {
@@ -151,12 +151,12 @@ test("onboarding records WhatsApp only after server-side verification", () => {
 });
 
 test("onboarding resumes from durable state and protects authenticated routes", () => {
-  const paths = read("lib/onboarding/paths.ts");
-  const routing = read("lib/onboarding/routing.ts");
+  const paths = read("lib/shared/onboarding/paths.ts");
+  const routing = read("lib/server/onboarding/routing.ts");
   const access = read("app/acceso/page.tsx");
   const panel = read("app/panel/page.tsx");
   const draft = read("components/onboarding/useOnboardingDraft.ts");
-  const auth = read("lib/auth/supabase.ts");
+  const auth = read("lib/server/auth/supabase.ts");
   const onboardingLayout = read("app/onboarding/layout.tsx");
 
   assert.match(paths, /business_created/);
@@ -195,13 +195,13 @@ test("production template keeps secrets server-side and WhatsApp gated", () => {
 });
 
 test("keeps WhatsApp configuration consistent across client and server", () => {
-  const config = read("lib/whatsapp/config.ts");
-  const constants = read("lib/whatsapp/constants.ts");
+  const config = read("lib/server/whatsapp/config.ts");
+  const constants = read("lib/shared/whatsapp/constants.ts");
   const signup = read("components/whatsapp/metaSignup.ts");
   const whatsappSection = read("components/dashboard/sections/WhatsAppSection.tsx");
   const connect = read("app/api/whatsapp/connect/route.ts");
   const register = read("app/api/whatsapp/register/route.ts");
-  const metaClient = read("lib/whatsapp/meta-client.ts");
+  const metaClient = read("lib/server/whatsapp/meta-client.ts");
   const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
   const templates = read("app/api/whatsapp/templates/route.ts");
   const send = read("app/api/whatsapp/send-text/route.ts");
@@ -268,11 +268,11 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
 });
 
 test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
-  const admin = read("lib/data/supabase-admin.ts");
+  const admin = read("lib/server/data/supabase-admin.ts");
   const webhook = read("app/api/whatsapp/webhook/route.ts");
-  const inbound = read("lib/whatsapp/inbound.ts");
-  const store = read("lib/whatsapp/webhook-store.ts");
-  const openai = read("lib/ai/openai.ts");
+  const inbound = read("lib/server/whatsapp/inbound.ts");
+  const store = read("lib/server/whatsapp/webhook-store.ts");
+  const openai = read("lib/server/ai/openai.ts");
   const env = read(".env.example");
   const migration = read("supabase/migrations/20260820_whatsapp_messages.sql");
   const connectionsMigration = read("supabase/migrations/20260821_whatsapp_connection.sql");
@@ -347,7 +347,7 @@ test("keeps conversations within the viewport and scrolls internally", () => {
 });
 
 test("forwards PostgREST Prefer headers used by WhatsApp claims", async () => {
-  const admin = await importTypeScript("lib/data/supabase-admin.ts");
+  const admin = await importTypeScript("lib/server/data/supabase-admin.ts");
   const previousFetch = globalThis.fetch;
   const previousUrl = process.env.SUPABASE_URL;
   const previousKey = process.env.SUPABASE_SECRET_KEY;
@@ -410,7 +410,7 @@ test("keeps private routes out of search indexes and API responses out of caches
 });
 
 test("does not expose Supabase or PostgREST error details", async () => {
-  const errors = await importTypeScript("lib/http/errors.ts");
+  const errors = await importTypeScript("lib/server/http/errors.ts");
   const fallback = "No pudimos completar la operación.";
   const providerPayloads = [
     { code: "42P01", message: 'relation "businesses" does not exist', details: "table public.businesses", hint: "Run migration" },
@@ -424,7 +424,7 @@ test("does not expose Supabase or PostgREST error details", async () => {
   assert.equal(errors.publicDataError(500, "GET"), "El servicio de datos no está disponible en este momento.");
   assert.equal(errors.publicDataError(403, "PATCH"), "No tienes permiso para realizar esta operación.");
 
-  const dataClient = read("lib/data/supabase.ts");
+  const dataClient = read("lib/server/data/supabase.ts");
   const workspace = read("app/api/workspace/route.ts");
   assert.doesNotMatch(dataClient, /safeErrorMessage/);
   assert.doesNotMatch(workspace, /error instanceof Error \? error\.message/);
@@ -434,7 +434,7 @@ test("does not expose Supabase or PostgREST error details", async () => {
 test("seeds onboarding reference data and refuses an empty category configuration", () => {
   const migration = read("supabase/migrations/20260822070000_seed_workspace_reference_data.sql");
   const onboarding = read("components/onboarding/steps/BusinessStep.tsx");
-  const errors = read("lib/http/errors.ts");
+  const errors = read("lib/server/http/errors.ts");
   for (const code of [
     "restaurant",
     "clinic",
@@ -461,7 +461,7 @@ test("seeds onboarding reference data and refuses an empty category configuratio
 });
 
 test("recovers transient PostgREST JWT failures without exposing provider text", async () => {
-  const retry = await importTypeScript("lib/http/postgrest-retry.ts");
+  const retry = await importTypeScript("lib/server/http/postgrest-retry.ts");
   let attempts = 0;
   const recovered = await retry.retryTransientPostgrestJwt(async () => {
     attempts += 1;
@@ -491,7 +491,7 @@ test("recovers transient PostgREST JWT failures without exposing provider text",
   assert.equal(unrelated, "unauthorized");
   assert.equal(attempts, 1);
 
-  const dataClient = read("lib/data/supabase.ts");
+  const dataClient = read("lib/server/data/supabase.ts");
   const workspaceApi = read("app/api/workspace/route.ts");
   const workspaceClient = read("components/dashboard/useWorkspace.ts");
   const accessClient = read("app/acceso/AccessClient.tsx");
@@ -503,7 +503,7 @@ test("recovers transient PostgREST JWT failures without exposing provider text",
 });
 
 test("uses one configurable payload limit for uploads and binary responses", async () => {
-  const limits = await importTypeScript("lib/config/limits.ts");
+  const limits = await importTypeScript("lib/shared/config/limits.ts");
   assert.equal(limits.resolveMaxPayloadMegabytes(undefined), 4);
   assert.equal(limits.resolveMaxPayloadMegabytes("invalid"), 4);
   assert.equal(limits.resolveMaxPayloadMegabytes("0"), 4);

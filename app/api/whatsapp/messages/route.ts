@@ -1,18 +1,18 @@
-import { requireApiUser } from "@/lib/auth/supabase";
-import { getWhatsAppConfig } from "@/lib/whatsapp/config";
-import { DEFAULT_META_GRAPH_VERSION } from "@/lib/whatsapp/constants";
-import { sendWhatsAppText } from "@/lib/whatsapp/meta-client";
+import { requireApiUser } from "@/lib/server/auth/supabase";
+import { getWhatsAppConfig } from "@/lib/server/whatsapp/config";
+import { DEFAULT_META_GRAPH_VERSION } from "@/lib/shared/whatsapp/constants";
+import { sendWhatsAppText } from "@/lib/server/whatsapp/meta-client";
 import {
   canManageBusiness,
   getWhatsAppConnection,
   isWhatsAppTokenExpired,
-} from "@/lib/whatsapp/store";
+} from "@/lib/server/whatsapp/store";
 import {
   appendManualConversationTurn,
   getWhatsAppConversation,
   listWhatsAppMessages,
   saveOutboundMessage,
-} from "@/lib/whatsapp/webhook-store";
+} from "@/lib/server/whatsapp/webhook-store";
 
 export const dynamic = "force-dynamic";
 

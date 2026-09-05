@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { LogOut } from "lucide-react";
-import type { PanelUser } from "@/shared/types/workspace";
+import type { PanelUser } from "@/lib/shared/types/workspace";
 import { getCategory } from "./data";
 import { OnboardingIcon, ProgyMark } from "./OnboardingIcon";
-import type { OnboardingDraft, OnboardingStep } from "@shared/types/onboarding";
+import type { OnboardingDraft, OnboardingStep } from "@/lib/shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 const steps: Array<{ id: OnboardingStep; label: string }> = [

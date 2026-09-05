@@ -1,7 +1,7 @@
 "use client";
 
 import { ChangeEvent, useMemo, useRef, useState } from "react";
-import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "../../../lib/config/limits";
+import { exceedsPayloadLimit, MAX_PAYLOAD_MB } from "@/lib/shared/config/limits";
 import styles from "./CatalogImport.module.css";
 
 type PreviewItem = {

@@ -1,4 +1,4 @@
-import type { Conversation } from "@/shared/types/workspace";
+import type { Conversation } from "@/lib/shared/types/workspace";
 import { DashboardIcon } from "../LineIcon";
 import {
   conversationChannelLabel,

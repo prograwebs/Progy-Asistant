@@ -20,11 +20,11 @@ test("Tools Registry migration seeds exactly the first four tools and feature fl
 });
 
 test("assistant uses tenant-filtered native function calling and audits tool calls", () => {
-  const registry = read("lib/agent/tools/registry.ts");
-  const openai = read("lib/ai/openai.ts");
-  const inbound = read("lib/whatsapp/inbound.ts");
+  const registry = read("lib/server/agent/tools/registry.ts");
+  const openai = read("lib/server/ai/openai.ts");
+  const inbound = read("lib/server/whatsapp/inbound.ts");
   const turn = read("app/api/assistant/turn/route.ts");
-  const context = read("lib/data/supabase.ts");
+  const context = read("lib/server/data/supabase.ts");
 
   assert.match(registry, /getEnabledToolsForBusiness/);
   assert.match(registry, /businessToolSettings/);
