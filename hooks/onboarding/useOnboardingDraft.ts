@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, createElement, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
-import { defaultOnboardingDraft } from "./data";
+import { defaultOnboardingDraft } from "@/components/onboarding/data";
 import type { OnboardingDraft } from "@/lib/shared/types/onboarding";
 
 const STORAGE_KEY = "progy-onboarding-draft";

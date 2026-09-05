@@ -137,8 +137,8 @@ components/
   admin/billing/           interfaz administrativa de cobros
   dashboard/               módulos de interfaz del panel
 
+hooks/                    hooks reutilizables organizados por dominio
 lib/
-  client/                  hooks y utilidades exclusivas del navegador
   shared/                  tipos, constantes y funciones puras
   server/                  servicios, proveedores, autenticación y datos
 ```

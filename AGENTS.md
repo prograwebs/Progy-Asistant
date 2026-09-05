@@ -26,7 +26,7 @@ app/layout.tsx           layout raíz y estilos globales
 components/auth/       acceso y callback OAuth
 components/admin/      interfaces administrativas
 components/dashboard/  interfaz y módulos del panel
-lib/client/             hooks y utilidades exclusivas del navegador
+hooks/                  hooks reutilizables organizados por dominio
 lib/shared/             tipos, constantes y utilidades puras cliente/servidor
 lib/server/ai/          transcripción y decisiones estructuradas con OpenAI
 lib/server/assistant/   contexto, validación y ejecución de acciones

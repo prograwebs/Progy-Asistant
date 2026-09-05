@@ -182,7 +182,7 @@ test("onboarding resumes from durable state and protects authenticated routes", 
   const routing = read("lib/server/onboarding/routing.ts");
   const access = read("app/(auth)/acceso/page.tsx");
   const panel = read("app/(private)/panel/page.tsx");
-  const draft = read("components/onboarding/useOnboardingDraft.ts");
+  const draft = read("hooks/onboarding/useOnboardingDraft.ts");
   const auth = read("lib/server/auth/supabase.ts");
   const onboardingLayout = read("app/(private)/onboarding/layout.tsx");
   const privateLayout = read("app/(private)/layout.tsx");
@@ -237,7 +237,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const send = read("app/api/(private)/whatsapp/send-text/route.ts");
   const messages = read("app/api/(private)/whatsapp/messages/route.ts");
   const inbox = read("components/dashboard/conversations/ConversationInbox.tsx");
-  const inboxHook = read("components/dashboard/conversations/useConversationInbox.ts");
+  const inboxHook = read("hooks/dashboard/conversations/useConversationInbox.ts");
   const composer = read("components/dashboard/conversations/ConversationComposer.tsx");
   const thread = read("components/dashboard/conversations/ConversationThread.tsx");
   const records = read("components/dashboard/sections/RecordsSections.tsx");
@@ -523,7 +523,7 @@ test("recovers transient PostgREST JWT failures without exposing provider text",
 
   const dataClient = read("lib/server/data/supabase.ts");
   const workspaceApi = read("app/api/(private)/workspace/route.ts");
-  const workspaceClient = read("components/dashboard/useWorkspace.ts");
+  const workspaceClient = read("hooks/dashboard/useWorkspace.ts");
   const accessClient = read("components/auth/AccessClient.tsx");
   assert.match(dataClient, /session_refresh_required/);
   assert.match(workspaceApi, /error\.publicCode/);

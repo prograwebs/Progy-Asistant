@@ -6,7 +6,7 @@ import { dateTime, money } from "@/lib/shared/utils/formatters";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import { ConversationInbox } from "../conversations/ConversationInbox";
 import { statusLabel } from "../conversations/conversation-utils";
-import { useNicheLabels } from "@/lib/client/niche/useNicheLabels";
+import { useNicheLabels } from "@/hooks/niche/useNicheLabels";
 import styles from "../ProgyDashboard.module.css";
 
 export function ConversationsSection({

@@ -91,7 +91,6 @@ components/
       VoiceTestStudio.module.css
     conversations/
     sections/
-    useWorkspace.ts
   whatsapp/
     metaSignup.ts
   onboarding/
@@ -102,10 +101,17 @@ components/
   public/
     Brand.tsx
 
+hooks/
+  dashboard/
+    useWorkspace.ts                hook de datos del panel
+    conversations/
+      useConversationInbox.ts      hook de conversaciones
+  niche/
+    useNicheLabels.ts              hook de etiquetas del nicho
+  onboarding/
+    useOnboardingDraft.ts          hook y provider del onboarding
+
 lib/
-  client/
-    niche/
-      useNicheLabels.ts   hook de etiquetas para el navegador
   shared/                 código seguro para cliente y servidor
     assistant/
       demo-limits.ts      límites y normalización de la demo
@@ -142,7 +148,7 @@ lib/
     whatsapp/             configuración, Graph API y webhooks
 ```
 
-Las integraciones y fronteras de datos se importan desde sus módulos específicos dentro de `lib/server/`. Los componentes solo pueden usar `lib/client/` y `lib/shared/`.
+Las integraciones y fronteras de datos se importan desde sus módulos específicos dentro de `lib/server/`. Los componentes pueden usar `hooks/` y `lib/shared/`, pero nunca importar `lib/server/` directamente.
 
 ### Reglas de dependencias
 
@@ -151,14 +157,14 @@ La dirección de dependencias es deliberada:
 ```text
 app (rutas y handlers)
   ├─ components (UI)
-  │    ├─ lib/client
+  │    ├─ hooks
   │    └─ lib/shared
   └─ lib/server (servicios, proveedores y datos)
        └─ lib/shared
 ```
 
 - `lib/shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
-- `components/` no importa `lib/server/`; solo puede importar `lib/client/` y `lib/shared/`.
+- `components/` no importa `lib/server/`; puede importar `hooks/` y `lib/shared/`.
 - Los handlers de `app/api` obtienen sesión, validan entrada y delegan en un servicio focalizado.
 - El acceso Supabase entra por `lib/server/data/supabase` o `lib/server/data/supabase-admin`.
 - Un tipo utilizado por servidor y cliente vive en `lib/shared/types`, nunca dentro de `components/`.
@@ -172,7 +178,7 @@ import { supabaseDataRequest } from "@/lib/server/data/supabase";
 import { supabaseAdminRequest } from "@/lib/server/data/supabase-admin";
 ```
 
-No se debe crear una carpeta `src/client` o `src/server` para duplicar las fronteras de Next.js. La frontera de cliente se expresa con `'use client'` y los hooks cliente viven en `lib/client/`; la frontera de servidor se mantiene en `app/api` y en los servicios de `lib/server/` que acceden a cookies, proveedores o secretos.
+No se debe crear una carpeta `src/client` o `src/server` para duplicar las fronteras de Next.js. La frontera de cliente se expresa con `'use client'` y los hooks cliente viven en `hooks/`; la frontera de servidor se mantiene en `app/api` y en los servicios de `lib/server/` que acceden a cookies, proveedores o secretos.
 
 ## Flujo de prueba por voz
 

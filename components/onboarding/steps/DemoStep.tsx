@@ -8,7 +8,7 @@ import ConversationPreview from "../ConversationPreview";
 import { getScenario, getScenarios } from "../data";
 import { OnboardingProgress } from "../OnboardingProgress";
 import VoiceCard from "../VoiceCard";
-import { useOnboardingDraft } from "../useOnboardingDraft";
+import { useOnboardingDraft } from "@/hooks/onboarding/useOnboardingDraft";
 import OnboardingLoading from "./OnboardingLoading";
 import OnboardingRedirect from "./OnboardingRedirect";
 import styles from "../Onboarding.module.css";

@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { PanelUser } from "@/lib/shared/types/workspace";
 import PrivateSessionGuard from "../auth/PrivateSessionGuard";
 import OnboardingSidebar from "./OnboardingSidebar";
-import { OnboardingDraftProvider, useOnboardingDraft } from "./useOnboardingDraft";
+import { OnboardingDraftProvider, useOnboardingDraft } from "@/hooks/onboarding/useOnboardingDraft";
 import type { OnboardingDraft, OnboardingStep } from "@/lib/shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 

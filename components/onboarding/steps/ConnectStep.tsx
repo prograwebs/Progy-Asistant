@@ -9,7 +9,7 @@ import { launchWhatsAppSignup } from "../../whatsapp/metaSignup";
 import BenefitList, { SecureConnectionNote } from "../BenefitList";
 import OnboardingComplete from "../OnboardingComplete";
 import { OnboardingProgress } from "../OnboardingProgress";
-import { useOnboardingDraft } from "../useOnboardingDraft";
+import { useOnboardingDraft } from "@/hooks/onboarding/useOnboardingDraft";
 import OnboardingLoading from "./OnboardingLoading";
 import OnboardingRedirect from "./OnboardingRedirect";
 import styles from "../Onboarding.module.css";

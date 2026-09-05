@@ -7,7 +7,7 @@ import type { ConversationInboxProps } from "./conversation-types";
 import { ConversationDetail } from "./ConversationDetail";
 import { ConversationFilters } from "./ConversationFilters";
 import { ConversationList } from "./ConversationList";
-import { useConversationInbox } from "./useConversationInbox";
+import { useConversationInbox } from "@/hooks/dashboard/conversations/useConversationInbox";
 import styles from "./Conversations.module.css";
 
 export function ConversationInbox({ workspace, onRefresh }: ConversationInboxProps) {

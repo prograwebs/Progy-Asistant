@@ -9,8 +9,8 @@ import type {
   StreamStatus,
   WhatsAppMessage,
   WhatsAppMessagesResponse,
-} from "./conversation-types";
-import { filterConversations, isWhatsAppConversation } from "./conversation-utils";
+} from "@/components/dashboard/conversations/conversation-types";
+import { filterConversations, isWhatsAppConversation } from "@/components/dashboard/conversations/conversation-utils";
 
 type LoadMessagesOptions = {
   showLoading?: boolean;

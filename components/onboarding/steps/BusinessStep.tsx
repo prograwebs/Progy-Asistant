@@ -7,7 +7,7 @@ import CategoryCard from "../CategoryCard";
 import { getCategory, onboardingCategories } from "../data";
 import OnboardingLoading from "./OnboardingLoading";
 import { OnboardingProgress } from "../OnboardingProgress";
-import { useOnboardingDraft } from "../useOnboardingDraft";
+import { useOnboardingDraft } from "@/hooks/onboarding/useOnboardingDraft";
 import styles from "../Onboarding.module.css";
 
 export default function BusinessStep() {

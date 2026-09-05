@@ -21,7 +21,7 @@ test("niche terminology reaches both agent instructions and Results UI", () => {
   const profile = read("lib/server/niche/profile.ts");
   const context = read("lib/server/assistant/context.ts");
   const workspace = read("app/api/(private)/workspace/route.ts");
-  const labels = read("lib/client/niche/useNicheLabels.ts");
+  const labels = read("hooks/niche/useNicheLabels.ts");
   const records = read("components/dashboard/sections/RecordsSections.tsx");
 
   assert.match(profile, /GENERIC_TERMINOLOGY/);

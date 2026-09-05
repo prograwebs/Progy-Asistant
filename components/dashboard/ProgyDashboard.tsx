@@ -4,7 +4,7 @@ import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "@/lib/shared/types/workspace";
-import { useWorkspace } from "./useWorkspace";
+import { useWorkspace } from "@/hooks/dashboard/useWorkspace";
 import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
 import OverviewSection from "./sections/OverviewSection";
 import BusinessSection from "./sections/BusinessSection";
