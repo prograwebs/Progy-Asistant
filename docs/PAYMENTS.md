@@ -12,7 +12,7 @@ La plataforma ya tiene:
 - consumo por negocio en `usage_ledger`;
 - interfaz de Consumo y plan.
 
-Aún no se debe marcar una suscripción como pagada desde el navegador ni simular un checkout.
+El Módulo 5 agrega un registro interno de cobros para administradores. No es un checkout: un administrador puede registrar manualmente una transferencia, efectivo u otro método desde `/admin/billing`, y el servidor activa el plan mediante una función transaccional. Los clientes no pueden marcar sus propias facturas como pagadas.
 
 ## Contrato recomendado para una pasarela
 
@@ -78,4 +78,4 @@ Confirmar:
 5. manejo de IVA/facturación que corresponda a PrograWebs;
 6. webhooks y entorno sandbox.
 
-Hasta entonces, la UI puede explicar los planes y límites, pero no debe presentar un botón como "Pagar" si no existe un checkout real y verificable.
+La UI de clientes no presenta checkout ni botón de pago. La pantalla administrativa solo registra cobros ya recibidos; la integración de pasarela, webhooks, prorrateo, notificaciones y factura electrónica siguen fuera de alcance.

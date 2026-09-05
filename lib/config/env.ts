@@ -13,6 +13,7 @@ export function serverConfig() {
     langfusePublicKey: clean(process.env.LANGFUSE_PUBLIC_KEY),
     langfuseSecretKey: clean(process.env.LANGFUSE_SECRET_KEY),
     langfuseHost: clean(process.env.LANGFUSE_HOST).replace(/\/$/, ""),
+    billingCronSecret: clean(process.env.BILLING_CRON_SECRET),
     elevenLabsKey: clean(process.env.ELEVENLABS_API_KEY),
     elevenLabsVoiceId: clean(process.env.ELEVENLABS_VOICE_ID),
     whatsappEnabled: process.env.NEXT_PUBLIC_WHATSAPP_ENABLED === "true",

@@ -36,6 +36,18 @@ const planEntitlements: Record<string, ProgyEntitlements> = {
     whatsappEnabled: true,
     automationEnabled: false,
   },
+  starter: {
+    code: "starter",
+    label: "Starter",
+    maxBusinesses: 1,
+    maxVoiceTestSessions: 25,
+    maxVoiceTestSeconds: 300,
+    maxCatalogItems: 500,
+    maxCatalogImportsPerMonth: 10,
+    conversationHistoryDays: 90,
+    whatsappEnabled: true,
+    automationEnabled: false,
+  },
   pro: {
     code: "pro",
     label: "Pro",
@@ -54,6 +66,7 @@ export function normalizePlanCode(planCode?: string | null) {
   const normalized = String(planCode || "trial").trim().toLowerCase().replaceAll("-", "_");
   if (["trial", "free_trial", "free", "prueba"].includes(normalized)) return "trial";
   if (["business", "negocio"].includes(normalized)) return "business";
+  if (normalized === "starter") return "starter";
   if (["pro", "professional"].includes(normalized)) return "pro";
   return normalized;
 }

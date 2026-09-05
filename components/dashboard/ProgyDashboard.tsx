@@ -93,6 +93,7 @@ function planLabel(code?: string | null) {
   const normalized = String(code || "trial").toLowerCase().replaceAll("-", "_");
   if (["trial", "free_trial", "free"].includes(normalized)) return "Prueba";
   if (normalized === "business") return "Negocio";
+  if (normalized === "starter") return "Starter";
   if (normalized === "pro") return "Pro";
   return code || "Prueba";
 }

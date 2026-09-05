@@ -635,6 +635,7 @@ export type Database = {
           accepts_online_bookings: boolean
           accepts_online_orders: boolean
           address: string | null
+          billing_email: string | null
           category_code: string
           city: string | null
           country_code: string
@@ -656,6 +657,7 @@ export type Database = {
           province: string | null
           slug: string
           status: Database["public"]["Enums"]["business_status"]
+          tax_id: string | null
           timezone: string
           updated_at: string
           website_url: string | null
@@ -665,6 +667,7 @@ export type Database = {
           accepts_online_bookings?: boolean
           accepts_online_orders?: boolean
           address?: string | null
+          billing_email?: string | null
           category_code: string
           city?: string | null
           country_code?: string
@@ -686,6 +689,7 @@ export type Database = {
           province?: string | null
           slug: string
           status?: Database["public"]["Enums"]["business_status"]
+          tax_id?: string | null
           timezone?: string
           updated_at?: string
           website_url?: string | null
@@ -695,6 +699,7 @@ export type Database = {
           accepts_online_bookings?: boolean
           accepts_online_orders?: boolean
           address?: string | null
+          billing_email?: string | null
           category_code?: string
           city?: string | null
           country_code?: string
@@ -716,6 +721,7 @@ export type Database = {
           province?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["business_status"]
+          tax_id?: string | null
           timezone?: string
           updated_at?: string
           website_url?: string | null
@@ -1117,6 +1123,91 @@ export type Database = {
           },
         ]
       }
+      invoices: {
+        Row: {
+          base_amount_usd: number
+          business_id: string
+          created_at: string
+          id: string
+          included_budget_usd: number
+          marked_paid_by: string | null
+          notes: string | null
+          overage_amount_usd: number
+          paid_at: string | null
+          payment_method: string | null
+          payment_reference: string | null
+          period_ends_at: string
+          period_starts_at: string
+          plan_code: string
+          status: string
+          total_amount_usd: number
+          updated_at: string
+          usage_cost_usd: number
+        }
+        Insert: {
+          base_amount_usd: number
+          business_id: string
+          created_at?: string
+          id?: string
+          included_budget_usd: number
+          marked_paid_by?: string | null
+          notes?: string | null
+          overage_amount_usd?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_ends_at: string
+          period_starts_at: string
+          plan_code: string
+          status?: string
+          total_amount_usd: number
+          updated_at?: string
+          usage_cost_usd?: number
+        }
+        Update: {
+          base_amount_usd?: number
+          business_id?: string
+          created_at?: string
+          id?: string
+          included_budget_usd?: number
+          marked_paid_by?: string | null
+          notes?: string | null
+          overage_amount_usd?: number
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_reference?: string | null
+          period_ends_at?: string
+          period_starts_at?: string
+          plan_code?: string
+          status?: string
+          total_amount_usd?: number
+          updated_at?: string
+          usage_cost_usd?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoices_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_marked_paid_by_fkey"
+            columns: ["marked_paid_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invoices_plan_code_fkey"
+            columns: ["plan_code"]
+            isOneToOne: false
+            referencedRelation: "plans"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       order_items: {
         Row: {
           catalog_item_id: string | null
@@ -1264,6 +1355,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      plans: {
+        Row: {
+          base_price_usd: number
+          billing_period_days: number
+          code: string
+          created_at: string
+          included_budget_usd: number
+          is_active: boolean
+          name: string
+          overage_multiplier: number
+          updated_at: string
+        }
+        Insert: {
+          base_price_usd: number
+          billing_period_days?: number
+          code: string
+          created_at?: string
+          included_budget_usd: number
+          is_active?: boolean
+          name: string
+          overage_multiplier?: number
+          updated_at?: string
+        }
+        Update: {
+          base_price_usd?: number
+          billing_period_days?: number
+          code?: string
+          created_at?: string
+          included_budget_usd?: number
+          is_active?: boolean
+          name?: string
+          overage_multiplier?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
@@ -1713,6 +1840,10 @@ export type Database = {
         Args: { target_business_id: string }
         Returns: boolean
       }
+      close_billing_period_and_create_invoice: {
+        Args: { p_business_id: string; p_now?: string }
+        Returns: Database["public"]["Tables"]["invoices"]["Row"]
+      }
       create_business_for_current_user: {
         Args: {
           p_address?: string
@@ -1731,6 +1862,7 @@ export type Database = {
           accepts_online_bookings: boolean
           accepts_online_orders: boolean
           address: string | null
+          billing_email: string | null
           category_code: string
           city: string | null
           country_code: string
@@ -1752,6 +1884,7 @@ export type Database = {
           province: string | null
           slug: string
           status: Database["public"]["Enums"]["business_status"]
+          tax_id: string | null
           timezone: string
           updated_at: string
           website_url: string | null
@@ -1764,10 +1897,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_subscription_invoice: {
+        Args: { p_business_id: string; p_now?: string; p_plan_code: string }
+        Returns: Database["public"]["Tables"]["invoices"]["Row"]
+      }
+      enforce_billing_grace_period: {
+        Args: { p_grace_days?: number; p_now?: string }
+        Returns: number
+      }
       is_admin: { Args: never; Returns: boolean }
       is_public_business: {
         Args: { target_business_id: string }
         Returns: boolean
+      }
+      mark_invoice_paid: {
+        Args: {
+          p_admin_user_id: string
+          p_invoice_id: string
+          p_now?: string
+          p_payment_method?: string
+          p_payment_reference?: string
+        }
+        Returns: Database["public"]["Tables"]["invoices"]["Row"]
       }
     }
     Enums: {

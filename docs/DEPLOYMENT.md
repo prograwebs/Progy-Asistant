@@ -45,6 +45,7 @@ Variables que deben ser exclusivamente server-side:
 OPENAI_API_KEY
 ELEVENLABS_API_KEY
 META_APP_SECRET
+BILLING_CRON_SECRET
 ```
 
 No deben existir variantes `NEXT_PUBLIC_` de esas credenciales privadas.
@@ -88,6 +89,7 @@ el contenido completo de:
 1. `supabase/migrations/20260820_whatsapp_messages.sql`
 2. `supabase/migrations/20260821_whatsapp_connection.sql`
 3. `supabase/migrations/20260823120000_whatsapp_coexistence.sql`
+4. `supabase/migrations/20260902010000_billing_invoices.sql`
 
 Si ya aplicaste estas migraciones, solo verifica que las tablas existan y tengan RLS activo:
 
@@ -108,6 +110,11 @@ continúes con WhatsApp si alguna migración devuelve error. Las migraciones usa
 dependencias o permisos antes de probar el signup.
 
 Antes de clientes reales completa `docs/SUPABASE_SECURITY_CHECKLIST.md`.
+
+La migración de billing agrega `plans` e `invoices` y los campos opcionales
+`businesses.tax_id` y `businesses.billing_email`; no elimina ni renombra
+columnas existentes. En Cloudflare, configura `BILLING_CRON_SECRET` como
+secret del Worker y conserva el runtime Node como despliegue oficial.
 
 ### Meta
 
