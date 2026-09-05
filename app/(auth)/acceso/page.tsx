@@ -7,9 +7,11 @@ import { redirect } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default async function AccessPage() {
+
   if (await getSupabaseUser()) redirect("/panel");
+
   return (
-    <Suspense fallback={<main style={{ minHeight: "100vh", background: "#080a0c" }} />}>
+    <Suspense fallback={<div style={{ minHeight: "100vh", background: "#080a0c" }} />}>
       <AccessMotion><AccessClient /></AccessMotion>
     </Suspense>
   );

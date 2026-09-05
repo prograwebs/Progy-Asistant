@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { SubmitEvent, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { Brand } from "@/components/public/Brand";
+import { googleAuthPath, login, signup } from "@/lib/client/services/auth";
 
 export default function AccessClient() {
   const params = useSearchParams();
@@ -14,7 +15,7 @@ export default function AccessClient() {
   const [message, setMessage] = useState(() => params.get("error") || "");
   const [isError, setIsError] = useState(() => Boolean(params.get("error")));
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setIsError(false);
@@ -22,35 +23,11 @@ export default function AccessClient() {
     const name = String(form.get("name") || "").trim();
     const email = String(form.get("email") || "").trim().toLowerCase();
     const password = String(form.get("password") || "");
-    if (mode === "signup" && !name) {
-      setIsError(true);
-      setMessage("Escribe tu nombre completo.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setIsError(true);
-      setMessage("Escribe un correo electrónico válido.");
-      return;
-    }
-    if (!password.trim() || (mode === "signup" && password.trim().length < 8)) {
-      setIsError(true);
-      setMessage(mode === "signup" ? "La contraseña debe tener al menos 8 caracteres." : "Escribe tu contraseña.");
-      return;
-    }
     setLoading(true);
-    const payload = {
-      name,
-      email,
-      password,
-    };
     try {
-      const response = await fetch(`/api/auth/${mode === "signup" ? "signup" : "login"}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const result = (await response.json()) as { error?: string; needsConfirmation?: boolean };
-      if (!response.ok) throw new Error(result.error || "No pudimos completar el acceso.");
+      const result = mode === "signup"
+        ? await signup({ name, email, password })
+        : await login({ email, password });
       if (result.needsConfirmation) {
         setMessage("Cuenta creada. Revisa tu correo y confirma el registro antes de iniciar sesión.");
         setMode("login");
@@ -90,9 +67,6 @@ export default function AccessClient() {
           <button className={mode === "login" ? "active" : ""} onClick={() => changeMode("login")} type="button">Iniciar sesión</button>
           <button className={mode === "signup" ? "active" : ""} onClick={() => changeMode("signup")} type="button">Crear cuenta</button>
         </div>
-        <div className="access-card-head">
-          <h3>{mode === "signup" ? "Crea tu cuenta" : "Bienvenido de nuevo"}</h3>
-        </div>
         <form onSubmit={submit}>
           {mode === "signup" && <label>Nombre completo<input name="name" type="text" autoComplete="name" placeholder="¿Cómo te llamas?" maxLength={120} required /></label>}
           <label>Correo electrónico<input name="email" type="email" autoComplete="email" placeholder="tu@negocio.com" maxLength={254} required /></label>
@@ -117,7 +91,7 @@ export default function AccessClient() {
           </button>
         </form>
         <div className="form-divider"><span>O CONTINÚA CON</span></div>
-        <a className="social-button" href="/api/auth/google">
+        <a className="social-button" href={googleAuthPath}>
           <Image src="/google.svg" alt="" width={16} height={16} aria-hidden="true" />
           Continuar con Google
         </a>
@@ -128,7 +102,7 @@ export default function AccessClient() {
           </button>
         </p>
       </section>
-      <Link className="access-back" href="/">← Volver al inicio</Link>
+      <Link className="access-back" href="/"> ← Volver al inicio</Link>
     </>
   );
 }

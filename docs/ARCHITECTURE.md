@@ -112,6 +112,10 @@ hooks/
     useOnboardingDraft.ts          hook y provider del onboarding
 
 lib/
+  client/
+    types/                contratos propios del cliente
+      auth.ts             contratos de autenticación cliente
+    services/             adaptadores cliente para consumir Route Handlers
   shared/                 código seguro para cliente y servidor
     assistant/
       demo-limits.ts      límites y normalización de la demo
@@ -158,13 +162,18 @@ La dirección de dependencias es deliberada:
 app (rutas y handlers)
   ├─ components (UI)
   │    ├─ hooks
+  │    ├─ lib/client/services
+  │    └─ lib/shared
+  ├─ lib/client/services
   │    └─ lib/shared
   └─ lib/server (servicios, proveedores y datos)
        └─ lib/shared
 ```
 
 - `lib/shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
-- `components/` no importa `lib/server/`; puede importar `hooks/` y `lib/shared/`.
+- `lib/client/types/` contiene contratos exclusivos del cliente y no debe importar `lib/server/`, proveedores ni secretos.
+- `lib/client/services/` solo consume Route Handlers mediante APIs públicas, puede importar `lib/shared/`, y no puede importar `lib/server/`, proveedores ni secretos.
+- `components/` no importa `lib/server/`; puede importar `hooks/`, `lib/client/services/` y `lib/shared/`.
 - Los handlers de `app/api` obtienen sesión, validan entrada y delegan en un servicio focalizado.
 - El acceso Supabase entra por `lib/server/data/supabase` o `lib/server/data/supabase-admin`.
 - Un tipo utilizado por servidor y cliente vive en `lib/shared/types`, nunca dentro de `components/`.
