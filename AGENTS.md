@@ -27,12 +27,12 @@ lib/billing/            capacidades y límites por plan
 lib/config/             variables y readiness del servidor
 lib/usage/              medición de consumo y coste
 lib/voice/              catálogo y síntesis de voz
-lib/supabase-data.ts    acceso a datos con la sesión del usuario
+lib/data/               acceso a datos autenticado y privilegiado
 docs/                   arquitectura, pruebas, despliegue y seguridad
 tests/                  pruebas automatizadas
 ```
 
-Las integraciones deben permanecer detrás de servicios server-side en `lib/`. El código nuevo debe importar desde el módulo específico, no desde `lib/integrations.ts`.
+Las integraciones deben permanecer detrás de servicios server-side en `lib/`. El código nuevo debe importar desde el módulo específico.
 
 ## Configuración, desarrollo y build
 

@@ -56,7 +56,7 @@ test("onboarding demo normalizes voice labels and enforces server-side question 
 });
 
 test("assistant context tolerates a stale schema cache for demo markers", () => {
-  const data = read("lib/supabase-data.ts");
+  const data = read("lib/data/supabase.ts");
 
   assert.match(data, /contextRowsWithDemoMarker/);
   assert.match(data, /optionalContextRows/);
@@ -67,7 +67,7 @@ test("assistant context tolerates a stale schema cache for demo markers", () => 
 });
 
 test("assistant data errors expose only a development operation hint", () => {
-  const data = read("lib/supabase-data.ts");
+  const data = read("lib/data/supabase.ts");
   const turnRoute = read("app/api/assistant/turn/route.ts");
 
   assert.match(data, /operation\?: string/);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { SelectedWorkspace, VoiceOption, WorkspaceAction } from "../types";
+import type { SelectedWorkspace, VoiceOption, WorkspaceAction } from "@/shared/types/workspace";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import type { Category, PanelUser, WorkspaceAction } from "./types";
+import type { Category, PanelUser, WorkspaceAction } from "@/shared/types/workspace";
 import styles from "./ProgyDashboard.module.css";
 
 interface BusinessOnboardingProps {

@@ -5,7 +5,7 @@ import {
   useState,
 } from "react";
 
-import type { SelectedWorkspace } from "../types";
+import type { SelectedWorkspace } from "@/shared/types/workspace";
 import { launchWhatsAppSignup } from "../metaSignup";
 import {
   TEST_TEMPLATE_BODY,

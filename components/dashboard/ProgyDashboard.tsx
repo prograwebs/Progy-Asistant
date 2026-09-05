@@ -3,7 +3,7 @@
 import { useRef, useState, type FocusEvent, type MouseEvent } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "./types";
+import type { IntegrationStatus, PanelUser, SelectedWorkspace } from "@/shared/types/workspace";
 import { useWorkspace } from "./useWorkspace";
 import OnboardingRedirect from "../onboarding/steps/OnboardingRedirect";
 import OverviewSection from "./sections/OverviewSection";
@@ -17,7 +17,7 @@ import PreparationSection from "./sections/PreparationSection";
 import VoiceTestStudio from "./VoiceTestStudio";
 import ProgySection from "./sections/ProgySection";
 import { Card, SectionHeader } from "./ui";
-import { initials } from "./utils";
+import { initials } from "@shared/utils/formatters";
 import { onboardingPathForStatus } from "../../lib/onboarding/paths";
 import { DashboardIcon } from "./LineIcon";
 import styles from "./ProgyDashboard.module.css";

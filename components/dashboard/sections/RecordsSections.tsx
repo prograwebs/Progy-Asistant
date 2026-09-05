@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { SelectedWorkspace } from "../types";
+import type { SelectedWorkspace } from "@/shared/types/workspace";
 import { dateTime, money } from "@shared/utils/formatters";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import { ConversationInbox } from "../conversations/ConversationInbox";

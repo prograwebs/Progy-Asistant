@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import type { Hour, SelectedWorkspace, WorkspaceAction } from "../types";
+import type { Hour, SelectedWorkspace, WorkspaceAction } from "@/shared/types/workspace";
 import { Card, SectionHeader } from "../ui";
 import styles from "../ProgyDashboard.module.css";
 

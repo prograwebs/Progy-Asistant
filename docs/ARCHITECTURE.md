@@ -98,12 +98,9 @@ lib/
     config.ts             feature flag y configuración del canal
     meta-client.ts        llamadas server-side a Meta
     inbound.ts            webhook -> asistente -> respuesta
-  integrations.ts        fachada temporal de compatibilidad (legacy)
-  supabase-data.ts       implementación legacy de la frontera autenticada
-  supabase-admin.ts      implementación legacy de la frontera privilegiada
 ```
 
-`lib/integrations.ts` ya no contiene implementaciones; reexporta servicios separados para evitar una migración masiva de imports. Código nuevo debe importar desde el módulo específico.
+Las integraciones y fronteras de datos se importan desde sus módulos específicos dentro de `lib/`.
 
 ### Reglas de dependencias
 
@@ -117,13 +114,10 @@ app (rutas y handlers)
 ```
 
 - `shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
-- `components/` no importa `lib/data`, `lib/auth/supabase`, `lib/supabase-admin`, `lib/ai` ni `lib/assistant/actions`.
+- `components/` no importa `lib/data`, `lib/auth/supabase`, `lib/ai` ni `lib/assistant/actions`.
 - Los handlers de `app/api` obtienen sesión, validan entrada y delegan en un servicio focalizado.
-- El acceso Supabase nuevo entra por `lib/data/supabase` o `lib/data/supabase-admin`; los archivos en la raíz de `lib/` son compatibilidad para pruebas y migraciones antiguas.
-- `lib/integrations.ts` queda congelado como fachada de compatibilidad. Código nuevo debe importar el módulo específico.
+- El acceso Supabase entra por `lib/data/supabase` o `lib/data/supabase-admin`.
 - Un tipo utilizado por servidor y cliente vive en `shared/types`, nunca dentro de `components/`.
-
-Los archivos `components/dashboard/types.ts`, `components/onboarding/types.ts`, `components/dashboard/utils.ts`, `lib/onboarding/types.ts` y `lib/validation/input.ts` conservan reexportaciones marcadas como deprecated para no romper consumidores externos durante la migración.
 
 ### Convenciones de imports
 

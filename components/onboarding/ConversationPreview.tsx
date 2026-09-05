@@ -4,7 +4,7 @@ import { Bot, Mic, Pause, Play, Send, Sparkles, Square, UserRound, Volume2, Volu
 import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { createPortal } from "react-dom";
 import { MAX_DEMO_QUESTIONS, normalizeDemoQuestion } from "../../lib/assistant/demo-limits";
-import type { DemoScenario } from "./types";
+import type { DemoScenario } from "@shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 type Turn = {

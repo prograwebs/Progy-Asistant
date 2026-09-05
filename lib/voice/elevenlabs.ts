@@ -1,5 +1,5 @@
-import { integrationConfig, resolveElevenLabsVoiceId } from "../integrations";
-import { isLibraryVoice, listElevenLabsVoices } from "./catalog";
+import { integrationConfig } from "../config/env";
+import { isLibraryVoice, listElevenLabsVoices, resolveElevenLabsVoiceId } from "./catalog";
 
 export type VoiceServiceErrorCode =
   | "voice_not_configured"

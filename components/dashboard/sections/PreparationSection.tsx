@@ -1,8 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import type { OnboardingReadiness } from "../types";
-import type { SelectedWorkspace } from "../types";
+import type { OnboardingReadiness } from "@/shared/types/onboarding";
+import type { SelectedWorkspace } from "@/shared/types/workspace";
 import { Card, SectionHeader } from "../ui";
 import { DashboardIcon } from "../LineIcon";
 import styles from "../ProgyDashboard.module.css";

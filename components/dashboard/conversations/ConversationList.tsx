@@ -1,4 +1,4 @@
-import type { Conversation } from "../types";
+import type { Conversation } from "@/shared/types/workspace";
 import { EmptyState } from "../ui";
 import { ConversationListItem } from "./ConversationListItem";
 import styles from "./Conversations.module.css";

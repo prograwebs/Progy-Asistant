@@ -1,4 +1,4 @@
-import type { SelectedWorkspace } from "../types";
+import type { SelectedWorkspace } from "@/shared/types/workspace";
 import { completionPercent, money } from "@shared/utils/formatters";
 import { Card, SectionHeader } from "../ui";
 import { DashboardIcon } from "../LineIcon";

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Conversation } from "../types";
+import type { Conversation } from "@/shared/types/workspace";
 import { DashboardIcon } from "../LineIcon";
 import type { StreamStatus, WhatsAppMessage } from "./conversation-types";
 import { conversationChannelLabel, conversationInitials, conversationName, isWhatsAppConversation } from "./conversation-utils";

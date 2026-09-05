@@ -2,7 +2,7 @@
 
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { getCategory } from "./data";
-import type { ConnectionChoice, OnboardingDraft } from "./types";
+import type { ConnectionChoice, OnboardingDraft } from "@shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 export default function OnboardingComplete({ draft, choice, onRestart, onContinue }: { draft: OnboardingDraft; choice: ConnectionChoice; onRestart: () => void; onContinue: () => void }) {

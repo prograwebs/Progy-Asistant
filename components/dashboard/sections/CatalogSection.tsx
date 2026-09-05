@@ -2,7 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import CatalogImport from "../CatalogImport";
-import type { CatalogItem, SelectedWorkspace, WorkspaceAction } from "../types";
+import type { CatalogItem, SelectedWorkspace, WorkspaceAction } from "@/shared/types/workspace";
 import { businessBlueprint, money } from "@shared/utils/formatters";
 import { Card, EmptyState, SectionHeader } from "../ui";
 import styles from "../ProgyDashboard.module.css";

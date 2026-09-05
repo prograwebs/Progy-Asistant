@@ -1,6 +1,6 @@
 "use client";
 
-import type { SelectedWorkspace, WorkspaceAction } from "../types";
+import type { SelectedWorkspace, WorkspaceAction } from "@/shared/types/workspace";
 import AgentSection from "./AgentSection";
 import VoiceSection from "./VoiceSection";
 import styles from "../ProgyDashboard.module.css";

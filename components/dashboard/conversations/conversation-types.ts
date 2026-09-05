@@ -1,4 +1,4 @@
-import type { Conversation } from "../types";
+import type { Conversation } from "@/shared/types/workspace";
 
 export type ConversationTurnRole = "user" | "assistant" | "human_agent";
 

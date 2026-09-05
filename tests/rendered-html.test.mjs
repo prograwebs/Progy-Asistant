@@ -268,7 +268,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
 });
 
 test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
-  const admin = read("lib/supabase-admin.ts");
+  const admin = read("lib/data/supabase-admin.ts");
   const webhook = read("app/api/whatsapp/webhook/route.ts");
   const inbound = read("lib/whatsapp/inbound.ts");
   const store = read("lib/whatsapp/webhook-store.ts");
@@ -347,7 +347,7 @@ test("keeps conversations within the viewport and scrolls internally", () => {
 });
 
 test("forwards PostgREST Prefer headers used by WhatsApp claims", async () => {
-  const admin = await importTypeScript("lib/supabase-admin.ts");
+  const admin = await importTypeScript("lib/data/supabase-admin.ts");
   const previousFetch = globalThis.fetch;
   const previousUrl = process.env.SUPABASE_URL;
   const previousKey = process.env.SUPABASE_SECRET_KEY;
@@ -424,7 +424,7 @@ test("does not expose Supabase or PostgREST error details", async () => {
   assert.equal(errors.publicDataError(500, "GET"), "El servicio de datos no está disponible en este momento.");
   assert.equal(errors.publicDataError(403, "PATCH"), "No tienes permiso para realizar esta operación.");
 
-  const dataClient = read("lib/supabase-data.ts");
+  const dataClient = read("lib/data/supabase.ts");
   const workspace = read("app/api/workspace/route.ts");
   assert.doesNotMatch(dataClient, /safeErrorMessage/);
   assert.doesNotMatch(workspace, /error instanceof Error \? error\.message/);
@@ -491,7 +491,7 @@ test("recovers transient PostgREST JWT failures without exposing provider text",
   assert.equal(unrelated, "unauthorized");
   assert.equal(attempts, 1);
 
-  const dataClient = read("lib/supabase-data.ts");
+  const dataClient = read("lib/data/supabase.ts");
   const workspaceApi = read("app/api/workspace/route.ts");
   const workspaceClient = read("components/dashboard/useWorkspace.ts");
   const accessClient = read("app/acceso/AccessClient.tsx");

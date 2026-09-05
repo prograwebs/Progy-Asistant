@@ -140,7 +140,7 @@ lib/
   http/                    errores seguros
   usage/                   medición de consumo
   voice/                   catálogo y síntesis de voz
-  supabase-data.ts         acceso PostgREST con sesión del usuario
+  data/                    acceso PostgREST autenticado y privilegiado
 ```
 
 Consulta [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) para el mapa completo.

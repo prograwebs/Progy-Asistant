@@ -2,7 +2,7 @@
 
 import { Check } from "lucide-react";
 import { OnboardingIcon } from "./OnboardingIcon";
-import type { OnboardingCategory } from "./types";
+import type { OnboardingCategory } from "@shared/types/onboarding";
 import styles from "./Onboarding.module.css";
 
 export default function CategoryCard({ category, selected, onSelect }: { category: OnboardingCategory; selected: boolean; onSelect: () => void }) {
