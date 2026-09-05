@@ -1,14 +1,8 @@
 import { cookies } from "next/headers";
-import { serverConfig } from "../config/env";
-
-const ACCESS_COOKIE = "progy_access_token";
-const REFRESH_COOKIE = "progy_refresh_token";
-
-export type ProgyUser = {
-  id: string;
-  email: string;
-  name: string;
-};
+import { accessCookieOptions, refreshCookieOptions, sessionMaxAge, SUPABASE_ACCESS_COOKIE, SUPABASE_REFRESH_COOKIE } from "@/lib/server/auth/cookies";
+import { fetchSupabaseUser, refreshSupabaseTokens } from "@/lib/server/auth/provider";
+import type { ProgyUser, SupabaseSessionPayload, SupabaseUserPayload } from "@/lib/server/auth/types/supabase";
+import { serverConfig } from "@/lib/server/config/env";
 
 export async function supabaseAuthRequest(path: string, init: RequestInit = {}) {
   const { supabaseUrl, supabaseAnonKey } = serverConfig();
@@ -26,11 +20,7 @@ export async function supabaseAuthRequest(path: string, init: RequestInit = {}) 
   });
 }
 
-export async function saveSupabaseSession(payload: {
-  access_token?: unknown;
-  refresh_token?: unknown;
-  expires_in?: number;
-}): Promise<boolean> {
+export async function saveSupabaseSession(payload: SupabaseSessionPayload): Promise<boolean> {
   if (
     typeof payload.access_token !== "string" ||
     !payload.access_token.trim() ||
@@ -39,92 +29,74 @@ export async function saveSupabaseSession(payload: {
   ) return false;
 
   const store = await cookies();
-  const secure = process.env.NODE_ENV === "production";
-  const base = { httpOnly: true, secure, sameSite: "lax" as const, path: "/" };
-
-  store.set(ACCESS_COOKIE, payload.access_token, {
-    ...base,
-    maxAge: payload.expires_in ?? 3600,
-  });
-  store.set(REFRESH_COOKIE, payload.refresh_token, {
-    ...base,
-    maxAge: 60 * 60 * 24 * 30,
-  });
+  store.set(SUPABASE_ACCESS_COOKIE, payload.access_token, accessCookieOptions(sessionMaxAge(payload.expires_in)));
+  store.set(SUPABASE_REFRESH_COOKIE, payload.refresh_token, refreshCookieOptions());
   return true;
 }
 
 export async function clearSupabaseSession() {
   const store = await cookies();
-  store.delete(ACCESS_COOKIE);
-  store.delete(REFRESH_COOKIE);
+  store.delete(SUPABASE_ACCESS_COOKIE);
+  store.delete(SUPABASE_REFRESH_COOKIE);
 }
 
 export async function getSupabaseAccessToken() {
-  return (await cookies()).get(ACCESS_COOKIE)?.value ?? null;
+  return (await cookies()).get(SUPABASE_ACCESS_COOKIE)?.value ?? null;
 }
 
 export async function getSupabaseRefreshToken() {
-  return (await cookies()).get(REFRESH_COOKIE)?.value ?? null;
+  return (await cookies()).get(SUPABASE_REFRESH_COOKIE)?.value ?? null;
 }
 
 export async function refreshSupabaseSession() {
   const refreshToken = await getSupabaseRefreshToken();
   if (!refreshToken) return false;
 
-  const { supabaseUrl, supabaseAnonKey } = serverConfig();
-  if (!supabaseUrl || !supabaseAnonKey) return false;
-
-  const response = await fetch(`${supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
-    method: "POST",
-    headers: {
-      apikey: supabaseAnonKey,
-      Authorization: `Bearer ${supabaseAnonKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ refresh_token: refreshToken }),
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    console.error("Progy Supabase refresh failed", { status: response.status });
-    return false;
+  const payload = await refreshSupabaseTokens(refreshToken);
+  if (!payload) return false;
+  if (typeof payload.refresh_token !== "string" || !payload.refresh_token.trim()) {
+    payload.refresh_token = refreshToken;
   }
-
-  const payload = (await response.json()) as {
-    access_token?: string;
-    refresh_token?: string;
-    expires_in?: number;
-  };
-  if (!payload.access_token) return false;
-
-  return saveSupabaseSession({
-    access_token: payload.access_token,
-    refresh_token: payload.refresh_token || refreshToken,
-    expires_in: payload.expires_in || 3600,
-  });
+  return saveSupabaseSession(payload);
 }
 
 export async function getSupabaseUser(): Promise<ProgyUser | null> {
   const token = await getSupabaseAccessToken();
-  const { supabaseUrl, supabaseAnonKey } = serverConfig();
-  if (!token || !supabaseUrl || !supabaseAnonKey) return null;
+  if (!token) return null;
 
-  const response = await fetch(`${supabaseUrl}/auth/v1/user`, {
-    headers: { apikey: supabaseAnonKey, Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!response.ok) return null;
+  let result = await fetchSupabaseUser(token);
+  if (result.status === 401) {
+    const refreshToken = await getSupabaseRefreshToken();
+    if (refreshToken) {
+      const refreshed = await refreshSupabaseTokens(refreshToken);
+      const refreshedAccessToken = typeof refreshed?.access_token === "string" ? refreshed.access_token.trim() : "";
+      if (refreshedAccessToken) {
+        if (typeof refreshed?.refresh_token !== "string" || !refreshed.refresh_token.trim()) {
+          if (refreshed) refreshed.refresh_token = refreshToken;
+        }
+        try {
+          await saveSupabaseSession(refreshed);
+        } catch {
+          // Server Components can read cookies but cannot persist refreshed cookies during render.
+        }
+        result = await fetchSupabaseUser(refreshedAccessToken);
+      }
+    }
+  }
 
-  const user = (await response.json()) as {
-    id?: string;
-    email?: string;
-    user_metadata?: { full_name?: string; name?: string };
-  };
-  if (!user.id || !user.email) return null;
+  return userFromSupabasePayload(result.payload);
+}
 
+function userFromSupabasePayload(payload: SupabaseUserPayload | null): ProgyUser | null {
+  const id = typeof payload?.id === "string" ? payload.id : "";
+  const email = typeof payload?.email === "string" ? payload.email : "";
+  if (!id || !email) return null;
+
+  const fullName = payload.user_metadata?.full_name;
+  const name = payload.user_metadata?.name;
   return {
-    id: user.id,
-    email: user.email,
-    name: user.user_metadata?.full_name ?? user.user_metadata?.name ?? user.email.split("@")[0],
+    id,
+    email,
+    name: typeof fullName === "string" && fullName ? fullName : typeof name === "string" && name ? name : email.split("@")[0],
   };
 }

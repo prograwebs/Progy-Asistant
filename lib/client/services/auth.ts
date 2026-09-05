@@ -1,4 +1,9 @@
 import { isRecord, validEmail } from "@/lib/shared/validation/input";
+import {
+  AUTH_NAME_MAX_LENGTH,
+  AUTH_PASSWORD_MAX_LENGTH,
+  AUTH_PASSWORD_MIN_LENGTH,
+} from "@/lib/shared/config/auth";
 import type { AuthEndpoint, AuthResult, LoginInput, SignupInput } from "@/lib/client/types/auth";
 
 export const googleAuthPath = "/api/auth/google";
@@ -30,17 +35,29 @@ function normalizedEmail(email: string) {
 export function login(input: LoginInput) {
   const email = normalizedEmail(input.email);
   if (!input.password.trim()) throw new Error("Escribe tu contraseña.");
+  if (input.password.length > AUTH_PASSWORD_MAX_LENGTH) {
+    throw new Error(`La contraseña no puede superar los ${AUTH_PASSWORD_MAX_LENGTH} caracteres.`);
+  }
 
   return postAuth("login", { email, password: input.password }, "No pudimos iniciar sesión.");
 }
 
 export function signup(input: SignupInput) {
+  if (input.name.length > AUTH_NAME_MAX_LENGTH) {
+    throw new Error(`El nombre no puede superar los ${AUTH_NAME_MAX_LENGTH} caracteres.`);
+  }
   const name = input.name.trim();
   if (!name) throw new Error("Escribe tu nombre completo.");
 
   const email = normalizedEmail(input.email);
-  if (!input.password.trim() || input.password.trim().length < 8) {
-    throw new Error("La contraseña debe tener al menos 8 caracteres.");
+  if (
+    !input.password.trim() ||
+    input.password.trim().length < AUTH_PASSWORD_MIN_LENGTH
+  ) {
+    throw new Error(`La contraseña debe tener al menos ${AUTH_PASSWORD_MIN_LENGTH} caracteres.`);
+  }
+  if (input.password.length > AUTH_PASSWORD_MAX_LENGTH) {
+    throw new Error(`La contraseña no puede superar los ${AUTH_PASSWORD_MAX_LENGTH} caracteres.`);
   }
 
   return postAuth("signup", { name, email, password: input.password }, "No pudimos crear la cuenta.");

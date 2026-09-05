@@ -1,3 +1,5 @@
+import { AUTH_EMAIL_MAX_LENGTH } from "@/lib/shared/config/auth";
+
 export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -11,8 +13,15 @@ export function requiredText(value: unknown, max = 500) {
   return result || null;
 }
 
+export function requiredTextWithinLimit(value: unknown, max = 500) {
+  if (typeof value !== "string" || value.length > max) return null;
+  const result = value.trim();
+  return result || null;
+}
+
 export function validEmail(value: unknown) {
-  const email = cleanText(value, 254).toLowerCase();
+  if (typeof value !== "string" || value.length > AUTH_EMAIL_MAX_LENGTH) return null;
+  const email = value.trim().toLowerCase();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : null;
 }
 

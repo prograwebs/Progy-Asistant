@@ -139,7 +139,7 @@ lib/
     agent/                herramientas del agente
     ai/                   transcripción y decisiones estructuradas
     assistant/            contexto, validación y acciones
-    auth/                 sesión, usuario y límites de autenticación
+    auth/                 sesión, usuario, renovación y límites de autenticación
       types/              contratos propios del dominio de autenticación
     billing/              capacidades, cuotas e invoices
     config/               variables y readiness del servidor
@@ -297,7 +297,9 @@ El dashboard incluye un checklist de preparación que exige configuración compl
 - comportamiento de IA: `lib/server/assistant/context.ts` y `lib/server/ai/openai.ts`;
 - acciones: `lib/server/assistant/actions.ts`;
 - autenticación y sesión: `lib/server/auth/supabase.ts`;
+- renovación previa al render: `proxy.ts` y `lib/server/auth/provider.ts`;
 - rate limiting de autenticación: `lib/server/auth/rate-limit.ts` y `supabase/migrations/20260905010000_auth_rate_limits.sql`;
+- validación de payloads de autenticación: `lib/shared/config/auth.ts`, `lib/shared/validation/input.ts` y `lib/server/http/body.ts`;
 - configuración/env: `lib/server/config/env.ts`;
 - voces: `lib/server/voice/`;
 - límites: `lib/server/billing/entitlements.ts`;

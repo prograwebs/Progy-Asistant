@@ -70,6 +70,10 @@ El proxy/hosting debe sobrescribir `CF-Connecting-IP` o `X-Forwarded-For`. La ap
 
 Las rutas `login`, `signup`, `logout`, `refresh` y `oauth-session` validan explícitamente `Origin` y `Referer` antes de leer cookies, consultar Supabase o modificar la sesión. Solo se acepta el origen exacto devuelto por `PROGY_APP_URL`; si faltan ambos headers, son `null`, están malformados o no coinciden, la ruta responde `403` y no ejecuta la operación. Esta comprobación server-side complementa, pero no sustituye, las cookies `SameSite=Lax`.
 
+Login y registro también rechazan en servidor nombres de más de 120 caracteres, contraseñas de más de 128 caracteres, correos de más de 254 caracteres y cuerpos JSON mayores de 16 KiB. `validEmail()` no trunca entradas: un correo que supera el límite se rechaza antes de normalizarlo. OAuth acepta `expiresIn` únicamente si es un entero positivo de hasta 24 horas.
+
+Las rutas privadas pasan por `proxy.ts`, que detecta access tokens expirados o próximos a expirar, usa el refresh token para obtener una sesión nueva y actualiza las cookies antes del render. `getSupabaseUser()` mantiene un intento de renovación como respaldo para contextos server-side; la autorización de datos sigue verificándose en cada servicio server-side.
+
 Antes de campañas o adquisición amplia de usuarios, el reverse proxy/hosting debe aplicar una segunda capa de rate limiting a rutas públicas y autenticación. Las rutas autenticadas siguen necesitando límites de producto por negocio.
 
 ## Headers

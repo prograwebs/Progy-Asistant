@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { Brand } from "@/components/public/Brand";
 import { googleAuthPath, login, signup } from "@/lib/client/services/auth";
+import { AUTH_PASSWORD_MAX_LENGTH, AUTH_PASSWORD_MIN_LENGTH } from "@/lib/shared/config/auth";
 
 export default function AccessClient() {
   const params = useSearchParams();
@@ -73,7 +74,7 @@ export default function AccessClient() {
           <label className="password-field">
             Contraseña
             <span className="password-input-wrap">
-              <input name="password" placeholder="Ingresa tu contraseña" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={8} maxLength={128} required />
+              <input name="password" placeholder="Ingresa tu contraseña" type={showPassword ? "text" : "password"} autoComplete={mode === "signup" ? "new-password" : "current-password"} minLength={mode === "signup" ? AUTH_PASSWORD_MIN_LENGTH : undefined} maxLength={AUTH_PASSWORD_MAX_LENGTH} required />
               <button
                 className="password-toggle"
                 type="button"

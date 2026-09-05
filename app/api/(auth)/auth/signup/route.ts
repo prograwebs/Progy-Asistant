@@ -12,7 +12,14 @@ import {
 } from "@/lib/server/auth/rate-limit";
 import { progyAuthCallbackUrl } from "@/lib/server/config/env";
 import { safeErrorMessage } from "@/lib/server/http/errors";
-import { isRecord, requiredText, validEmail } from "@/lib/shared/validation/input";
+import { RequestBodyTooLargeError, readJsonBody, requestBodyTooLargeResponse } from "@/lib/server/http/body";
+import {
+  AUTH_NAME_MAX_LENGTH,
+  AUTH_PASSWORD_MAX_LENGTH,
+  AUTH_PASSWORD_MIN_LENGTH,
+  AUTH_REQUEST_MAX_BYTES,
+} from "@/lib/shared/config/auth";
+import { isRecord, requiredTextWithinLimit, validEmail } from "@/lib/shared/validation/input";
 
 export async function POST(request: Request) {
   const csrfResponse = validateAuthRequestOrigin(request);
@@ -22,12 +29,17 @@ export async function POST(request: Request) {
     const ipLimit = await checkAuthRateLimit([ipRateLimitRule(request, AUTH_RATE_LIMITS.signupIp)]);
     if (!ipLimit.allowed) return rateLimitResponse(ipLimit.retryAfterSeconds);
 
-    const body = await request.json().catch(() => null) as unknown;
-    const name = isRecord(body) ? requiredText(body.name, 120) : null;
+    const body = await readJsonBody(request, AUTH_REQUEST_MAX_BYTES);
+    const name = isRecord(body) ? requiredTextWithinLimit(body.name, AUTH_NAME_MAX_LENGTH) : null;
     const email = isRecord(body) ? validEmail(body.email) : null;
     const password = isRecord(body) && typeof body.password === "string" ? body.password : "";
-    if (!name || !email || password.trim().length < 8) {
-      return NextResponse.json({ error: "Completa tu nombre, correo y una contraseña de al menos 8 caracteres." }, { status: 400 });
+    if (
+      !name ||
+      !email ||
+      password.trim().length < AUTH_PASSWORD_MIN_LENGTH ||
+      password.length > AUTH_PASSWORD_MAX_LENGTH
+    ) {
+      return NextResponse.json({ error: `Completa tu nombre, correo y una contraseña de entre ${AUTH_PASSWORD_MIN_LENGTH} y ${AUTH_PASSWORD_MAX_LENGTH} caracteres.` }, { status: 400 });
     }
 
     const emailLimit = await checkAuthRateLimit([
@@ -43,12 +55,7 @@ export async function POST(request: Request) {
         data: { full_name: name },
       }),
     });
-    const payload = (await response.json()) as Record<string, unknown> & {
-      access_token?: string;
-      refresh_token?: string;
-      expires_in?: number;
-      user?: unknown;
-    };
+    const payload = (await response.json()) as Record<string, unknown>;
     if (!response.ok) {
       return NextResponse.json({ error: safeErrorMessage(payload, "No pudimos crear la cuenta.") }, { status: response.status });
     }
@@ -68,6 +75,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true, needsConfirmation: false });
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) return requestBodyTooLargeResponse();
     if (error instanceof AuthRateLimitUnavailableError) return rateLimitUnavailableResponse();
     const message = error instanceof Error && error.message === "SUPABASE_NOT_CONFIGURED"
       ? "Supabase todavía no está configurado en Progy."

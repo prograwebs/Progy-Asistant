@@ -233,6 +233,51 @@ test("auth success requires a persisted session or email confirmation", () => {
   assert.match(oauth, /if \(!sessionSaved\)[\s\S]*status: 502/);
 });
 
+test("enforces authentication input limits on the server and renews expired sessions", () => {
+  const authConfig = read("lib/shared/config/auth.ts");
+  const input = read("lib/shared/validation/input.ts");
+  const client = read("lib/client/services/auth.ts");
+  const access = read("components/auth/AccessClient.tsx");
+  const body = read("lib/server/http/body.ts");
+  const login = read("app/api/(auth)/auth/login/route.ts");
+  const signup = read("app/api/(auth)/auth/signup/route.ts");
+  const oauth = read("app/api/(auth)/auth/oauth-session/route.ts");
+  const auth = read("lib/server/auth/supabase.ts");
+  const provider = read("lib/server/auth/provider.ts");
+  const proxy = read("proxy.ts");
+
+  assert.match(authConfig, /AUTH_NAME_MAX_LENGTH = 120/);
+  assert.match(authConfig, /AUTH_PASSWORD_MAX_LENGTH = 128/);
+  assert.match(authConfig, /AUTH_REQUEST_MAX_BYTES = 16 \* 1024/);
+  assert.match(input, /value\.length > AUTH_EMAIL_MAX_LENGTH/);
+  assert.match(input, /const email = value\.trim\(\)\.toLowerCase\(\)/);
+  assert.match(input, /requiredTextWithinLimit/);
+  assert.match(client, /input\.password\.length > AUTH_PASSWORD_MAX_LENGTH/);
+  assert.match(access, /minLength=\{mode === "signup" \? AUTH_PASSWORD_MIN_LENGTH : undefined\}/);
+
+  assert.match(body, /content-length/);
+  assert.match(body, /RequestBodyTooLargeError/);
+  for (const route of [login, signup, oauth]) {
+    assert.match(route, /readJsonBody\(request, AUTH_REQUEST_MAX_BYTES\)/);
+    assert.match(route, /RequestBodyTooLargeError/);
+    assert.match(route, /requestBodyTooLargeResponse\(\)/);
+  }
+  assert.match(body, /status: 413/);
+  assert.match(login, /password\.length > AUTH_PASSWORD_MAX_LENGTH/);
+  assert.match(signup, /requiredTextWithinLimit\(body\.name, AUTH_NAME_MAX_LENGTH\)/);
+  assert.match(signup, /password\.length > AUTH_PASSWORD_MAX_LENGTH/);
+  assert.match(oauth, /Number\.isFinite\(expiresIn\)/);
+  assert.match(oauth, /Number\.isInteger\(expiresIn\)/);
+  assert.match(oauth, /expiresIn > AUTH_MAX_EXPIRES_IN_SECONDS/);
+
+  assert.match(auth, /refreshSupabaseTokens/);
+  assert.match(auth, /if \(result\.status === 401\)/);
+  assert.match(provider, /auth\/v1\/token\?grant_type=refresh_token/);
+  assert.match(proxy, /tokenExpiresSoon/);
+  assert.match(proxy, /request\.cookies\.set\(SUPABASE_ACCESS_COOKIE/);
+  assert.match(proxy, /matcher: \["\/panel\/:path\*", "\/onboarding\/:path\*", "\/admin\/:path\*"\]/);
+});
+
 test("protects session-changing auth routes with an explicit origin check", () => {
   const csrf = read("lib/server/auth/csrf.ts");
   const login = read("app/api/(auth)/auth/login/route.ts");

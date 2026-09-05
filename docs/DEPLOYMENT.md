@@ -61,6 +61,11 @@ ejemplo `https://progy.prograwebs.com` en producción o
 usar aliases de dominio no configurados ni confiar en `Host` o
 `X-Forwarded-Host` para esta validación.
 
+Las rutas privadas usan `proxy.ts` para renovar cookies antes del render cuando
+el access token expiró. El despliegue Node debe conservar el soporte de Proxy y
+permitir las llamadas HTTPS salientes a Supabase; la renovación no sustituye
+las comprobaciones de sesión y RLS de los Route Handlers.
+
 ## 4. Compilación de release
 
 En una copia limpia del repositorio:
