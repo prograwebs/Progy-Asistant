@@ -494,7 +494,7 @@ test("recovers transient PostgREST JWT failures without exposing provider text",
   const dataClient = read("lib/server/data/supabase.ts");
   const workspaceApi = read("app/api/workspace/route.ts");
   const workspaceClient = read("components/dashboard/useWorkspace.ts");
-  const accessClient = read("app/acceso/AccessClient.tsx");
+  const accessClient = read("components/auth/AccessClient.tsx");
   assert.match(dataClient, /session_refresh_required/);
   assert.match(workspaceApi, /error\.publicCode/);
   assert.match(workspaceClient, /response\.status === 401 && result\.code === "session_refresh_required"/);

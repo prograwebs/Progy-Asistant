@@ -19,6 +19,8 @@ Estructura principal:
 
 ```text
 app/                    páginas, Server Components y Route Handlers/API
+components/auth/       acceso y callback OAuth
+components/admin/      interfaces administrativas
 components/dashboard/  interfaz y módulos del panel
 lib/client/             hooks y utilidades exclusivas del navegador
 lib/shared/             tipos, constantes y utilidades puras cliente/servidor

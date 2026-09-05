@@ -6,8 +6,8 @@ import {
   type BillingInvoice,
 } from "@/lib/server/billing/invoices";
 import { SupabaseDataError } from "@/lib/server/data/supabase";
-import AdminBillingTable from "./AdminBillingTable";
-import styles from "./billing.module.css";
+import AdminBillingTable from "@/components/admin/billing/AdminBillingTable";
+import styles from "@/components/admin/billing/billing.module.css";
 
 export const dynamic = "force-dynamic";
 

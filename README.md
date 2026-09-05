@@ -129,7 +129,10 @@ app/
   acceso/                  autenticación
   panel/                   panel privado
 
-components/dashboard/      módulos de interfaz del panel
+components/
+  auth/                    componentes de acceso y callback OAuth
+  admin/billing/           interfaz administrativa de cobros
+  dashboard/               módulos de interfaz del panel
 
 lib/
   client/                  hooks y utilidades exclusivas del navegador

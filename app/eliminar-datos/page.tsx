@@ -1,4 +1,4 @@
-import LegalPage from "../_components/legal-page";
+import LegalPage from "@/components/public/LegalPage";
 
 export const metadata = {
   title: "Eliminación de datos | Progy",

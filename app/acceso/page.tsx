@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import AccessClient from "./AccessClient";
+import AccessClient from "@/components/auth/AccessClient";
 import { AccessMotion } from "@/components/auth/AccessMotion";
 import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { redirect } from "next/navigation";

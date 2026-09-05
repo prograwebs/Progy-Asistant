@@ -52,7 +52,13 @@ app/
 components/
   auth/
     AccessMotion.tsx
+    AccessClient.tsx
+    OAuthCallbackClient.tsx
     PrivateSessionGuard.tsx
+  admin/
+    billing/
+      AdminBillingTable.tsx
+      billing.module.css
   dashboard/
     ProgyDashboard.tsx
     catalog/
