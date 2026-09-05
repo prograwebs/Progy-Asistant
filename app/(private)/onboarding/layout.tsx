@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSupabaseUser } from "@/lib/server/auth/supabase";
-import OnboardingLayout from "../../components/onboarding/OnboardingLayout";
+import OnboardingLayout from "@/components/onboarding/OnboardingLayout";
 import { getOnboardingResume } from "@/lib/server/onboarding/routing";
 
 export const dynamic = "force-dynamic";

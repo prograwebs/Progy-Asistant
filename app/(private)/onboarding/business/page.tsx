@@ -1,13 +1,13 @@
-import DemoStep from "../../../components/onboarding/steps/DemoStep";
+import BusinessStep from "@/components/onboarding/steps/BusinessStep";
 import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { resolveUserRoute } from "@/lib/server/onboarding/routing";
 import { redirect } from "next/navigation";
 
-export default async function DemoOnboardingPage() {
+export default async function BusinessOnboardingPage() {
   const user = await getSupabaseUser();
   if (user) {
     const destination = await resolveUserRoute(user.id);
-    if (destination.path !== "/onboarding/demo") redirect(destination.path);
+    if (destination.path !== "/onboarding/business") redirect(destination.path);
   }
-  return <DemoStep />;
+  return <BusinessStep />;
 }

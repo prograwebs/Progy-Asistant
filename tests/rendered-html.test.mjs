@@ -75,12 +75,12 @@ test("keeps the required OpenNext configuration and excludes legacy Sites scaffo
 
 test("keeps required public and legal routes for deployment", () => {
   for (const file of [
-    "app/page.tsx",
-    "app/acceso/page.tsx",
-    "app/panel/page.tsx",
-    "app/privacidad/page.tsx",
-    "app/terminos/page.tsx",
-    "app/eliminar-datos/page.tsx",
+    "app/(public)/page.tsx",
+    "app/(auth)/acceso/page.tsx",
+    "app/(private)/panel/page.tsx",
+    "app/(public)/privacidad/page.tsx",
+    "app/(public)/terminos/page.tsx",
+    "app/(public)/eliminar-datos/page.tsx",
     "app/api/health/route.ts",
   ]) {
     assert.equal(existsSync(path.join(root, file)), true, `${file} is required for release`);
@@ -93,11 +93,11 @@ test("activates the standalone onboarding flow for new businesses", () => {
   assert.match(dashboard, /OnboardingRedirect/);
   assert.match(dashboard, /\/onboarding\/business/);
   for (const route of [
-    "app/onboarding/page.tsx",
-    "app/onboarding/layout.tsx",
-    "app/onboarding/business/page.tsx",
-    "app/onboarding/demo/page.tsx",
-    "app/onboarding/connect/page.tsx",
+    "app/(private)/onboarding/page.tsx",
+    "app/(private)/onboarding/layout.tsx",
+    "app/(private)/onboarding/business/page.tsx",
+    "app/(private)/onboarding/demo/page.tsx",
+    "app/(private)/onboarding/connect/page.tsx",
   ]) {
     assert.equal(existsSync(path.join(root, route)), true, `${route} is required for onboarding`);
   }
@@ -153,11 +153,12 @@ test("onboarding records WhatsApp only after server-side verification", () => {
 test("onboarding resumes from durable state and protects authenticated routes", () => {
   const paths = read("lib/shared/onboarding/paths.ts");
   const routing = read("lib/server/onboarding/routing.ts");
-  const access = read("app/acceso/page.tsx");
-  const panel = read("app/panel/page.tsx");
+  const access = read("app/(auth)/acceso/page.tsx");
+  const panel = read("app/(private)/panel/page.tsx");
   const draft = read("components/onboarding/useOnboardingDraft.ts");
   const auth = read("lib/server/auth/supabase.ts");
-  const onboardingLayout = read("app/onboarding/layout.tsx");
+  const onboardingLayout = read("app/(private)/onboarding/layout.tsx");
+  const privateLayout = read("app/(private)/layout.tsx");
 
   assert.match(paths, /business_created/);
   assert.match(paths, /demo_completed/);
@@ -178,6 +179,8 @@ test("onboarding resumes from durable state and protects authenticated routes", 
   assert.match(privateGuard, /pageshow/);
   assert.doesNotMatch(auth, /preview-user/);
   assert.match(onboardingLayout, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
+  assert.match(privateLayout, /getSupabaseUser/);
+  assert.match(privateLayout, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
   assert.doesNotMatch(onboardingLayout, /NODE_ENV/);
   assert.match(panel, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
   assert.doesNotMatch(panel, /preview-user|NODE_ENV/);
@@ -396,7 +399,7 @@ test("pins the patched Next.js stack and uses pnpm exclusively", () => {
 
 test("keeps private routes out of search indexes and API responses out of caches", () => {
   const layout = read("app/layout.tsx");
-  const robots = read("app/robots.ts");
+  const robots = read("app/(public)/robots.ts");
   const nextConfig = read("next.config.ts");
 
   assert.doesNotMatch(layout, /codex-preview/);

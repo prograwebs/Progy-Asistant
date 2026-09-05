@@ -33,7 +33,31 @@ El proyecto no depende de OpenAI Sites, Vinext, Vite, Wrangler, Cloudflare Worke
 
 ```text
 app/
-  api/
+  (public)/
+    page.tsx            inicio público
+    privacidad/
+    terminos/
+    eliminar-datos/
+    robots.ts           metadata pública
+  (auth)/
+    acceso/
+      page.tsx          acceso de usuarios
+    auth/callback/
+      page.tsx          callback OAuth
+  (private)/
+    layout.tsx          barrera server-side de sesión
+    panel/
+    onboarding/
+    admin/billing/
+  api/                  Route Handlers con autorización propia
+  layout.tsx            layout raíz
+  globals.css           estilos globales
+```
+
+Las URLs no incluyen los nombres de los route groups: `(public)`, `(auth)` y `(private)` solo organizan el código.
+
+```text
+app/api/
     assistant/
       session/          abre/cierra pruebas y aplica límites
       turn/             audio/texto -> IA -> acción -> voz
@@ -43,12 +67,6 @@ app/
     health/             comprobación segura del entorno
     whatsapp/           Embedded Signup + webhook firmado, detrás de feature flag
     workspace/          CRUD del negocio y snapshot del panel
-  acceso/               autenticación
-  panel/                panel privado
-  privacidad/           información legal pública
-  terminos/
-  eliminar-datos/
-
 components/
   auth/
     AccessMotion.tsx

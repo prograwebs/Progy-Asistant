@@ -125,9 +125,12 @@ Para un despliegue real, valida además el flujo funcional con credenciales real
 
 ```text
 app/
+  (public)/                páginas públicas y legales
+  (auth)/                  acceso y callback OAuth
+  (private)/               panel, onboarding y administración
   api/                     rutas server-side
-  acceso/                  autenticación
-  panel/                   panel privado
+  layout.tsx              layout raíz
+  globals.css             estilos globales
 
 components/
   auth/                    componentes de acceso y callback OAuth

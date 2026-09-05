@@ -18,7 +18,11 @@ El agente debe preservar el aislamiento entre negocios, validar en servidor toda
 Estructura principal:
 
 ```text
-app/                    páginas, Server Components y Route Handlers/API
+app/(public)/            páginas públicas y legales
+app/(auth)/              acceso y callback OAuth
+app/(private)/           páginas que requieren sesión
+app/api/                 Route Handlers/API con autorización propia
+app/layout.tsx           layout raíz y estilos globales
 components/auth/       acceso y callback OAuth
 components/admin/      interfaces administrativas
 components/dashboard/  interfaz y módulos del panel

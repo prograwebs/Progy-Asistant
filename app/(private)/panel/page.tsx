@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import ProgyDashboard from "../../components/dashboard/ProgyDashboard";
+import ProgyDashboard from "@/components/dashboard/ProgyDashboard";
 import { getSupabaseUser } from "@/lib/server/auth/supabase";
 import { publicIntegrationStatus } from "@/lib/server/config/env";
 import { resolveUserRoute } from "@/lib/server/onboarding/routing";
