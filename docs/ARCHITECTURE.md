@@ -139,7 +139,8 @@ lib/
     agent/                herramientas del agente
     ai/                   transcripción y decisiones estructuradas
     assistant/            contexto, validación y acciones
-    auth/                 sesión y usuario
+    auth/                 sesión, usuario y límites de autenticación
+      types/              contratos propios del dominio de autenticación
     billing/              capacidades, cuotas e invoices
     config/               variables y readiness del servidor
     data/                 fronteras Supabase autenticada y privilegiada
@@ -173,6 +174,7 @@ app (rutas y handlers)
 - `lib/shared/` no puede importar `next/headers`, proveedores, base de datos ni secretos.
 - `lib/client/types/` contiene contratos exclusivos del cliente y no debe importar `lib/server/`, proveedores ni secretos.
 - `lib/client/services/` solo consume Route Handlers mediante APIs públicas, puede importar `lib/shared/`, y no puede importar `lib/server/`, proveedores ni secretos.
+- Todo `type` e `interface` vive en un archivo de tipos separado y organizado por dominio; los servicios, componentes y Route Handlers importan esos contratos con `import type` y no declaran tipos locales.
 - `components/` no importa `lib/server/`; puede importar `hooks/`, `lib/client/services/` y `lib/shared/`.
 - Los handlers de `app/api` obtienen sesión, validan entrada y delegan en un servicio focalizado.
 - El acceso Supabase entra por `lib/server/data/supabase` o `lib/server/data/supabase-admin`.
@@ -294,7 +296,8 @@ El dashboard incluye un checklist de preparación que exige configuración compl
 
 - comportamiento de IA: `lib/server/assistant/context.ts` y `lib/server/ai/openai.ts`;
 - acciones: `lib/server/assistant/actions.ts`;
-- autenticación: `lib/server/auth/supabase.ts`;
+- autenticación y sesión: `lib/server/auth/supabase.ts`;
+- rate limiting de autenticación: `lib/server/auth/rate-limit.ts` y `supabase/migrations/20260905010000_auth_rate_limits.sql`;
 - configuración/env: `lib/server/config/env.ts`;
 - voces: `lib/server/voice/`;
 - límites: `lib/server/billing/entitlements.ts`;

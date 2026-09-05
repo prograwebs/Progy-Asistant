@@ -1,9 +1,29 @@
-import { refreshSupabaseSession } from "@/lib/server/auth/supabase";
+import { getSupabaseRefreshToken, refreshSupabaseSession } from "@/lib/server/auth/supabase";
+import {
+  AUTH_RATE_LIMITS,
+  AuthRateLimitUnavailableError,
+  checkAuthRateLimit,
+  identifierRateLimitRule,
+  ipRateLimitRule,
+  rateLimitResponse,
+  rateLimitUnavailableResponse,
+} from "@/lib/server/auth/rate-limit";
 
 export const dynamic = "force-dynamic";
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    const ipLimit = await checkAuthRateLimit([ipRateLimitRule(request, AUTH_RATE_LIMITS.refreshIp)]);
+    if (!ipLimit.allowed) return rateLimitResponse(ipLimit.retryAfterSeconds);
+
+    const refreshToken = await getSupabaseRefreshToken();
+    if (refreshToken) {
+      const tokenLimit = await checkAuthRateLimit([
+        identifierRateLimitRule(refreshToken, AUTH_RATE_LIMITS.refreshToken),
+      ]);
+      if (!tokenLimit.allowed) return rateLimitResponse(tokenLimit.retryAfterSeconds);
+    }
+
     const refreshed = await refreshSupabaseSession();
 
     if (!refreshed) {
@@ -32,6 +52,7 @@ export async function POST() {
       },
     );
   } catch (error) {
+    if (error instanceof AuthRateLimitUnavailableError) return rateLimitUnavailableResponse();
     console.error("Progy auth refresh exception:", error);
 
     return Response.json(

@@ -42,6 +42,8 @@ Nunca subas `.env.local`, tokens ni secretos al repositorio.
 Variables que deben ser exclusivamente server-side:
 
 ```text
+SUPABASE_SECRET_KEY
+SUPABASE_SERVICE_ROLE_KEY (legacy)
 OPENAI_API_KEY
 ELEVENLABS_API_KEY
 META_APP_SECRET
@@ -49,6 +51,8 @@ BILLING_CRON_SECRET
 ```
 
 No deben existir variantes `NEXT_PUBLIC_` de esas credenciales privadas.
+
+La clave server-side de Supabase es obligatoria en producción porque las rutas de autenticación usan una RPC privada para rate limiting. El proxy debe sobrescribir los headers de IP (`CF-Connecting-IP` o `X-Forwarded-For`) antes de reenviar solicitudes a Node.
 
 ## 4. Compilación de release
 

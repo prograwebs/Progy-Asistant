@@ -55,7 +55,20 @@ Si más adelante se almacenan archivos en Supabase Storage, aplicar bucket priva
 
 Los límites de prueba se aplican en servidor. Ocultar o deshabilitar un botón no es un mecanismo de seguridad.
 
-Antes de campañas o adquisición amplia de usuarios, el reverse proxy/hosting debe aplicar rate limiting a rutas públicas y autenticación. Las rutas autenticadas siguen necesitando límites de producto por negocio.
+Las rutas de autenticación aplican límites server-side persistentes mediante la RPC `consume_auth_rate_limit` de Supabase. Los fingerprints HMAC se calculan con la clave server-side y no se almacenan IPs, emails ni tokens en texto plano.
+
+| Ruta | Límite principal | Límite secundario |
+|---|---:|---:|
+| `/api/auth/login` | 30 por IP / 15 min | 5 por email / 15 min |
+| `/api/auth/signup` | 10 por IP / 1 h | 3 por email / 1 h |
+| `/api/auth/refresh` | 60 por IP / 1 min | 30 por refresh token / 1 min |
+| `/api/auth/oauth-session` | 10 por IP / 10 min | 5 por access token / 10 min |
+
+Producción requiere `SUPABASE_SECRET_KEY` o `SUPABASE_SERVICE_ROLE_KEY` para consultar el limiter. Si el limiter no está disponible, las rutas bloquean la operación con `503`; fuera de producción se permite continuar con una advertencia controlada para facilitar el desarrollo local.
+
+El proxy/hosting debe sobrescribir `CF-Connecting-IP` o `X-Forwarded-For`. La aplicación no debe desplegarse confiando en esos headers si el origen puede recibirlos directamente desde clientes externos.
+
+Antes de campañas o adquisición amplia de usuarios, el reverse proxy/hosting debe aplicar una segunda capa de rate limiting a rutas públicas y autenticación. Las rutas autenticadas siguen necesitando límites de producto por negocio.
 
 ## Headers
 

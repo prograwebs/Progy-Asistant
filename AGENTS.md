@@ -72,6 +72,7 @@ Para pruebas funcionales con credenciales reales, seguir la matriz de [`docs/TES
 ## Convenciones de código
 
 - Usar TypeScript estricto y respetar la configuración existente de ESLint y `tsconfig.json`.
+- Declarar todos los `type` e `interface` en archivos de tipos separados y organizados por dominio; los módulos de implementación deben importarlos con `import type` y no deben contener declaraciones locales de tipos.
 - Mantener la separación entre UI, Route Handlers, servicios de proveedores y acceso a datos.
 - Usar alias `@/*` cuando mejore la claridad de los imports.
 - Mantener componentes React enfocados; no concentrar lógica de negocio, proveedores e interfaz en componentes monolíticos.

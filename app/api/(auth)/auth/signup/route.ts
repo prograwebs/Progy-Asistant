@@ -1,11 +1,23 @@
 import { NextResponse } from "next/server";
 import { saveSupabaseSession, supabaseAuthRequest } from "@/lib/server/auth/supabase";
+import {
+  AUTH_RATE_LIMITS,
+  AuthRateLimitUnavailableError,
+  checkAuthRateLimit,
+  identifierRateLimitRule,
+  ipRateLimitRule,
+  rateLimitResponse,
+  rateLimitUnavailableResponse,
+} from "@/lib/server/auth/rate-limit";
 import { progyAuthCallbackUrl } from "@/lib/server/config/env";
 import { safeErrorMessage } from "@/lib/server/http/errors";
 import { isRecord, requiredText, validEmail } from "@/lib/shared/validation/input";
 
 export async function POST(request: Request) {
   try {
+    const ipLimit = await checkAuthRateLimit([ipRateLimitRule(request, AUTH_RATE_LIMITS.signupIp)]);
+    if (!ipLimit.allowed) return rateLimitResponse(ipLimit.retryAfterSeconds);
+
     const body = await request.json().catch(() => null) as unknown;
     const name = isRecord(body) ? requiredText(body.name, 120) : null;
     const email = isRecord(body) ? validEmail(body.email) : null;
@@ -13,6 +25,11 @@ export async function POST(request: Request) {
     if (!name || !email || password.trim().length < 8) {
       return NextResponse.json({ error: "Completa tu nombre, correo y una contraseña de al menos 8 caracteres." }, { status: 400 });
     }
+
+    const emailLimit = await checkAuthRateLimit([
+      identifierRateLimitRule(email, AUTH_RATE_LIMITS.signupEmail),
+    ]);
+    if (!emailLimit.allowed) return rateLimitResponse(emailLimit.retryAfterSeconds);
 
     const response = await supabaseAuthRequest(`signup?redirect_to=${encodeURIComponent(progyAuthCallbackUrl())}`, {
       method: "POST",
@@ -47,6 +64,7 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ ok: true, needsConfirmation: false });
   } catch (error) {
+    if (error instanceof AuthRateLimitUnavailableError) return rateLimitUnavailableResponse();
     const message = error instanceof Error && error.message === "SUPABASE_NOT_CONFIGURED"
       ? "Supabase todavía no está configurado en Progy."
       : "No pudimos crear la cuenta en este momento.";

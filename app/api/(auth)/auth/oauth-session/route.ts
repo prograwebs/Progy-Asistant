@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server";
 import { saveSupabaseSession } from "@/lib/server/auth/supabase";
+import {
+  AUTH_RATE_LIMITS,
+  AuthRateLimitUnavailableError,
+  checkAuthRateLimit,
+  identifierRateLimitRule,
+  ipRateLimitRule,
+  rateLimitResponse,
+  rateLimitUnavailableResponse,
+} from "@/lib/server/auth/rate-limit";
 import { integrationConfig } from "@/lib/server/config/env";
 
 export async function POST(request: Request) {
   try {
+    const ipLimit = await checkAuthRateLimit([ipRateLimitRule(request, AUTH_RATE_LIMITS.oauthIp)]);
+    if (!ipLimit.allowed) return rateLimitResponse(ipLimit.retryAfterSeconds);
+
     const body = (await request.json()) as {
       accessToken?: string;
       refreshToken?: string;
@@ -17,6 +29,11 @@ export async function POST(request: Request) {
     if (!body.accessToken || !body.refreshToken) {
       return NextResponse.json({ error: "Google no devolvió una sesión válida." }, { status: 400 });
     }
+
+    const tokenLimit = await checkAuthRateLimit([
+      identifierRateLimitRule(body.accessToken, AUTH_RATE_LIMITS.oauthToken),
+    ]);
+    if (!tokenLimit.allowed) return rateLimitResponse(tokenLimit.retryAfterSeconds);
 
     const userResponse = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: {
@@ -38,7 +55,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No pudimos completar el acceso con Google." }, { status: 502 });
     }
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (error) {
+    if (error instanceof AuthRateLimitUnavailableError) return rateLimitUnavailableResponse();
     return NextResponse.json({ error: "No pudimos completar el acceso con Google." }, { status: 500 });
   }
 }

@@ -233,6 +233,47 @@ test("auth success requires a persisted session or email confirmation", () => {
   assert.match(oauth, /if \(!sessionSaved\)[\s\S]*status: 502/);
 });
 
+test("protects auth endpoints with persistent server-side rate limits", () => {
+  const limiter = read("lib/server/auth/rate-limit.ts");
+  const limiterTypes = read("lib/server/auth/types/rate-limit.ts");
+  const migration = read("supabase/migrations/20260905010000_auth_rate_limits.sql");
+  const login = read("app/api/(auth)/auth/login/route.ts");
+  const signup = read("app/api/(auth)/auth/signup/route.ts");
+  const refresh = read("app/api/(auth)/auth/refresh/route.ts");
+  const oauth = read("app/api/(auth)/auth/oauth-session/route.ts");
+
+  assert.match(limiter, /import type \{[\s\S]*RateLimitRpcRow[\s\S]*from "@\/lib\/server\/auth\/types\/rate-limit"/);
+  assert.doesNotMatch(limiter, /^(?:export )?(?:type|interface)\s/m);
+  for (const declaration of ["AuthRateLimitPolicy", "AuthRateLimitRule", "AuthRateLimitResult", "RateLimitRpcRow"]) {
+    assert.match(limiterTypes, new RegExp(`export type ${declaration}\\b`));
+  }
+  assert.match(limiter, /createHmac\("sha256"/);
+  assert.match(limiter, /supabaseAdminRequest<RateLimitRpcRow\[\]>/);
+  assert.match(limiter, /status: 429/);
+  assert.match(limiter, /Retry-After/);
+  assert.match(limiter, /status: 503/);
+  assert.match(limiter, /NODE_ENV === "production"/);
+  assert.match(limiter, /cf-connecting-ip/);
+  assert.match(limiter, /x-forwarded-for/);
+  assert.match(limiter, /x-real-ip/);
+
+  for (const route of [login, signup, refresh, oauth]) {
+    assert.match(route, /checkAuthRateLimit/);
+    assert.match(route, /rateLimitResponse/);
+    assert.match(route, /AuthRateLimitUnavailableError/);
+  }
+  assert.ok(login.indexOf("if (!ipLimit.allowed)") < login.indexOf("supabaseAuthRequest"));
+  assert.ok(signup.indexOf("if (!ipLimit.allowed)") < signup.indexOf("supabaseAuthRequest"));
+  assert.ok(refresh.indexOf("if (!ipLimit.allowed)") < refresh.indexOf("refreshSupabaseSession"));
+  assert.ok(oauth.indexOf("if (!ipLimit.allowed)") < oauth.indexOf("fetch(`${supabaseUrl}/auth/v1/user`") );
+
+  assert.match(migration, /create table if not exists public\.auth_rate_limits/);
+  assert.match(migration, /on conflict \(bucket, key_hash, window_started_at\)/);
+  assert.match(migration, /enable row level security/);
+  assert.match(migration, /revoke all on public\.auth_rate_limits from public, anon, authenticated/);
+  assert.match(migration, /grant execute on function public\.consume_auth_rate_limit[\s\S]*to service_role/);
+});
+
 test("production template keeps secrets server-side and WhatsApp gated", () => {
   const env = read(".env.example");
   assert.match(env, /^OPENAI_API_KEY=/m);
