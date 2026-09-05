@@ -134,9 +134,9 @@
 .nav::-webkit-scrollbar-thumb:hover { background: #6a6f72; }
 .navLabel { color: #5f6467; font-size: 9px; letter-spacing: .14em; padding: 10px 10px 5px; }
 .navGroup { display: flex; flex-direction: column; gap: 3px; }
-.navGroupActive > .navLabel { color: var(--dash-accent); }
+.navGroupActive > .navLabel { color: #8f9497; }
 .navGroupItems { display: flex; flex-direction: column; gap: 3px; }
-.nav button {
+.nav a {
   min-height: 42px;
   border: 0;
   border-radius: 7px;
@@ -148,15 +148,24 @@
   padding: 0 11px;
   cursor: pointer;
   text-align: left;
+  text-decoration: none;
 }
-.nav button:hover { color: #ddd9d2; background: rgba(255,255,255,.025); }
-.nav button.active { color: #f5f1e7; background: rgba(219,165,106,.10); box-shadow: inset 2px 0 0 var(--dash-accent); }
-.nav button.soon { color: #676d70; cursor: default; }
-.nav button.soon:hover { color: #858a8d; background: rgba(255,255,255,.018); }
-.navIcon { width: 18px; height: 19px; display: grid; place-items: center; text-align: center; color: #b8824f; }
+.nav a:hover { color: #ddd9d2; background: rgba(255,255,255,.025); }
+.nav a:focus-visible,
+.sidebarToggle:focus-visible,
+.businessSelect:focus-visible,
+.logout:focus-visible { outline: 2px solid var(--dash-accent); outline-offset: 2px; }
+.nav a.active { color: #f5f1e7; background: rgba(255,255,255,.06); box-shadow: inset 2px 0 0 var(--dash-accent); }
+.navIcon { width: 18px; height: 19px; display: grid; place-items: center; text-align: center; color: #9da2a4; }
+.nav a.active .navIcon { color: var(--dash-accent); }
 .navIcon svg { display: block; width: 19px; height: 19px; }
 .navText { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.navSoon { margin-left: auto; color: #5f6467; font-size: 8px; letter-spacing: .04em; white-space: nowrap; }
+.navBadge { margin-left: auto; min-width: 18px; padding: 2px 5px; border-radius: 999px; background: #24282c; color: #d8d5cf; font-size: 9px; line-height: 1.2; text-align: center; }
+.navBadgeSuccess { background: rgba(134,240,186,.12); color: var(--dash-green); }
+.navBadgeAttention { background: rgba(255,180,95,.12); color: var(--dash-accent); }
+.navStatus { width: 7px; height: 7px; margin-left: auto; border-radius: 50%; flex: 0 0 7px; }
+.navStatusConnected { background: var(--dash-green); box-shadow: 0 0 10px rgba(134,240,186,.4); }
+.navStatusAttention { background: var(--dash-accent); box-shadow: 0 0 10px rgba(219,165,106,.35); }
 
 .user {
   margin-top: auto;
@@ -183,14 +192,15 @@
 .app.collapsed .businessSelect,
 .app.collapsed .navLabel,
 .app.collapsed .navText,
-.app.collapsed .navSoon,
+.app.collapsed .navBadge,
+.app.collapsed .navStatus,
 .app.collapsed .userDetails,
 .app.collapsed .logout { display: none; }
 .app.collapsed .businessSwitch { justify-content: center; padding-left: 8px; padding-right: 8px; }
 .app.collapsed .nav { padding-right: 0; }
 .app.collapsed .nav { scrollbar-width: none; }
 .app.collapsed .nav::-webkit-scrollbar { width: 0; height: 0; }
-.app.collapsed .nav button { justify-content: center; padding-left: 0; padding-right: 0; }
+.app.collapsed .nav a { justify-content: center; padding-left: 0; padding-right: 0; }
 .app.collapsed .navIcon { width: auto; }
 .app.collapsed .user { display: flex; justify-content: center; padding-left: 0; padding-right: 0; }
 

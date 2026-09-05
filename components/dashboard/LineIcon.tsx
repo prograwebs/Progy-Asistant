@@ -3,7 +3,7 @@ import {
   ArrowLeft,
   BarChart3,
   BookOpen,
-  Bot,
+  CalendarDays,
   Building2,
   CheckCircle2,
   Circle,
@@ -19,39 +19,17 @@ import {
   Search,
   Send,
   Settings,
+  Sparkles,
   ShoppingBasket,
+  Target,
+  Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
-
-type DashboardIconName =
-  | "home"
-  | "business"
-  | "assistant"
-  | "catalog"
-  | "knowledge"
-  | "voice"
-  | "test"
-  | "whatsapp"
-  | "phone"
-  | "globe"
-  | "conversation"
-  | "orders"
-  | "usage"
-  | "settings"
-  | "check"
-  | "pending"
-  | "arrowRight"
-  | "play"
-  | "search"
-  | "filter"
-  | "refresh"
-  | "send"
-  | "back";
+import type { DashboardIconName } from "./types/icons";
 
 const icons: Record<DashboardIconName, LucideIcon> = {
   home: Home,
   business: Building2,
-  assistant: Bot,
   catalog: ClipboardList,
   knowledge: BookOpen,
   voice: Mic2,
@@ -60,9 +38,14 @@ const icons: Record<DashboardIconName, LucideIcon> = {
   phone: Phone,
   globe: Globe2,
   conversation: MessageCircle,
+  contacts: Users,
+  opportunities: Target,
+  calendar: CalendarDays,
+  results: BarChart3,
   orders: ShoppingBasket,
   usage: BarChart3,
   settings: Settings,
+  assistant: Sparkles,
   check: CheckCircle2,
   pending: Circle,
   arrowRight: ArrowRight,
