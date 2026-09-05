@@ -49,7 +49,7 @@ app/
     panel/
     onboarding/
     admin/billing/
-  api/                  Route Handlers con autorización propia
+  api/                  Route Handlers organizados por grupos y dominio
   layout.tsx            layout raíz
   globals.css           estilos globales
 ```
@@ -58,14 +58,18 @@ Las URLs no incluyen los nombres de los route groups: `(public)`, `(auth)` y `(p
 
 ```text
 app/api/
-    assistant/
-      session/          abre/cierra pruebas y aplica límites
-      turn/             audio/texto -> IA -> acción -> voz
-    catalog/
-      import/           documento -> vista previa -> confirmación
-    elevenlabs/         voces y muestras
+  (public)/
     health/             comprobación segura del entorno
-    whatsapp/           Embedded Signup + webhook firmado, detrás de feature flag
+    whatsapp/webhook/   webhook público validado por firma
+  (auth)/
+    auth/               login, signup, OAuth y sesión
+  (private)/
+    assistant/          sesiones de prueba y turnos de IA
+    billing/            facturación y ciclo de cobro
+    catalog/            importación del catálogo
+    elevenlabs/         voces y muestras
+    onboarding/         configuración inicial
+    whatsapp/           operaciones autenticadas
     workspace/          CRUD del negocio y snapshot del panel
 components/
   auth/
@@ -279,9 +283,9 @@ El dashboard incluye un checklist de preparación que exige configuración compl
 - configuración/env: `lib/server/config/env.ts`;
 - voces: `lib/server/voice/`;
 - límites: `lib/server/billing/entitlements.ts`;
-- importación: `app/api/catalog/import/` y `components/dashboard/catalog/CatalogImport.tsx`;
+- importación: `app/api/(private)/catalog/import/` y `components/dashboard/catalog/CatalogImport.tsx`;
 - panel: `components/dashboard/sections/`;
-- WhatsApp: `components/whatsapp/metaSignup.ts`, `components/dashboard/sections/WhatsAppSection.tsx` y `app/api/whatsapp/`.
+- WhatsApp: `components/whatsapp/metaSignup.ts`, `components/dashboard/sections/WhatsAppSection.tsx` y `app/api/(private)/whatsapp/`.
 
 ## Regla para futuras integraciones
 

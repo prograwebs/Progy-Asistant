@@ -35,7 +35,7 @@ test("quota settings are configurable and usage goes through the atomic path", (
 });
 
 test("assistant entry points check quota before provider calls", () => {
-  const turn = read("app/api/assistant/turn/route.ts");
+  const turn = read("app/api/(private)/assistant/turn/route.ts");
   const inbound = read("lib/server/whatsapp/inbound.ts");
   assert.ok(turn.indexOf("checkQuota") < turn.indexOf("transcribeAudio(audio"));
   assert.ok(turn.indexOf("checkQuota") < turn.indexOf("generateAssistantDecision({"));

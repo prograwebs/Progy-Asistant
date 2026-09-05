@@ -81,9 +81,36 @@ test("keeps required public and legal routes for deployment", () => {
     "app/(public)/privacidad/page.tsx",
     "app/(public)/terminos/page.tsx",
     "app/(public)/eliminar-datos/page.tsx",
-    "app/api/health/route.ts",
+    "app/api/(public)/health/route.ts",
   ]) {
     assert.equal(existsSync(path.join(root, file)), true, `${file} is required for release`);
+  }
+});
+
+test("organizes API handlers inside app/api without changing the API namespace", () => {
+  for (const file of [
+    "app/api/(public)/health/route.ts",
+    "app/api/(public)/whatsapp/webhook/route.ts",
+    "app/api/(auth)/auth/login/route.ts",
+    "app/api/(private)/assistant/turn/route.ts",
+    "app/api/(private)/billing/invoices/route.ts",
+    "app/api/(private)/catalog/import/route.ts",
+    "app/api/(private)/elevenlabs/voices/route.ts",
+    "app/api/(private)/onboarding/route.ts",
+    "app/api/(private)/whatsapp/messages/route.ts",
+    "app/api/(private)/workspace/route.ts",
+  ]) {
+    assert.equal(existsSync(path.join(root, file)), true, `${file} is required in its API group`);
+  }
+
+  for (const file of [
+    "app/api/health/route.ts",
+    "app/api/whatsapp/webhook/route.ts",
+    "app/api/auth/login/route.ts",
+    "app/api/assistant/turn/route.ts",
+    "app/api/billing/invoices/route.ts",
+  ]) {
+    assert.equal(existsSync(path.join(root, file)), false, `${file} should not remain outside a group`);
   }
 });
 
@@ -107,9 +134,9 @@ test("onboarding production flow has durable state, versioned templates, and a s
   const migration = read("supabase/migrations/20260818000000_onboarding_flow.sql");
   const categories = read("supabase/migrations/20260818000001_seed_business_categories.sql");
   const features = read("supabase/migrations/20260818000002_seed_feature_definitions.sql");
-  const api = read("app/api/onboarding/route.ts");
+  const api = read("app/api/(private)/onboarding/route.ts");
   const service = read("lib/server/onboarding/service.ts");
-  const workspace = read("app/api/workspace/route.ts");
+  const workspace = read("app/api/(private)/workspace/route.ts");
 
   assert.match(migration, /CREATE TABLE public\.business_onboarding/);
   assert.match(migration, /can_view_business\(business_onboarding\.business_id\)/);
@@ -142,7 +169,7 @@ test("onboarding production flow has durable state, versioned templates, and a s
 });
 
 test("onboarding records WhatsApp only after server-side verification", () => {
-  const api = read("app/api/onboarding/route.ts");
+  const api = read("app/api/(private)/onboarding/route.ts");
   const connect = read("components/onboarding/steps/ConnectStep.tsx");
   assert.match(api, /markChannelConnected/);
   assert.match(connect, /action: "channelConnected"/);
@@ -184,7 +211,7 @@ test("onboarding resumes from durable state and protects authenticated routes", 
   assert.doesNotMatch(onboardingLayout, /NODE_ENV/);
   assert.match(panel, /if \(!user\) redirect\("\/acceso\?mode=login"\)/);
   assert.doesNotMatch(panel, /preview-user|NODE_ENV/);
-  assert.doesNotMatch(read("app/api/workspace/route.ts"), /preview-business/);
+  assert.doesNotMatch(read("app/api/(private)/workspace/route.ts"), /preview-business/);
 });
 
 test("production template keeps secrets server-side and WhatsApp gated", () => {
@@ -202,13 +229,13 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   const constants = read("lib/shared/whatsapp/constants.ts");
   const signup = read("components/whatsapp/metaSignup.ts");
   const whatsappSection = read("components/dashboard/sections/WhatsAppSection.tsx");
-  const connect = read("app/api/whatsapp/connect/route.ts");
-  const register = read("app/api/whatsapp/register/route.ts");
+  const connect = read("app/api/(private)/whatsapp/connect/route.ts");
+  const register = read("app/api/(private)/whatsapp/register/route.ts");
   const metaClient = read("lib/server/whatsapp/meta-client.ts");
   const coexistenceMigration = read("supabase/migrations/20260823120000_whatsapp_coexistence.sql");
-  const templates = read("app/api/whatsapp/templates/route.ts");
-  const send = read("app/api/whatsapp/send-text/route.ts");
-  const messages = read("app/api/whatsapp/messages/route.ts");
+  const templates = read("app/api/(private)/whatsapp/templates/route.ts");
+  const send = read("app/api/(private)/whatsapp/send-text/route.ts");
+  const messages = read("app/api/(private)/whatsapp/messages/route.ts");
   const inbox = read("components/dashboard/conversations/ConversationInbox.tsx");
   const inboxHook = read("components/dashboard/conversations/useConversationInbox.ts");
   const composer = read("components/dashboard/conversations/ConversationComposer.tsx");
@@ -252,9 +279,9 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
   assert.match(inboxHook, /\/api\/whatsapp\/messages/);
   assert.match(inbox, /Actualizar conversaciones/);
   assert.match(composer, /Enviar respuesta manual/);
-  assert.match(read("app/api/whatsapp/stream/route.ts"), /postgres_changes/);
-  assert.match(read("app/api/whatsapp/stream/route.ts"), /whatsapp_messages/);
-  assert.match(read("app/api/whatsapp/stream/route.ts"), /conversations/);
+  assert.match(read("app/api/(private)/whatsapp/stream/route.ts"), /postgres_changes/);
+  assert.match(read("app/api/(private)/whatsapp/stream/route.ts"), /whatsapp_messages/);
+  assert.match(read("app/api/(private)/whatsapp/stream/route.ts"), /conversations/);
   assert.match(inboxHook, /EventSource/);
   assert.match(inboxHook, /whatsapp-update/);
   assert.match(inboxHook, /showLoading: false/);
@@ -272,7 +299,7 @@ test("keeps WhatsApp configuration consistent across client and server", () => {
 
 test("keeps WhatsApp webhook processing signed, scoped and idempotent", () => {
   const admin = read("lib/server/data/supabase-admin.ts");
-  const webhook = read("app/api/whatsapp/webhook/route.ts");
+  const webhook = read("app/api/(public)/whatsapp/webhook/route.ts");
   const inbound = read("lib/server/whatsapp/inbound.ts");
   const store = read("lib/server/whatsapp/webhook-store.ts");
   const openai = read("lib/server/ai/openai.ts");
@@ -428,7 +455,7 @@ test("does not expose Supabase or PostgREST error details", async () => {
   assert.equal(errors.publicDataError(403, "PATCH"), "No tienes permiso para realizar esta operación.");
 
   const dataClient = read("lib/server/data/supabase.ts");
-  const workspace = read("app/api/workspace/route.ts");
+  const workspace = read("app/api/(private)/workspace/route.ts");
   assert.doesNotMatch(dataClient, /safeErrorMessage/);
   assert.doesNotMatch(workspace, /error instanceof Error \? error\.message/);
   assert.match(dataClient, /operation:[\s\S]*status:[\s\S]*code:[\s\S]*correlationId[,:]/);
@@ -495,7 +522,7 @@ test("recovers transient PostgREST JWT failures without exposing provider text",
   assert.equal(attempts, 1);
 
   const dataClient = read("lib/server/data/supabase.ts");
-  const workspaceApi = read("app/api/workspace/route.ts");
+  const workspaceApi = read("app/api/(private)/workspace/route.ts");
   const workspaceClient = read("components/dashboard/useWorkspace.ts");
   const accessClient = read("components/auth/AccessClient.tsx");
   assert.match(dataClient, /session_refresh_required/);
@@ -517,11 +544,11 @@ test("uses one configurable payload limit for uploads and binary responses", asy
   assert.equal(limits.exceedsBase64SourceLimit(limits.MAX_BASE64_SOURCE_BYTES + 1), true);
 
   const env = read(".env.example");
-  const assistant = read("app/api/assistant/turn/route.ts");
-  const catalogApi = read("app/api/catalog/import/route.ts");
+  const assistant = read("app/api/(private)/assistant/turn/route.ts");
+  const catalogApi = read("app/api/(private)/catalog/import/route.ts");
   const catalogClient = read("components/dashboard/catalog/CatalogImport.tsx");
   const voiceClient = read("components/dashboard/voice/VoiceTestStudio.tsx");
-  const preview = read("app/api/elevenlabs/preview/route.ts");
+  const preview = read("app/api/(private)/elevenlabs/preview/route.ts");
   assert.match(env, /^NEXT_PUBLIC_PROGY_MAX_PAYLOAD_MB=4$/m);
   for (const source of [assistant, catalogApi, catalogClient, voiceClient, preview]) {
     assert.match(source, /MAX_PAYLOAD_MB|exceedsPayloadLimit|exceedsBase64SourceLimit/);

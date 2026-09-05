@@ -23,7 +23,7 @@ test("assistant uses tenant-filtered native function calling and audits tool cal
   const registry = read("lib/server/agent/tools/registry.ts");
   const openai = read("lib/server/ai/openai.ts");
   const inbound = read("lib/server/whatsapp/inbound.ts");
-  const turn = read("app/api/assistant/turn/route.ts");
+  const turn = read("app/api/(private)/assistant/turn/route.ts");
   const context = read("lib/server/data/supabase.ts");
 
   assert.match(registry, /getEnabledToolsForBusiness/);

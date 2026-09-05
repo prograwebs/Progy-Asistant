@@ -29,7 +29,7 @@ test("Langfuse is optional and both assistant channels use one post-quota trace"
   const observability = read("lib/server/observability/langfuse.ts");
   const config = read("lib/server/config/env.ts");
   const openai = read("lib/server/ai/openai.ts");
-  const web = read("app/api/assistant/turn/route.ts");
+  const web = read("app/api/(private)/assistant/turn/route.ts");
   const whatsapp = read("lib/server/whatsapp/inbound.ts");
 
   for (const variable of ["LANGFUSE_PUBLIC_KEY", "LANGFUSE_SECRET_KEY", "LANGFUSE_HOST"]) {

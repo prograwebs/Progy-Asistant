@@ -20,9 +20,9 @@ Cuando PrograWebs elija el proveedor, crear:
 
 ```text
 lib/server/billing/provider.ts
-app/api/billing/checkout/route.ts
-app/api/billing/webhook/route.ts
-app/api/billing/portal/route.ts
+app/api/(private)/billing/checkout/route.ts
+app/api/(private)/billing/webhook/route.ts
+app/api/(private)/billing/portal/route.ts
 ```
 
 El adaptador debe exponer como mínimo:

@@ -37,8 +37,8 @@ test("billing calculations and transactional cycle functions are server-side", (
 });
 
 test("billing routes protect administrative operations and the cron secret", () => {
-  const adminRoute = read("app/api/billing/invoices/route.ts");
-  const cronRoute = read("app/api/billing/run-cycle/route.ts");
+  const adminRoute = read("app/api/(private)/billing/invoices/route.ts");
+  const cronRoute = read("app/api/(private)/billing/run-cycle/route.ts");
   const env = read("lib/server/config/env.ts");
   assert.match(adminRoute, /requireApiUser/);
   assert.match(adminRoute, /assertAdmin/);

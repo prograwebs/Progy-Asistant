@@ -21,7 +21,7 @@ Estructura principal:
 app/(public)/            páginas públicas y legales
 app/(auth)/              acceso y callback OAuth
 app/(private)/           páginas que requieren sesión
-app/api/                 Route Handlers/API con autorización propia
+app/api/                 Route Handlers organizados con `(public)`, `(auth)` y `(private)`
 app/layout.tsx           layout raíz y estilos globales
 components/auth/       acceso y callback OAuth
 components/admin/      interfaces administrativas

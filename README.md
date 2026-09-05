@@ -128,7 +128,7 @@ app/
   (public)/                páginas públicas y legales
   (auth)/                  acceso y callback OAuth
   (private)/               panel, onboarding y administración
-  api/                     rutas server-side
+  api/                     Route Handlers organizados con `(public)`, `(auth)` y `(private)`
   layout.tsx              layout raíz
   globals.css             estilos globales
 

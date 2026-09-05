@@ -41,7 +41,7 @@ test("onboarding demo normalizes voice labels and enforces server-side question 
   const voiceCard = read("components/onboarding/VoiceCard.tsx");
   const styles = read("components/onboarding/Onboarding.module.css");
   const limits = read("lib/shared/assistant/demo-limits.ts");
-  const turnRoute = read("app/api/assistant/turn/route.ts");
+  const turnRoute = read("app/api/(private)/assistant/turn/route.ts");
 
   assert.match(voiceCard, /split\(\/\\s\+\(\?:-\|–\|—\|\\\|\)/);
   assert.match(styles, /grid-template-columns: 39px minmax\(0, 1fr\) 20px/);
@@ -68,7 +68,7 @@ test("assistant context tolerates a stale schema cache for demo markers", () => 
 
 test("assistant data errors expose only a development operation hint", () => {
   const data = read("lib/server/data/supabase.ts");
-  const turnRoute = read("app/api/assistant/turn/route.ts");
+  const turnRoute = read("app/api/(private)/assistant/turn/route.ts");
 
   assert.match(data, /operation\?: string/);
   assert.match(data, /dataOperation\(path\)/);
@@ -77,8 +77,8 @@ test("assistant data errors expose only a development operation hint", () => {
 });
 
 test("onboarding assistant demo validates voice overrides and never executes actions", () => {
-  const turnRoute = read("app/api/assistant/turn/route.ts");
-  const sessionRoute = read("app/api/assistant/session/route.ts");
+  const turnRoute = read("app/api/(private)/assistant/turn/route.ts");
+  const sessionRoute = read("app/api/(private)/assistant/session/route.ts");
   const voiceService = read("lib/server/voice/elevenlabs.ts");
 
   assert.match(turnRoute, /demoMode = body\.demoMode === true/);
