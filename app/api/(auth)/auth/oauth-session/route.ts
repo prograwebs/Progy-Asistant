@@ -29,11 +29,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No pudimos validar tu acceso con Google." }, { status: 401 });
     }
 
-    await saveSupabaseSession({
+    const sessionSaved = await saveSupabaseSession({
       access_token: body.accessToken,
       refresh_token: body.refreshToken,
       expires_in: body.expiresIn,
     });
+    if (!sessionSaved) {
+      return NextResponse.json({ error: "No pudimos completar el acceso con Google." }, { status: 502 });
+    }
     return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "No pudimos completar el acceso con Google." }, { status: 500 });

@@ -27,11 +27,17 @@ export async function supabaseAuthRequest(path: string, init: RequestInit = {}) 
 }
 
 export async function saveSupabaseSession(payload: {
-  access_token?: string;
-  refresh_token?: string;
+  access_token?: unknown;
+  refresh_token?: unknown;
   expires_in?: number;
-}) {
-  if (!payload.access_token || !payload.refresh_token) return;
+}): Promise<boolean> {
+  if (
+    typeof payload.access_token !== "string" ||
+    !payload.access_token.trim() ||
+    typeof payload.refresh_token !== "string" ||
+    !payload.refresh_token.trim()
+  ) return false;
+
   const store = await cookies();
   const secure = process.env.NODE_ENV === "production";
   const base = { httpOnly: true, secure, sameSite: "lax" as const, path: "/" };
@@ -44,6 +50,7 @@ export async function saveSupabaseSession(payload: {
     ...base,
     maxAge: 60 * 60 * 24 * 30,
   });
+  return true;
 }
 
 export async function clearSupabaseSession() {
@@ -90,12 +97,11 @@ export async function refreshSupabaseSession() {
   };
   if (!payload.access_token) return false;
 
-  await saveSupabaseSession({
+  return saveSupabaseSession({
     access_token: payload.access_token,
     refresh_token: payload.refresh_token || refreshToken,
     expires_in: payload.expires_in || 3600,
   });
-  return true;
 }
 
 export async function getSupabaseUser(): Promise<ProgyUser | null> {

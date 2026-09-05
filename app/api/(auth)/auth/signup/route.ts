@@ -31,8 +31,21 @@ export async function POST(request: Request) {
     if (!response.ok) {
       return NextResponse.json({ error: safeErrorMessage(payload, "No pudimos crear la cuenta.") }, { status: response.status });
     }
-    await saveSupabaseSession(payload);
-    return NextResponse.json({ ok: true, needsConfirmation: !payload.access_token });
+
+    const hasAccessToken = typeof payload.access_token === "string" && payload.access_token.trim().length > 0;
+    const hasRefreshToken = typeof payload.refresh_token === "string" && payload.refresh_token.trim().length > 0;
+    if (hasAccessToken !== hasRefreshToken) {
+      return NextResponse.json({ error: "No pudimos crear la cuenta en este momento." }, { status: 502 });
+    }
+    if (!hasAccessToken) {
+      return NextResponse.json({ ok: true, needsConfirmation: true });
+    }
+
+    const sessionSaved = await saveSupabaseSession(payload);
+    if (!sessionSaved) {
+      return NextResponse.json({ error: "No pudimos crear la cuenta en este momento." }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, needsConfirmation: false });
   } catch (error) {
     const message = error instanceof Error && error.message === "SUPABASE_NOT_CONFIGURED"
       ? "Supabase todavía no está configurado en Progy."

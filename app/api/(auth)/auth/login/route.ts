@@ -24,7 +24,10 @@ export async function POST(request: Request) {
     if (!response.ok) {
       return NextResponse.json({ error: safeErrorMessage(payload, "Correo o contraseña incorrectos.") }, { status: 401 });
     }
-    await saveSupabaseSession(payload);
+    const sessionSaved = await saveSupabaseSession(payload);
+    if (!sessionSaved) {
+      return NextResponse.json({ error: "No pudimos iniciar sesión en este momento." }, { status: 502 });
+    }
     return NextResponse.json({ ok: true });
   } catch (error) {
     const message = error instanceof Error && error.message === "SUPABASE_NOT_CONFIGURED"

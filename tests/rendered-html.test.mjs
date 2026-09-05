@@ -214,6 +214,25 @@ test("onboarding resumes from durable state and protects authenticated routes", 
   assert.doesNotMatch(read("app/api/(private)/workspace/route.ts"), /preview-business/);
 });
 
+test("auth success requires a persisted session or email confirmation", () => {
+  const auth = read("lib/server/auth/supabase.ts");
+  const login = read("app/api/(auth)/auth/login/route.ts");
+  const signup = read("app/api/(auth)/auth/signup/route.ts");
+  const oauth = read("app/api/(auth)/auth/oauth-session/route.ts");
+
+  assert.match(auth, /\}): Promise<boolean>/);
+  assert.match(auth, /typeof payload\.access_token !== "string"/);
+  assert.match(auth, /return saveSupabaseSession\(/);
+  assert.match(login, /const sessionSaved = await saveSupabaseSession\(payload\)/);
+  assert.match(login, /if \(!sessionSaved\)[\s\S]*status: 502/);
+  assert.match(signup, /hasAccessToken !== hasRefreshToken/);
+  assert.match(signup, /needsConfirmation: true/);
+  assert.match(signup, /needsConfirmation: false/);
+  assert.ok(signup.indexOf("needsConfirmation: true") < signup.indexOf("const sessionSaved"));
+  assert.match(oauth, /const sessionSaved = await saveSupabaseSession\(/);
+  assert.match(oauth, /if \(!sessionSaved\)[\s\S]*status: 502/);
+});
+
 test("production template keeps secrets server-side and WhatsApp gated", () => {
   const env = read(".env.example");
   assert.match(env, /^OPENAI_API_KEY=/m);
